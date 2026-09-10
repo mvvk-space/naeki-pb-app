@@ -1,0 +1,14 @@
+# dependencies & build output
+node_modules/
+dist/
+out/
+
+# research scratch files (raw dumps, not part of the app)
+research_*.txt
+menu_images_en.json
+branch_links.json
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log

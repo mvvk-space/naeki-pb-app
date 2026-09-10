@@ -497,11 +497,12 @@ a:hover { text-decoration: underline; }
 :root {
   --splash-bg: var(--salmon);          /* orange primary */
   --splash-ink: #16110b;               /* black accent (warm) */
-  --splash-total: 3.2s;                /* whole show before fade */
-  --splash-draw: 1.15s;                /* stand line-art draw time */
+  --splash-total: 2.6s;                /* whole show before fade */
+  --splash-draw: 0.8s;                 /* stand line-art draw time */
+  --splash-fill: 0.7s;                 /* clockwise ink-fill sweep */
   --splash-ball: 0.55s;                /* ball roll time */
   --splash-pop-in: 0.38s;              /* onigiri bounce-in */
-  --splash-hold: 0.55s;                /* hold after POP before fade */
+  --splash-hold: 0.35s;                /* hold after POP before fade */
   --splash-fade: 0.45s;                /* fade to app */
 }
 
@@ -582,27 +583,6 @@ a:hover { text-decoration: underline; }
   100% { transform: scale(1); }
 }
 
-.splash-pop {
-  position: absolute;
-  top: 2px;
-  right: -14px;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 30px;
-  letter-spacing: 0.04em;
-  color: var(--splash-ink);
-  opacity: 0;
-  transform: scale(0.4) rotate(-6deg);
-}
-#splash.phase-roll .splash-pop {
-  animation: splash-pop var(--splash-pop-in) cubic-bezier(0.3, 1.8, 0.4, 1) 0.12s forwards;
-}
-@keyframes splash-pop {
-  0%   { opacity: 0; transform: scale(0.4) rotate(-6deg); }
-  60%  { opacity: 1; transform: scale(1.22) rotate(3deg); }
-  100% { opacity: 1; transform: scale(1) rotate(-2deg); }
-}
-
 /* -------- stars bursting from the top -------- */
 
 .star {
@@ -623,8 +603,10 @@ a:hover { text-decoration: underline; }
   100% { opacity: 1; transform: translate(var(--tx), var(--ty)) scale(var(--s)) rotate(var(--rot)); }
 }
 
-/* swap phases hide/show the right art */
-#splash.phase-ball #art-stand { opacity: 0; }
+/* swap phases hide/show the right art: stand+fill stay up through the ball
+   roll, everything swaps to the onigiri at phase-roll */
+#splash.phase-roll #art-stand { opacity: 0; }
+#splash.phase-roll #art-fill { opacity: 0; }
 #splash.phase-roll #art-ball { opacity: 0; }
 
 /* reduced motion: skip the show entirely (JS also skips it) */

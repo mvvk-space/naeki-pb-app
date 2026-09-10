@@ -16,16 +16,34 @@
       <svg id="art-stand" class="splash-art" viewBox="0 0 240 200" fill="none"
            stroke="#16110b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
         <path class="draw" data-d="0.00s" pathLength="1" d="M18 180 H222"/>
-        <path class="draw" data-d="0.08s" pathLength="1" d="M54 180 V100"/>
-        <path class="draw" data-d="0.08s" pathLength="1" d="M186 180 V100"/>
-        <path class="draw" data-d="0.20s" pathLength="1" d="M40 100 C42 68 198 68 200 100"/>
-        <path class="draw" data-d="0.32s" pathLength="1"
+        <path class="draw" data-d="0.04s" pathLength="1" d="M54 180 V100"/>
+        <path class="draw" data-d="0.04s" pathLength="1" d="M186 180 V100"/>
+        <path class="draw" data-d="0.10s" pathLength="1" d="M40 100 C42 68 198 68 200 100"/>
+        <path class="draw" data-d="0.16s" pathLength="1"
               d="M40 100 Q50 114 60 100 Q70 114 80 100 Q90 114 100 100 Q110 114 120 100 Q130 114 140 100 Q150 114 160 100 Q170 114 180 100 Q190 114 200 100"/>
-        <path class="draw" data-d="0.50s" pathLength="1" d="M62 100 V152 H178 V100"/>
-        <path class="draw" data-d="0.62s" pathLength="1" d="M50 122 H190"/>
-        <path class="draw" data-d="0.74s" pathLength="1" d="M112 122 L120 106 L128 122"/>
-        <path class="draw" data-d="0.84s" pathLength="1" d="M115 100 Q112 93 117 87"/>
-        <path class="draw" data-d="0.90s" pathLength="1" d="M125 100 Q128 93 123 87"/>
+        <path class="draw" data-d="0.25s" pathLength="1" d="M62 100 V152 H178 V100"/>
+        <path class="draw" data-d="0.31s" pathLength="1" d="M50 122 H190"/>
+        <path class="draw" data-d="0.37s" pathLength="1" d="M112 122 L120 106 L128 122"/>
+        <path class="draw" data-d="0.42s" pathLength="1" d="M115 100 Q112 93 117 87"/>
+        <path class="draw" data-d="0.45s" pathLength="1" d="M125 100 Q128 93 123 87"/>
+      </svg>
+
+      <!-- clockwise ink-fill: solid stand shapes revealed by a sweeping
+           wedge (JS-driven clipPath) — the progress indicator -->
+      <svg id="art-fill" class="splash-art" viewBox="0 0 240 200" aria-hidden="true">
+        <defs>
+          <clipPath id="fill-wipe"><path id="wipe-path" d=""/></clipPath>
+        </defs>
+        <g fill="#16110b" stroke="#16110b" stroke-width="3.5" stroke-linejoin="round"
+           clip-path="url(#fill-wipe)">
+          <rect x="18" y="176" width="204" height="7"/>
+          <rect x="51" y="98" width="7" height="82"/>
+          <rect x="182" y="98" width="7" height="82"/>
+          <path d="M40 100 C42 68 198 68 200 100 Z"/>
+          <path d="M40 100 Q50 114 60 100 Q70 114 80 100 Q90 114 100 100 Q110 114 120 100 Q130 114 140 100 Q150 114 160 100 Q170 114 180 100 Q190 114 200 100 Z"/>
+          <rect x="62" y="100" width="116" height="52"/>
+          <rect x="50" y="118" width="140" height="9"/>
+        </g>
       </svg>
 
       <!-- rolling-ball loader: rolls along the ground line into position -->
@@ -52,8 +70,6 @@
       <svg class="star star-3" viewBox="-16 -16 32 32" aria-hidden="true">
         <path d="M0 -14 Q2 -2 14 0 Q2 2 0 14 Q-2 2 -14 0 Q-2 -2 0 -14 Z" fill="#16110b"/>
       </svg>
-
-      <div class="splash-pop" id="splash-pop">POP!</div>
     </div>
   </div>
 

@@ -234,6 +234,7 @@
       const s = (name) => (parseFloat(css.getPropertyValue(name)) || 0) * 1000;
       const T = {
         draw: s("--splash-draw"),
+        fill: s("--splash-fill"),
         ball: s("--splash-ball"),
         popIn: s("--splash-pop-in"),
         hold: s("--splash-hold"),
@@ -251,11 +252,42 @@
         if (p.dataset.d) p.style.setProperty("--d", p.dataset.d);
       });
 
+      /* clockwise ink-fill: a wedge clip-path sweeps 12 o'clock → 360°,
+         revealing the solid stand inside the line art (old loading-circle
+         feel, fast). Wedge built as SVG path in the 240x200 viewBox. */
+      const fillSweep = (duration, onDone) => {
+        const wipe = $("#wipe-path");
+        const cx = 120, cy = 110, r = 200; // center + radius covers the stand
+        const p0 = "M120 110 L120 -90 A200 200 0 "; // from top, large-arc, sweep, end
+        const start = performance.now();
+        const tick = (now) => {
+          const t = Math.min(1, (now - start) / duration);
+          if (t >= 1) {
+            // full circle would degenerate (arc start == end) — clamp to full cover
+            wipe.setAttribute("d", "M-2000 -2000 H4000 V4000 H-2000 Z");
+            onDone && onDone();
+            return;
+          }
+          const ang = t * 2 * Math.PI; // clockwise from 12 o'clock
+          const ex = cx + r * Math.sin(ang);
+          const ey = cy - r * Math.cos(ang);
+          const large = ang > Math.PI ? 1 : 0;
+          wipe.setAttribute("d",
+            `${p0}${large} 1 ${ex.toFixed(1)} ${ey.toFixed(1)} Z`);
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      };
+
       requestAnimationFrame(() => {
         splash.classList.add("phase-draw");            // stand draws on
-        setTimeout(() => splash.classList.add("phase-ball"), T.draw + 80);
-        setTimeout(() => splash.classList.add("phase-roll"), T.draw + T.ball + 80);
-        const popDone = T.draw + T.ball + popInDelay + T.popIn + T.hold;
+        setTimeout(() => {                             // ink-fill sweeps over it
+          splash.classList.add("phase-fill");
+          fillSweep(T.fill);
+        }, T.draw - 120);
+        setTimeout(() => splash.classList.add("phase-ball"), T.draw + T.fill - 60);
+        setTimeout(() => splash.classList.add("phase-roll"), T.draw + T.fill + T.ball + 40);
+        const popDone = T.draw + T.fill + T.ball + popInDelay + T.popIn + T.hold;
         setTimeout(() => {                              // fade splash out
           splash.classList.add("phase-out");
           app.style.opacity = "1";

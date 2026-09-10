@@ -172,7 +172,7 @@
             ${b.close ? `<span class="b-close">until ${b.close}</span>` : ""}
             ${b.phone ? `<span class="b-close">${b.phone}</span>` : ""}
           </div>
-          ${b.note ? `<div class="b-where" style="margin-top:6px">${b.note}</div>` : ""}`;
+          ${b.note ? `<div class="b-where b-note">${b.note}</div>` : ""}`;
         const go = () =>
           window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + " Bangkok")}`, "_blank");
         el.addEventListener("click", go);

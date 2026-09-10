@@ -16,7 +16,7 @@ function createWindow () {
     }
   });
 
-  win.loadFile('index.html');
+  win.loadFile('index.html', { query: { v: '1.1.3' } });
 
   // open external links (maps, line, etc.) in the default browser
   win.webContents.setWindowOpenHandler(({ url }) => {

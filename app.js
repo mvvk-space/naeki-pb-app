@@ -235,7 +235,6 @@
       const T = {
         draw: s("--splash-draw"),
         fill: s("--splash-fill"),
-        ball: s("--splash-ball"),
         popIn: s("--splash-pop-in"),
         hold: s("--splash-hold"),
         fade: s("--splash-fade")
@@ -252,19 +251,20 @@
         if (p.dataset.d) p.style.setProperty("--d", p.dataset.d);
       });
 
-      /* clockwise ink-fill: a wedge clip-path sweeps 12 o'clock → 360°,
-         revealing the solid stand inside the line art (old loading-circle
-         feel, fast). Wedge built as SVG path in the 240x200 viewBox. */
+      /* pie-chart fill: a black wedge sweeps 12 o'clock → 360° inside the
+         ring; the same wedge clip reveals the orange line-art clone. */
       const fillSweep = (duration, onDone) => {
+        const pie = $("#pie-path");
         const wipe = $("#wipe-path");
-        const cx = 120, cy = 110, r = 200; // center + radius covers the stand
-        const p0 = "M120 110 L120 -90 A200 200 0 "; // from top, large-arc, sweep, end
+        const cx = 130, cy = 132, r = 260; // wedge radius ≥ ring outer radius
         const start = performance.now();
         const tick = (now) => {
           const t = Math.min(1, (now - start) / duration);
           if (t >= 1) {
             // full circle would degenerate (arc start == end) — clamp to full cover
-            wipe.setAttribute("d", "M-2000 -2000 H4000 V4000 H-2000 Z");
+            const full = "M-2000 -2000 H4000 V4000 H-2000 Z";
+            pie.setAttribute("d", full);
+            wipe.setAttribute("d", full);
             onDone && onDone();
             return;
           }
@@ -272,22 +272,22 @@
           const ex = cx + r * Math.sin(ang);
           const ey = cy - r * Math.cos(ang);
           const large = ang > Math.PI ? 1 : 0;
-          wipe.setAttribute("d",
-            `${p0}${large} 1 ${ex.toFixed(1)} ${ey.toFixed(1)} Z`);
+          const d = `M${cx} ${cy} L${cx} ${cy - r} A${r} ${r} 0 ${large} 1 ${ex.toFixed(1)} ${ey.toFixed(1)} Z`;
+          pie.setAttribute("d", d);
+          wipe.setAttribute("d", d);
           requestAnimationFrame(tick);
         };
         requestAnimationFrame(tick);
       };
 
       requestAnimationFrame(() => {
-        splash.classList.add("phase-draw");            // stand draws on
-        setTimeout(() => {                             // ink-fill sweeps over it
+        splash.classList.add("phase-draw");            // ring + stand draw on
+        setTimeout(() => {                             // pie fill sweeps over it
           splash.classList.add("phase-fill");
           fillSweep(T.fill);
         }, T.draw - 120);
-        setTimeout(() => splash.classList.add("phase-ball"), T.draw + T.fill - 60);
-        setTimeout(() => splash.classList.add("phase-roll"), T.draw + T.fill + T.ball + 40);
-        const popDone = T.draw + T.fill + T.ball + popInDelay + T.popIn + T.hold;
+        setTimeout(() => splash.classList.add("phase-roll"), T.draw + T.fill + 40);
+        const popDone = T.draw + T.fill + popInDelay + T.popIn + T.hold;
         setTimeout(() => {                              // fade splash out
           splash.classList.add("phase-out");
           app.style.opacity = "1";

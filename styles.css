@@ -497,10 +497,9 @@ a:hover { text-decoration: underline; }
 :root {
   --splash-bg: var(--salmon);          /* orange primary */
   --splash-ink: #16110b;               /* black accent (warm) */
-  --splash-total: 2.6s;                /* whole show before fade */
-  --splash-draw: 0.8s;                 /* stand line-art draw time */
-  --splash-fill: 0.7s;                 /* clockwise ink-fill sweep */
-  --splash-ball: 0.55s;                /* ball roll time */
+  --splash-total: 2.1s;                /* whole show before fade */
+  --splash-draw: 0.8s;                 /* ring + stand line-art draw time */
+  --splash-fill: 0.8s;                 /* pie-chart ink-fill sweep */
   --splash-pop-in: 0.38s;              /* onigiri bounce-in */
   --splash-hold: 0.35s;                /* hold after POP before fade */
   --splash-fade: 0.45s;                /* fade to app */
@@ -524,7 +523,7 @@ a:hover { text-decoration: underline; }
   height: 260px;
 }
 
-/* -------- phase 1: stand draws itself -------- */
+/* -------- phase 1 scene: ring + stand draw on -------- */
 
 .splash-art {
   position: absolute;
@@ -533,14 +532,14 @@ a:hover { text-decoration: underline; }
   height: 100%;
 }
 
-#art-stand { opacity: 0; }
-#splash.phase-draw #art-stand { opacity: 1; }
+#art-scene { opacity: 0; }
+#splash.phase-draw #art-scene { opacity: 1; }
 
-#art-stand .draw {
+#art-scene .draw {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;
 }
-#splash.phase-draw #art-stand .draw {
+#splash.phase-draw #art-scene .draw {
   animation: splash-draw var(--splash-draw) ease forwards;
   animation-delay: var(--d, 0s);
 }
@@ -548,25 +547,7 @@ a:hover { text-decoration: underline; }
   to { stroke-dashoffset: 0; }
 }
 
-/* -------- rolling-ball loader -------- */
-
-#art-ball {
-  position: absolute;
-  left: 50%;
-  bottom: 8px;
-  width: 26px;
-  height: 26px;
-  margin-left: -13px;
-  opacity: 0;
-}
-#splash.phase-ball #art-ball {
-  opacity: 1;
-  animation: splash-roll var(--splash-ball) cubic-bezier(0.6, 0, 0.4, 1) forwards;
-}
-@keyframes splash-roll {
-  from { transform: translateX(-118px) rotate(0turn); }
-  to   { transform: translateX(0) rotate(1.6turn); }
-}
+/* -------- rolling-ball loader: removed (v1.1.2) -------- */
 
 /* -------- phase 2: onigiri bounce-in + POP -------- */
 
@@ -603,11 +584,10 @@ a:hover { text-decoration: underline; }
   100% { opacity: 1; transform: translate(var(--tx), var(--ty)) scale(var(--s)) rotate(var(--rot)); }
 }
 
-/* swap phases hide/show the right art: stand+fill stay up through the ball
-   roll, everything swaps to the onigiri at phase-roll */
-#splash.phase-roll #art-stand { opacity: 0; }
-#splash.phase-roll #art-fill { opacity: 0; }
-#splash.phase-roll #art-ball { opacity: 0; }
+/* swap phases: scene (ring+stand) stays up through the fill, everything
+   swaps to the onigiri at phase-roll */
+#splash.phase-roll #art-scene { opacity: 0; }
+#splash.phase-roll #art-roll { opacity: 1; }
 
 /* reduced motion: skip the show entirely (JS also skips it) */
 @media (prefers-reduced-motion: reduce) {

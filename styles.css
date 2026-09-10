@@ -824,3 +824,205 @@ a:hover { text-decoration: underline; }
   .ab-gallery { grid-template-columns: repeat(2, 1fr); }
   .ab-values { grid-template-columns: 1fr; }
 }
+
+/* ---------------- FRANCHISE VIEW ---------------- */
+
+/* banner: kiosk photo with copy over a warm-black gradient, like .ab-banner */
+.fr-banner {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #000;
+  min-height: 320px;
+  display: flex;
+  align-items: flex-end;
+}
+.fr-banner-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+  opacity: 0.9;
+}
+.fr-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.6) 45%, rgba(0,0,0,0.1) 85%);
+}
+.fr-banner-copy {
+  position: relative;
+  z-index: 1;
+  padding: 40px 46px 38px;
+  max-width: 660px;
+}
+.fr-banner-copy h2 {
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.2vw, 44px);
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+.fr-banner-copy h2::after {
+  content: "";
+  display: block;
+  width: 64px;
+  height: 4px;
+  margin-top: 14px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(-45deg, var(--salmon) 0 8px, transparent 8px 16px);
+}
+.fr-banner-copy p { color: var(--paper-dim); max-width: 540px; }
+
+/* opportunity split: photo + pitch */
+.fr-split {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 42px;
+  align-items: center;
+  padding: 46px 0;
+  border-bottom: 1px solid var(--line);
+}
+.fr-split-photo img {
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+}
+.fr-split-photo figcaption,
+.fr-cta .n-items {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  margin-top: 8px;
+}
+.fr-split-copy h3 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.2;
+  margin-bottom: 16px;
+}
+.fr-split-copy p { color: var(--paper-dim); margin-bottom: 14px; }
+.fr-split-copy p:last-child { margin-bottom: 0; }
+.fr-split-copy strong { color: var(--paper); }
+
+/* highlights: three pillar cards */
+.fr-highlights {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  padding: 40px 0;
+  border-bottom: 1px solid var(--line);
+}
+.fr-hl {
+  background: var(--ink-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px 22px;
+}
+.fr-hl-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--salmon);
+  margin-bottom: 14px;
+}
+.fr-hl h4 {
+  font-family: var(--font-display);
+  font-size: 19px;
+  margin-bottom: 8px;
+}
+.fr-hl p { font-size: 13.5px; color: var(--paper-dim); }
+.fr-hl strong { color: var(--paper); }
+
+/* 4 steps: icon chips on paper, like the site's black-on-white icons */
+.fr-steps-head {
+  padding-top: 44px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.fr-steps-head h3 { font-family: var(--font-display); font-size: 26px; }
+.fr-steps-head .rule { flex: 1; height: 1px; background: var(--line); }
+.fr-steps-head .n-items { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--paper-dim); }
+.fr-four {
+  color: var(--salmon);
+  font-size: 34px;
+  margin-right: 2px;
+}
+.fr-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.fr-step {
+  background: var(--ink-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px 20px;
+  position: relative;
+}
+.fr-step-icon {
+  width: 84px;
+  height: 84px;
+  border-radius: 14px;
+  background: var(--paper);
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+}
+.fr-step-icon img { width: 62px; height: 62px; object-fit: contain; }
+.fr-step-no {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--salmon);
+  margin-bottom: 4px;
+}
+.fr-step h4 { font-size: 16.5px; font-weight: 600; margin-bottom: 8px; }
+.fr-step p { font-size: 13px; color: var(--paper-dim); }
+/* connector arrow between steps on wide screens */
+.fr-step:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  right: -14px;
+  top: 44px;
+  color: var(--salmon);
+  font-size: 15px;
+  z-index: 1;
+}
+
+/* CTA band */
+.fr-cta {
+  margin-top: 40px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ink-1);
+  padding: 30px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+.fr-cta-copy h3 { font-family: var(--font-display); font-size: 22px; margin-bottom: 8px; }
+.fr-cta-copy p { color: var(--paper-dim); font-size: 13.5px; max-width: 520px; }
+.fr-cta-actions { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.fr-cta-actions .btn { margin-top: 0; text-align: center; }
+
+@media (max-width: 1180px) {
+  .fr-split { grid-template-columns: 1fr; gap: 24px; }
+  .fr-highlights { grid-template-columns: 1fr; }
+  .fr-steps { grid-template-columns: repeat(2, 1fr); }
+  .fr-step:nth-child(2)::after { content: none; }
+}
+@media (max-width: 900px) {
+  .fr-banner-copy { padding: 26px 24px; }
+  .fr-steps { grid-template-columns: 1fr; }
+  .fr-step::after { content: none !important; }
+}

@@ -49,13 +49,13 @@ mode only changes which nav links are visible and the default view.
 
 | View | Modes | Contents |
 |---|---|---|
-| **Home** | landing | Landing page — hero, live status band (branches open now, next closing), featured menu overview rotating from the live data layer, flagship hours preview with open/closed status, About & Franchise teasers, sign-in CTA |
+| **Home** | landing | Landing page — hero, live status band (branches open now, next closing), featured menu overview rotating from the live data layer, flagship hours preview with open/closed status, About & Franchise teasers, **order & info cards** (shared live frame with the app's Order view), sign-in CTA |
 | **Full Menu** | landing | Display-only menu board — all 38 dishes with indicative prices from the live data layer, plus the ~54-item rotating strip. No ordering: the "Order in the app" CTA gates sign-in |
 | **Menu** | app | 38 dishes with **ordering built in** — indicative ฿ prices, +/− quantity steppers per card, add-to-cart in the dish modal, live search, category chips |
 | **Cart** | app | Shopping-cart view — per-line steppers, running totals, demo checkout (local receipt + order id), cart persists on-device across sessions; sidebar badge tracks count |
 | **Branches** | app | All 20 Bangkok branches with live **open/closed status** computed against Bangkok time, flagship vs GO! kiosk badges, Google Maps deep links, search |
 | **Stamp Card** | app | Local demo loyalty card — collect 10 stamps, redeem a treat, history log. Self-issued; stored only on-device (`localStorage` via `src/store.js`), never sent anywhere |
-| **Order & Info** | app | LINE OA, flagship counter phone, catering line, HQ address, socials |
+| **Order & Info** | app + landing bottom section | LINE OA, flagship counter phone, catering line, HQ address, socials — one live frame (`D.order()`) mounted in both shells |
 | **About / Franchise** | landing | Brand story, kiosk gallery, FAQ / franchise pitch from naeki.co |
 
 Also: a live Bangkok clock in the sidebar, real Google-review quotes,

@@ -417,6 +417,11 @@ a:hover { text-decoration: underline; }
   gap: 14px;
   margin-top: 30px;
 }
+/* landing mount: the section head already carries the top margin */
+#landing .order-grid { margin-top: 0; }
+/* the order-now CTA band on the landing menu sits between menu + contacts */
+.lmenu-cta-band { margin-top: 36px; }
+.lmenu-cta-band + .home-featured-head { margin-top: 36px; }
 .order-card {
   background: var(--ink-1);
   border: 1px solid var(--line);
@@ -1576,6 +1581,7 @@ a:hover { text-decoration: underline; }
   .fact strong { font-size: 21px; }
   .home-hero-actions .btn { flex: 1; text-align: center; }
   .home-teasers { grid-template-columns: 1fr; }
+  .order-grid { grid-template-columns: 1fr; }
   .search-wrap { width: 100%; }
   #menu-search { width: 100%; }
   .toolbar { flex-direction: column; align-items: stretch; }

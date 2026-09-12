@@ -213,10 +213,57 @@ window.NaekiData = (() => {
     tiktok: "https://www.tiktok.com/@naekisushi",
     facebook: "https://www.facebook.com/naekisushi/",
     hq: "Naeki Sushi Co., Ltd. (HQ), 487/8 Si Ayutthaya Rd, Phaya Thai, Ratchathewi, Bangkok 10400",
+    hqAddress: "487/8 Si Ayutthaya Rd, Phaya Thai, Ratchathewi, Bangkok 10400",
     officePhone: "098 229 2278",
     officeEmail: "info@naekisushi.com",
     site: "https://naeki.co"
   };
+
+  /* ---------------- ORDER & INFO CARDS ----------------
+     The four contact cards (LINE OA, flagship counter, catering, company)
+     shared by the app's Order view and the landing page's bottom section.
+     Composed from INFO + BRANCHES — a phone or hours edit repaints both
+     surfaces on the next refresh. socials: [label, url] pairs. */
+
+  const flagship = () => BRANCHES.find(b => b.kind === "flagship");
+
+  function order() {
+    const f = flagship();
+    return [
+      {
+        kicker: "Line Official Account",
+        title: INFO.line,
+        text: "Order ahead for pickup at your nearest kiosk and catch the seasonal drops.",
+        links: [{ label: "Open LINE OA", url: INFO.lineUrl, accent: true }]
+      },
+      {
+        kicker: "Flagship counter",
+        title: "Naeki Sushi · " + shortName(f),
+        text: f.where + ". Open daily until " + f.close + ".",
+        links: [
+          { label: f.phone, url: "tel:" + f.phone.replace(/\s+/g, ""), accent: false },
+          { label: "Directions", url: "https://www.google.com/maps/search/?api=1&query=" +
+            encodeURIComponent(f.name + " Bangkok"), accent: false }
+        ]
+      },
+      {
+        kicker: "Catering & party sets",
+        title: "Party trays & bulk orders",
+        text: "Sushi platters, bento sets and party trays for offices and events — arranged through the Naeki team.",
+        links: [{ label: INFO.officePhone, url: "tel:" + INFO.officePhone.replace(/\s+/g, ""), accent: false }]
+      },
+      {
+        kicker: "The company",
+        title: "Naeki Sushi Co., Ltd.",
+        text: INFO.hqAddress,
+        socials: [
+          ["Instagram", INFO.instagram],
+          ["TikTok", INFO.tiktok],
+          ["Facebook", INFO.facebook]
+        ]
+      }
+    ];
+  }
 
   /* ---------------- LANDING CONFIG ----------------
      The featured pool is the "pre-view" of the menu: every data refresh
@@ -343,7 +390,7 @@ window.NaekiData = (() => {
   const Data = {
     MENU, ALSO, BRANCHES, REVIEWS, INFO, LANDING,
     subscribe, publish,
-    bangkokParts, toMins, isOpenNow, shortName, stats, featured,
+    bangkokParts, toMins, isOpenNow, shortName, stats, featured, order,
     refresh
   };
   return Data;

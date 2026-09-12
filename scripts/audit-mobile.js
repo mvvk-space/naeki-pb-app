@@ -93,6 +93,7 @@ const AUDIT_JS = `(() => {
         oneCol(".home-hours", "hours");
         oneCol(".home-featured", "featured");
         oneCol(".home-teasers", "teasers");
+        oneCol(".order-grid", "order");
       }
       // landing menu list: rows are stacked, nothing off-viewport
       if (v === "lmenu") {

@@ -91,7 +91,7 @@
     $("#signin-name").focus();
   }
   function closeSignin() { signin.hidden = true; }
-  ["#lp-signin", "#home-open-app", "#cta-open-app", "#hours-open-app"].forEach(sel => {
+  ["#lp-signin", "#home-open-app", "#cta-open-app", "#hours-open-app", "#lmenu-order-now"].forEach(sel => {
     $(sel).addEventListener("click", openSignin);
   });
   $$("#signin [data-close]").forEach(el => el.addEventListener("click", closeSignin));
@@ -198,6 +198,31 @@
           card.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
           el.appendChild(card);
         });
+    }
+  });
+
+  /* ---------------- Order & info cards (shared frame) ----------------
+     One renderer, two mounts: the app's Order view and the landing page's
+     bottom section. Sourced from D.order() — contact facts edited in the
+     data layer repaint both surfaces on the next refresh. */
+  F.define("order", {
+    topics: ["refresh"],
+    render(el, D) {
+      el.innerHTML = "";
+      D.order().forEach(card => {
+        const node = document.createElement("article");
+        node.className = "order-card";
+        node.innerHTML = `
+          <div class="oc-kicker">${card.kicker}</div>
+          <h3>${card.title}</h3>
+          <p>${card.text}</p>
+          ${(card.links || []).map(l =>
+            `<a class="btn ${l.accent ? "accent" : "ghost"}" href="${l.url}" data-external>${l.label}</a>`
+          ).join("\n          ")}
+          ${card.socials ? `<div class="oc-socials">${card.socials.map(([label, url]) =>
+            `<a href="${url}" data-external>${label}</a>`).join("")}</div>` : ""}`;
+        el.appendChild(node);
+      });
     }
   });
 
@@ -694,12 +719,14 @@
     }
   });
 
-  /* ---------------- External links → system browser ---------------- */
-  $$("a[data-external]").forEach(a => {
-    a.addEventListener("click", e => {
-      e.preventDefault();
-      window.open(a.href, "_blank");
-    });
+  /* ---------------- External links → system browser ----------------
+     Delegated at document level: live frames (order cards, hours, menu)
+     re-render on every refresh and would shed per-anchor listeners. */
+  document.addEventListener("click", e => {
+    const a = e.target.closest("a[data-external]");
+    if (!a) return;
+    e.preventDefault();
+    window.open(a.href, "_blank");
   });
 
   /* ---------------- Clock loop ---------------- */

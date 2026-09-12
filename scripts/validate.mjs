@@ -194,6 +194,18 @@ if (DATA) {
     const f = DATA.featured((DATA.LANDING?.featuredCount ?? 0));
     pass(`featured(${f.length}): rotation runs without warnings`);
   } catch (e) { problem(`data: featured() threw — ${e.message.split("\n")[0]}`); }
+  /* order() composes the shared contact cards from INFO + the flagship
+     branch — the exact code path both order-grid mounts render each refresh */
+  try {
+    const cards = DATA.order();
+    if (!Array.isArray(cards) || cards.length !== 4) {
+      problem(`data: order() returned ${cards?.length ?? "non-array"} cards (expected 4)`);
+    } else {
+      const bad = cards.filter(c => !c.kicker || !c.title || !(c.links || c.socials));
+      if (bad.length) problem(`data: order() card(s) missing kicker/title/actions: ${bad.map(c => c.kicker).join(", ")}`);
+      else pass(`order(): ${cards.length} contact cards compose from INFO + flagship branch`);
+    }
+  } catch (e) { problem(`data: order() threw — ${e.message.split("\n")[0]}`); }
 } else {
   problem("data: window.NaekiData did not initialize — skip data-layer checks");
 }

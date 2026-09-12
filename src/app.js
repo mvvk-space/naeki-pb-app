@@ -111,6 +111,9 @@
     });
     $$(".od-pane").forEach(p =>
       p.classList.toggle("active", p.dataset.odpane === tab));
+    // the branches pane carries persisted state (your-branch subscriptions),
+    // so re-render it whenever it is re-selected — not just on search/tick
+    if (tab === "branches") renderBranches();
   }
 
   $$(".od-tab").forEach(btn =>
@@ -538,7 +541,7 @@
           .map(n => D.BRANCHES.find(b => b.name === n))
           .filter(Boolean)
           .slice(0, 3)
-          .map(b => D.shortName(b.name));
+          .map(b => D.shortName(b));
         branchYour.innerHTML = subs.length
           ? `Your branches — <strong>${subs.length}</strong> picked&nbsp;(${names.join(", ")}${subs.length > 3 ? "…" : ""}). Offers &amp; notifications from these arrive in the <strong>Rewards bell</strong>.`
           : `Choose the branches you visit — tap the <strong>notify</strong> toggle on a card and offers from them arrive in the <strong>Rewards bell</strong>. Nothing leaves this device.`;

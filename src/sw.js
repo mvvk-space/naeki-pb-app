@@ -41,7 +41,12 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(
       fetch(req)
         .then((res) => {
-          if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
+          // clone synchronously, before res is handed to the page and its body
+          // is consumed — cloning on a used body throws "body is already used"
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+          }
           return res;
         })
         .catch(() => caches.match(req).then((hit) => hit || Response.error()))
@@ -54,7 +59,10 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(
       caches.match(req).then((hit) => {
         const fetchAndPut = fetch(req).then((res) => {
-          if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+          }
           return res;
         });
         return hit || fetchAndPut;
@@ -67,7 +75,10 @@ self.addEventListener("fetch", (e) => {
   if (req.destination === "image") {
     e.respondWith(
       caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-        if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        }
         return res;
       }))
     );

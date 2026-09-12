@@ -93,6 +93,9 @@ a:hover { text-decoration: underline; }
 .side-link:hover { background: var(--ink-2); color: var(--paper); }
 .side-link.active { background: var(--ink-2); color: var(--paper); }
 .side-link.active .n { color: var(--salmon); }
+/* author display rules above override the UA [hidden]{display:none}, so
+   mode-filtered links must re-declare it (see applyMode in app.js) */
+.side-link[hidden] { display: none; }
 
 .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 18px; }
 
@@ -382,6 +385,7 @@ a:hover { text-decoration: underline; }
   font-weight: 600;
   transition: transform 0.14s ease, opacity 0.14s ease;
 }
+.btn[hidden] { display: none; } /* keep the UA hidden rule through .btn's display */
 .btn:hover { text-decoration: none; transform: translateY(-1px); }
 .btn.accent { background: var(--salmon); color: #16110b; }
 .btn.accent:hover { opacity: 0.92; }

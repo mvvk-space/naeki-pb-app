@@ -707,6 +707,13 @@
         </button>
         <button class="side-link" data-view="rewards">
           <span class="n">05</span> Rewards
+          <span class="offer-bell" id="offer-bell" role="img" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3a6 6 0 0 0-6 6v3.2L4.2 16a1 1 0 0 0 .9 1.5h13.8a1 1 0 0 0 .9-1.5L18 12.2V9a6 6 0 0 0-6-6z"/>
+              <path class="offer-bell-clapper" d="M9.8 19.5a2.3 2.3 0 0 0 4.4 0z"/>
+            </svg>
+            <span class="offer-bell-dot" id="offer-bell-dot" hidden></span>
+          </span>
         </button>
         <button class="side-link" data-view="order">
           <span class="n">06</span> Order &amp; Info
@@ -734,6 +741,11 @@
         <div class="since">Premium sushi &amp; onigiri<br />since 2013 — est. All Seasons Place</div>
       </div>
     </aside>
+
+    <!-- offer popup: the bell's doorbell — one live unacknowledged offer at a
+         time, Marc-Lou style. app.js fills it; acknowledging (✕ / Got it /
+         See rewards) removes it and the offer stays acknowledged. -->
+    <div id="offer-pop" hidden></div>
 
     <!-- ============ MAIN ============ -->
     <main id="main">

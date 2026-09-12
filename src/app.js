@@ -668,10 +668,151 @@
   $("#lmenu-open-app").addEventListener("click", e => openSignin(e));
   $("#lmenu-back").addEventListener("click", () => goToView("home"));
 
+  /* ---------------- Offers bell + popup (ack-once, then it's gone) ----------------
+     Every live offer the data layer composes "arrives" until the user
+     acknowledges it: the bell dot lights and the newest unacknowledged offer
+     pops in bottom-right, Marc-Lou style. Acknowledging — ✕ on the popup,
+     "Got it", or engaging via "See rewards" — records the ack in the store
+     and the offer never pops again (its inbox card flips to a quiet "Seen").
+     The ack key pins the offer's composition (weekday|kicker|title), so the
+     Monday set returns fresh next Monday and a "welcome back" nudge can
+     re-fire the next time it earns itself. Nothing is synced; the ledger is
+     this device's. CSP-note: arrival animation is a class swap, not inline
+     styles. Declared ABOVE the Rewards section: renderRewards() paints the
+     offer ledger, so the consts here must exist before its first call. */
+  const offerPop = $("#offer-pop");
+  const offerBell = $("#offer-bell");
+  const offerBellDot = $("#offer-bell-dot");
+  let shownOfferKey = null;              // key currently in the popup, or null
+
+  // the composition key: weekday for weekly deals, "any" for personal matches
+  function offerKey(o, weekday) {
+    return `${o.personal ? "any" : weekday}|${o.kicker}|${o.title}`;
+  }
+
+  // live offers the user hasn't acknowledged yet — the bell's queue
+  function pendingOffers() {
+    const lo = S.loyalty();
+    const weekday = D.bangkokWeekday();
+    const acks = S.offerAcksState();
+    const list = D.offers({ history: lo.history, points: lo.points })
+      .filter(o => o.live)
+      .map(o => ({ ...o, key: offerKey(o, weekday) }))
+      .filter(o => !acks[o.key]);
+    // personal matches are the hook — they lead the queue
+    return list.sort((a, b) => (b.personal ? 1 : 0) - (a.personal ? 1 : 0));
+  }
+
+  function syncOfferBell(pending) {
+    if (!offerBell) return;
+    offerBell.hidden = false;                    // bell rides the nav once signed in
+    if (offerBellDot) offerBellDot.hidden = pending.length === 0;
+    offerBell.classList.toggle("has-mail", pending.length > 0);
+  }
+
+  function hideOfferPop() {
+    if (offerPop) {
+      offerPop.classList.remove("on");           // slide-out first…
+      shownOfferKey = null;
+      setTimeout(() => { if (!shownOfferKey) offerPop.hidden = true; }, 220);
+    }
+  }
+
+  // show (or swap to) one pending offer — the popup IS the notification
+  function showOfferPop(offer) {
+    if (!offerPop) return;
+    const o = offer;
+    offerPop.innerHTML = `
+      <div class="offer-pop-card ${o.personal ? "personal" : ""}">
+        <button class="offer-pop-x" data-ack="popup" aria-label="Acknowledge offer">×</button>
+        <div class="offer-pop-kicker">${o.kicker}${o.personal ? " · just for you" : ""}</div>
+        <div class="offer-pop-title">${o.title}</div>
+        <p>${o.text}</p>
+        <div class="offer-pop-actions">
+          <button class="btn ghost" data-ack="popup">Got it</button>
+          <button class="btn accent" data-cta="rewards">See rewards</button>
+        </div>
+      </div>`;
+    offerPop.querySelector("[data-ack]").addEventListener("click", () => {
+      S.ackOffer(o.key, "popup");
+      renderRewards();                            // inbox flips to "Seen"
+      hideOfferPop();
+      syncBellAndPop();                           // next pending, if any
+    });
+    offerPop.querySelector("[data-cta]").addEventListener("click", () => {
+      S.ackOffer(o.key, "cta");
+      renderRewards();
+      hideOfferPop();
+      goToView("rewards/points");
+      syncBellAndPop();
+    });
+    offerPop.hidden = false;
+    shownOfferKey = o.key;
+    // re-trigger the arrival animation (class swap — CSP-safe)
+    offerPop.classList.remove("on");
+    void offerPop.offsetWidth;                    // style flush
+    offerPop.classList.add("on");
+    // Marc-Lou shelf-life: it tucks itself away, unacknowledged; the next
+    // refresh cycle (≤30s) re-rings it until it's acknowledged
+    clearTimeout(offerPop._t);
+    offerPop._t = setTimeout(hideOfferPop, 14000);
+  }
+
+  // one pass: recompute the queue, sync the bell, present the head offer
+  function syncBellAndPop() {
+    if (!offerPop) return;                        // host not mounted
+    const pending = pendingOffers();
+    syncOfferBell(pending);
+    if (!pending.length) {
+      if (shownOfferKey) hideOfferPop();
+      return;
+    }
+    if (shownOfferKey === pending[0].key) return; // already showing it
+    showOfferPop(pending[0]);
+  }
+
+  // offer inbox: the bell's ledger. Unacked live offers carry a one-tap
+  // "Got it" right here; acknowledged ones go quiet ("Seen ✓") instead of
+  // disappearing — the inbox stays the full menu of what the brand composed.
+  function renderOffersInbox() {
+    const lo = S.loyalty();
+    const weekday = D.bangkokWeekday();
+    const acks = S.offerAcksState();
+    const list = D.offers({ history: lo.history, points: lo.points });
+    const live = list.filter(o => o.live && !acks[offerKey(o, weekday)]);
+    rwNote.textContent = acks && Object.keys(acks).length
+      ? `${live.length} waiting · ${Object.keys(acks).length} acknowledged`
+      : `${live.length} live now · this week`;
+    rwOffers.innerHTML = list.map(o => {
+      const key = offerKey(o, weekday);
+      const acked = !!acks[key];
+      const state = acked ? "acked" : (o.live ? "live" : "");
+      return `
+      <div class="rw-offer ${o.live ? "live" : ""} ${o.personal ? "personal" : ""} ${state}">
+        <div class="rw-offer-kicker">${o.kicker}${o.personal ? " · just for you" : ""}</div>
+        <div class="rw-offer-title">${o.title}</div>
+        <p>${o.text}</p>
+        ${acked ? `<span class="rw-offer-seen">Seen ✓</span>`
+          : o.live ? `<button class="rw-offer-ack" data-ackkey="${key}">✓ Got it</button>`
+          : ""}
+        ${o.live && !acked ? `<span class="rw-live-dot"></span>` : ""}
+      </div>`;
+    }).join("");
+    rwOffers.querySelectorAll("[data-ackkey]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        S.ackOffer(btn.dataset.ackkey, "inbox");
+        syncBellAndPop();
+        renderRewards();
+      });
+    });
+  }
+
   /* ---------------- Rewards (points + tiers + offers inbox) ----------------
      Renders from the data-layer rules (TIERS, offers()) + store balances;
      re-renders on every loyalty change (checkout, redeem) and on data
-     refresh so weekday deals flip live. */
+     refresh so weekday deals flip live. The offers inbox is the bell's
+     ledger (renderOffersInbox, above): live offers wait for an ack,
+     acknowledged ones go quiet ("Seen ✓"). */
   const rwHero = $("#rw-hero");
   const rwTiers = $("#rw-tiers");
   const rwOffers = $("#rw-offers");
@@ -717,17 +858,8 @@
       </div>`;
     }).join("");
 
-    // offers inbox: weekly brand deals + local affinity matches
-    const list = D.offers({ history: lo.history, points: lo.points });
-    const live = list.filter(o => o.live);
-    rwNote.textContent = `${live.length} live now · this week`;
-    rwOffers.innerHTML = list.map(o => `
-      <div class="rw-offer ${o.live ? "live" : ""} ${o.personal ? "personal" : ""}">
-        <div class="rw-offer-kicker">${o.kicker}${o.personal ? " · just for you" : ""}</div>
-        <div class="rw-offer-title">${o.title}</div>
-        <p>${o.text}</p>
-        ${o.live ? `<span class="rw-live-dot"></span>` : ""}
-      </div>`).join("");
+    // offers inbox → the bell's ledger (live = waiting for an ack; acked = Seen ✓)
+    renderOffersInbox();
 
     // progress width via CSSOM (CSP blocks inline style attributes)
     const fill = rwHero.querySelector(".rw-progress-fill");
@@ -850,12 +982,15 @@
   });
 
   // loyalty changes repaint the three panes + every dish stepper; the offers
-  // inbox also flips when the data layer refreshes (weekday deals)
-  S.onLoyalty(() => { renderRewards(); renderWallet(); renderMilestones(); syncSessionLoyalty(); });
-  D.subscribe("refresh", () => { renderRewards(); renderMilestones(); });
+  // inbox also flips when the data layer refreshes (weekday deals). A
+  // checkout can mint a brand-new personal offer — the bell rings on it
+  // immediately, not on the next 30s tick.
+  S.onLoyalty(() => { renderRewards(); renderWallet(); renderMilestones(); syncSessionLoyalty(); syncBellAndPop(); });
+  D.subscribe("refresh", () => { renderRewards(); renderMilestones(); syncBellAndPop(); });
   renderRewards();
   renderWallet();
   syncSessionLoyalty();
+  syncBellAndPop();            // bell + first pending offer on boot
 
   /* ---------------- Milestones & Trust (seven achievements) ----------------
      Renders the mission-of-the-week card, the seven achievement tiles, the

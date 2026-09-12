@@ -1337,6 +1337,137 @@ a:hover { text-decoration: underline; }
 /* display-only cards (landing): stepper hidden, price stands alone */
 .dish:not(:has(.dish-order)) .dish-foot { justify-content: flex-start; }
 
+/* ---------------- OFFERS BELL + POPUP (ack-once delivery) ----------------
+   The bell rides the Rewards nav row (same slot the cart badge uses);
+   the popup is a fixed bottom-right card — Marc-Lou style: it arrives,
+   the user acknowledges it, it's gone. All motion is class swaps — CSP
+   blocks inline style attributes. */
+
+.offer-bell {
+  margin-left: auto;
+  align-self: center;
+  position: relative;
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  color: var(--paper-faint);
+  opacity: 0.5;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.offer-bell svg { width: 20px; height: 20px; fill: currentColor; }
+.offer-bell-clapper { opacity: 0.85; }
+.offer-bell.has-mail {
+  color: var(--salmon);
+  opacity: 1;
+  animation: bell-ring 0.7s ease 0.25s;
+}
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0); }
+  22% { transform: rotate(13deg); }
+  44% { transform: rotate(-11deg); }
+  66% { transform: rotate(7deg); }
+  82% { transform: rotate(-4deg); }
+}
+.offer-bell-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--salmon);
+  box-shadow: 0 0 0 2px var(--ink-1);
+}
+.offer-bell-dot[hidden] { display: none; }
+.offer-bell[hidden] { display: none; }
+
+#offer-pop {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: min(320px, calc(100vw - 32px));
+  z-index: 80;
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  pointer-events: none;
+}
+#offer-pop.on {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.offer-pop-card {
+  position: relative;
+  background: var(--ink-2);
+  border: 1px solid var(--line-hover);
+  border-radius: var(--radius-sm);
+  padding: 16px 18px 14px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+}
+.offer-pop-card.personal { border-color: rgba(255, 138, 60, 0.55); }
+.offer-pop-x {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: 0;
+  color: var(--paper-faint);
+  font-size: 17px;
+  line-height: 1;
+  padding: 6px;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.offer-pop-x:hover { color: var(--paper); }
+.offer-pop-kicker {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--salmon);
+  margin-bottom: 4px;
+  padding-right: 22px;
+}
+.offer-pop-title {
+  font-family: var(--font-display);
+  font-size: 16.5px;
+  line-height: 1.25;
+  margin-bottom: 4px;
+}
+.offer-pop-card p {
+  font-size: 12px;
+  color: var(--paper-dim);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.offer-pop-actions { display: flex; gap: 8px; }
+.offer-pop-actions .btn { flex: 1; text-align: center; font-size: 12.5px; padding: 11px 10px; }
+
+/* inbox states: waiting offers carry a one-tap ack; seen ones go quiet */
+.rw-offer.acked { opacity: 0.5; }
+.rw-offer .rw-offer-ack {
+  align-self: flex-start;
+  margin-top: 3px;
+  background: none;
+  border: 1px solid var(--line-hover);
+  border-radius: 999px;
+  color: var(--paper-dim);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color 0.14s ease, border-color 0.14s ease;
+}
+.rw-offer .rw-offer-ack:hover { color: var(--salmon); border-color: var(--salmon); }
+.rw-offer .rw-offer-seen {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--paper-faint);
+}
+
 /* sidebar cart badge */
 .cart-badge {
   margin-left: auto;
@@ -2083,6 +2214,9 @@ a:hover { text-decoration: underline; }
   .ch-composer { flex-direction: column; align-items: stretch; gap: 8px; }
   .ch-composer .btn { width: 100%; text-align: center; }
   .ch-topic-grid { grid-template-columns: 1fr; }
+
+  /* offer popup hugs the phone edges; bell keeps its slot in the top bar */
+  #offer-pop { right: 14px; bottom: 14px; }
 
   /* sidebar folds into a compact top bar: brand row + scrollable nav */
   #sidebar {

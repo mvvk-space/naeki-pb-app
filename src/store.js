@@ -50,7 +50,13 @@
     chat: {
       thread: [],                 // [{ role:'user'|'system', text, ts }] — local transcript
       connected: false            // demo flag: user has reached the OA once
-    }
+    },
+    // offer acknowledgements — the bell's memory. A live offer "arrives"
+    // (bell dot + popup) until the user acknowledges it (✕ on the popup or
+    // ✓ in the inbox); the ack key pins that exact composition, so the same
+    // weekly deal returns next week and a "welcome back" nudge can re-fire
+    // after it fires anew. Nothing is synced — this ledger is the device's.
+    offerAcks: {}                 // { "weekday|kicker|title": { ts, via } }
   };
 
   /* loyalty store events — app.js subscribes to repaint tier/offers UI */
@@ -84,7 +90,13 @@
         chat: {
           thread: Array.isArray(saved.chat && saved.chat.thread) ? saved.chat.thread : [],
           connected: !!(saved.chat && saved.chat.connected)
-        }
+        },
+        // ack ledger: only string keys with { ts, via } survive a round-trip
+        offerAcks: (saved.offerAcks && typeof saved.offerAcks === "object" &&
+          !Array.isArray(saved.offerAcks))
+          ? Object.fromEntries(Object.entries(saved.offerAcks)
+              .filter(([k, v]) => k && v && typeof v === "object" && v.via))
+          : {}
       };
     } catch {
       // private browsing, disabled storage, corrupt JSON → fresh state
@@ -393,6 +405,30 @@
       state.chat.connected = false;
       persist();
       return state.chat;
+    },
+
+    /* ---------------- offer acknowledgements (bell) ---------------- */
+
+    offerAcksState: () => state.offerAcks,
+
+    /** record that a live offer was acknowledged (✕ on the popup or ✓ in
+        the inbox). Keying is the caller's job (weekday|kicker|title — the
+        composition, not the week). Returns the stored record, or the
+        existing one if already acked (idempotent). */
+    ackOffer(key, via = "popup") {
+      key = String(key || "");
+      if (!key) return null;
+      const rec = state.offerAcks[key] || { ts: Date.now(), via: via === "inbox" ? "inbox" : "popup" };
+      if (!state.offerAcks[key]) state.offerAcks[key] = rec;
+      persist();
+      return rec;
+    },
+
+    /** wipe the ack ledger (Reset uses this) — every offer re-arrives */
+    resetOfferAcks() {
+      state.offerAcks = {};
+      persist();
+      return state.offerAcks;
     }
   };
 

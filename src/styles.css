@@ -152,6 +152,9 @@ a:hover { text-decoration: underline; }
 /* author display rules above override the UA [hidden]{display:none}, so
    mode-filtered links must re-declare it (see applyMode in app.js) */
 .side-link[hidden] { display: none; }
+/* the staff-only Portal link appears only for staff logins */
+body[data-staff="false"] .staff-only,
+body:not([data-staff="true"]) .staff-only { display: none; }
 
 .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 18px; }
 

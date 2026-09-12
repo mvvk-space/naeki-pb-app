@@ -11,7 +11,7 @@
   /* ---- default state (also documents the data model) ---- */
   const DEFAULTS = {
     // local, on-device only — switches landing/app modes; not an account
-    profile: null,              // { name: string, since: epoch-ms }
+    profile: null,              // { name: string, since: epoch-ms, role?: "staff" }
     // demo stamp card — stamps are self-issued, never verified by the brand
     card: {
       size: 10,                 // stamps per reward
@@ -84,8 +84,16 @@
       if (!raw) return structuredClone(DEFAULTS);
       // merge so new fields added in later versions get their defaults
       const saved = JSON.parse(raw);
+      const savedProfile = saved.profile || null;
+      // a stale/foreign role can't flag a normal profile as staff demo staff
+      const staffName = savedProfile && typeof savedProfile.name === "string" &&
+        ["admin", "franchisee", "marketing"].includes(savedProfile.name.trim().toLowerCase());
+      const profile = savedProfile && typeof savedProfile === "object"
+        ? { ...savedProfile, role: staffName ? "staff" : null }
+        : null;
       return {
         ...structuredClone(DEFAULTS), ...saved,
+        profile,
         card: { ...DEFAULTS.card, ...(saved.card || {}) },
         cart: Array.isArray(saved.cart) ? saved.cart : [],
         loyalty: { ...DEFAULTS.loyalty, ...(saved.loyalty || {}) },
@@ -151,8 +159,14 @@
     setProfile(name) {
       const trimmed = (name || "").trim().slice(0, 24);
       if (!trimmed) return false;
-      state.profile = { name: trimmed, since: Date.now() };
+      // fake staff login: certain names route to the partner portal
+      const staff = ["admin", "franchisee", "marketing"].includes(trimmed.toLowerCase());
+      state.profile = { name: trimmed, since: Date.now(), role: staff ? "staff" : null };
       return persist();
+    },
+    /** is this session a staff (partner-portal) demo login? */
+    isStaff() {
+      return !!(state.profile && state.profile.role === "staff");
     },
     signOut() {
       state.profile = null; // stamps/history survive sign-out

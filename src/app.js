@@ -62,8 +62,6 @@
   function defaultView() {
     return isStaff() ? "partners" : "menu";
   }
-  const DEFAULT_VIEW = { landing: "home", app: defaultView() };
-
   function goToView(name) {
     // "rewards/wallet" form deep-links a rewards sub-tab from anywhere;
     // "menu/cart" does the same for the Order tab's segments
@@ -168,13 +166,14 @@
      instead of the default view — "All branches in the app →" reaches branches */
   function enterApp(view) {
     applyMode(false);                     // don't bounce through the default
-    goToView(view || DEFAULT_VIEW.app);
+    // staff logins always route to the portal; consumer names honor the CTA
+    goToView(isStaff() ? "partners" : (view || "menu"));
   }
 
   $$(".side-link").forEach(btn => {
     btn.addEventListener("click", () => goToView(btn.dataset.view));
   });
-  $("#brand-home").addEventListener("click", () => goToView(DEFAULT_VIEW.app));
+  $("#brand-home").addEventListener("click", () => goToView(isStaff() ? "partners" : "menu"));
 
   // secondary nav (landing header brand + section links, landing "read more" links)
   $$("button[data-view]:not(.side-link):not(.lp-link)").forEach(btn => {
@@ -196,7 +195,7 @@
     $("#signin-name").focus();
   }
   function closeSignin() { signin.hidden = true; }
-  ["#lp-signin", "#home-open-app", "#cta-open-app", "#hours-open-app", "#lmenu-order-now"].forEach(sel => {
+  ["#lp-signin", "#home-open-app", "#cta-open-app", "#hours-open-app", "#lmenu-order-now", "#lp-portal-signin"].forEach(sel => {
     $(sel).addEventListener("click", openSignin);
   });
   $$("#signin [data-close]").forEach(el => el.addEventListener("click", closeSignin));

@@ -103,7 +103,7 @@
         <button class="lp-link" data-view="lmenu">Menu</button>
         <button class="lp-link" data-view="about">About Us</button>
         <button class="lp-link" data-view="franchise">Franchise</button>
-        <button class="lp-link" data-view="partners">Partner portal</button>
+        <button class="lp-link" id="lp-portal-signin">Partner portal</button>
         <button class="lp-link" data-view="servicedesk">Customer Service</button>
       </nav>
       <button class="btn accent" id="lp-signin">Open the app</button>
@@ -650,94 +650,7 @@
 
       </section>
 
-<!-- ================= PARTNER PORTAL (landing) =================
-     The send-flow demo: a franchise partner drafts an offer for their branch,
-     a marketing admin approves or returns it, and approval "sends" it to N
-     subscribed members (seeded demo count — no server fan-out). Published
-     offers reach the app's Rewards bell only on devices subscribed to that
-     branch. Everything is local, exactly like the demo cart/checkout. -->
-      <section id="view-partners" class="view">
 
-        <header class="view-head">
-          <h2>Branch notifications<span class="jp-inline" lang="ja">通知</span></h2>
-          <p>
-            Watch the send flow end-to-end as a demo: sign in as a franchisee,
-            draft an offer for your branch, hand it to marketing, then approve
-            or return it as the marketing admin. Appointments to subscribers
-            arrive in the Rewards bell on any device subscribed to that branch.
-          </p>
-        </header>
-
-        <!-- persona gate: pick franchisee or marketing admin (local demo) -->
-        <div class="pt-persona" id="pt-persona">
-          <div class="pt-persona-copy">
-            <strong>Choose who you're demoing</strong>
-            <span>Two local roles — everything stays on this device.</span>
-          </div>
-          <button class="btn accent" data-ptrole="franchisee">Franchisee — draft an offer</button>
-          <button class="btn ghost" data-ptrole="admin">Marketing admin — approve</button>
-        </div>
-
-        <!-- franchisee portal -->
-        <div id="pt-franchisee" hidden>
-          <div class="pt-panel">
-            <div class="pt-panel-head">
-              <h3>Draft an offer for your branch</h3>
-              <span class="pt-hint">Sign in as a franchise partner</span>
-            </div>
-            <form id="pt-draft-form">
-              <label>Your branch
-                <select id="pt-branch" required></select>
-              </label>
-              <label>Offer title
-                <input id="pt-title" type="text" maxlength="60" placeholder="e.g. Free iced matcha with any onigiri" required />
-              </label>
-              <label>Details
-                <textarea id="pt-text" maxlength="160" rows="3" placeholder="What's the promotion, and for when?" required></textarea>
-              </label>
-              <button class="btn accent" type="submit">Save draft</button>
-            </form>
-          </div>
-
-          <div class="pt-panel">
-            <div class="pt-panel-head">
-              <h3>Your drafts</h3>
-              <span class="pt-hint">draft → pending</span>
-            </div>
-            <div class="pt-list" id="pt-my-drafts"></div>
-          </div>
-        </div>
-
-        <!-- marketing admin portal -->
-        <div id="pt-admin" hidden>
-          <div class="pt-panel">
-            <div class="pt-panel-head">
-              <h3>Awaiting approval</h3>
-              <span class="pt-hint">review → approve / return</span>
-            </div>
-            <div class="pt-list" id="pt-review-list"></div>
-          </div>
-        </div>
-
-        <!-- published log: what's gone out, and to how many subscribers -->
-        <div class="pt-panel">
-          <div class="pt-panel-head">
-            <h3>Sent to subscribers</h3>
-            <span class="pt-hint">published offers → the Rewards bell</span>
-          </div>
-          <div class="pt-list" id="pt-sent"></div>
-        </div>
-
-        <div class="disclaimer">
-          <p>
-            Demo only — these roles and sends are simulated on this device
-            ("sent to N" is a seeded figure). A real deployment replaces the
-            local store with server-side accounts, a subscription registry and
-            push delivery; your subscribers would then receive these offers
-            however the app delivers notifications.
-          </p>
-        </div>
-      </section>
 
 <!-- ================= CUSTOMER SERVICE DESK (landing) ================= -->
       <section id="view-servicedesk" class="view">
@@ -801,6 +714,9 @@
         </button>
         <button class="side-link" data-view="chat">
           <span class="n">04</span> Chat
+        </button>
+        <button class="side-link lp-link staff-only" data-view="partners">
+          <span class="n">05</span> Portal
         </button>
       </nav>
 
@@ -1227,7 +1143,94 @@
         </div>
       </section>
 
+<!-- ================= PARTNER PORTAL (app · staff login) =================
+     The send-flow demo: a franchise partner drafts an offer for their branch,
+     a marketing admin approves or returns it, and approval "sends" it to N
+     subscribed members (seeded demo count — no server fan-out). Published
+     offers reach the app's Rewards bell only on devices subscribed to that
+     branch. Everything is local, exactly like the demo cart/checkout. -->
+      <section id="view-partners" class="view">
 
+        <header class="view-head">
+          <h2>Branch notifications<span class="jp-inline" lang="ja">通知</span></h2>
+          <p>
+            Watch the send flow end-to-end as a demo: sign in as a franchisee,
+            draft an offer for your branch, hand it to marketing, then approve
+            or return it as the marketing admin. Appointments to subscribers
+            arrive in the Rewards bell on any device subscribed to that branch.
+          </p>
+        </header>
+
+        <!-- persona gate: pick franchisee or marketing admin (local demo) -->
+        <div class="pt-persona" id="pt-persona">
+          <div class="pt-persona-copy">
+            <strong>Choose who you're demoing</strong>
+            <span>Two local roles — everything stays on this device.</span>
+          </div>
+          <button class="btn accent" data-ptrole="franchisee">Franchisee — draft an offer</button>
+          <button class="btn ghost" data-ptrole="admin">Marketing admin — approve</button>
+        </div>
+
+        <!-- franchisee portal -->
+        <div id="pt-franchisee" hidden>
+          <div class="pt-panel">
+            <div class="pt-panel-head">
+              <h3>Draft an offer for your branch</h3>
+              <span class="pt-hint">Sign in as a franchise partner</span>
+            </div>
+            <form id="pt-draft-form">
+              <label>Your branch
+                <select id="pt-branch" required></select>
+              </label>
+              <label>Offer title
+                <input id="pt-title" type="text" maxlength="60" placeholder="e.g. Free iced matcha with any onigiri" required />
+              </label>
+              <label>Details
+                <textarea id="pt-text" maxlength="160" rows="3" placeholder="What's the promotion, and for when?" required></textarea>
+              </label>
+              <button class="btn accent" type="submit">Save draft</button>
+            </form>
+          </div>
+
+          <div class="pt-panel">
+            <div class="pt-panel-head">
+              <h3>Your drafts</h3>
+              <span class="pt-hint">draft → pending</span>
+            </div>
+            <div class="pt-list" id="pt-my-drafts"></div>
+          </div>
+        </div>
+
+        <!-- marketing admin portal -->
+        <div id="pt-admin" hidden>
+          <div class="pt-panel">
+            <div class="pt-panel-head">
+              <h3>Awaiting approval</h3>
+              <span class="pt-hint">review → approve / return</span>
+            </div>
+            <div class="pt-list" id="pt-review-list"></div>
+          </div>
+        </div>
+
+        <!-- published log: what's gone out, and to how many subscribers -->
+        <div class="pt-panel">
+          <div class="pt-panel-head">
+            <h3>Sent to subscribers</h3>
+            <span class="pt-hint">published offers → the Rewards bell</span>
+          </div>
+          <div class="pt-list" id="pt-sent"></div>
+        </div>
+
+        <div class="disclaimer">
+          <p>
+            Demo only — these roles and sends are simulated on this device
+            ("sent to N" is a seeded figure). A real deployment replaces the
+            local store with server-side accounts, a subscription registry and
+            push delivery; your subscribers would then receive these offers
+            however the app delivers notifications.
+          </p>
+        </div>
+      </section>
 
     </main>
   </div>

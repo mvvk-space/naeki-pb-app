@@ -32,7 +32,7 @@ mode only changes which nav links are visible and the default view.
 
 | View | Modes | Contents |
 |---|---|---|
-| **Home** | landing | Landing page — hero, featured menu overview (same dish cards the app menu uses), About & Franchise teasers, sign-in CTA |
+| **Home** | landing | Landing page — hero, live status band (branches open now, next closing), featured menu overview rotating from the live data layer, flagship hours preview with open/closed status, About & Franchise teasers, sign-in CTA |
 | **Menu** | both | 38 highlighted dishes across 6 categories (onigiri, nigiri, rolls, sashimi & sets, donburi & bento, drinks & sweets) with real product photography, click-for-story modal, live search, category chips, plus a strip of the other ~54 daily items |
 | **Branches** | app | All 20 Bangkok branches with live **open/closed status** computed against Bangkok time, flagship vs GO! kiosk badges, Google Maps deep links, search |
 | **Stamp Card** | app | Local demo loyalty card — collect 10 stamps, redeem a treat, history log. Self-issued; stored only on-device (`localStorage` via `src/store.js`), never sent anywhere |
@@ -57,7 +57,16 @@ hours listed on naeki.co. This app is **not affiliated** with Naeki Sushi Co., L
 
 - Electron 44 (desktop shell only), zero runtime dependencies
 - Plain HTML/CSS/JS, CSP-restricted (`default-src 'self'`), no node integration in the renderer
-- PWA: `manifest.webmanifest` + service worker (cache version tracks the app version)
+- **Live data layer** — `src/data.js` is the single source of truth (menu, branches,
+  hours, reviews, brand facts) with a pub/sub refresh cycle. Landing regions are
+  turbo-frames-style mounts (`data-frame="…"`, engine in `src/frames.js`) that
+  re-render whenever the data layer publishes — edit a closing time or a review
+  there and every surface (landing *and* app) repaints on the next cycle. In
+  production the interval stands in for a real backend feed (fetch/SSE poll →
+  `publish("refresh")`); no UI code changes.
+- PWA: `manifest.webmanifest` + service worker (cache version tracks the app
+  version; `data.js` is served **network-first** so business-data edits reach
+  installed PWAs without an app-version bump)
 - All assets local (works offline); user data (stamps, history) stays on-device
 
 ## Future path (deliberately not built)

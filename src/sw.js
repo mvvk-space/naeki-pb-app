@@ -1,14 +1,15 @@
 /* NAEKI SHOWCASE — service worker (PWA only; Electron never loads this).
    Cache-first app shell + runtime-cached images. The cache name tracks the
    app version — bump both together with the ?v= query in main.js. */
-const VERSION = "1.5.0";
+const VERSION = "1.6.0";
 const CACHE = `naeki-v${VERSION}`;
 
 const SHELL = [
   "index.html",
   "styles.css",
   "app.js",
-  "menu-data.js",
+  "data.js",
+  "frames.js",
   "store.js",
   "manifest.webmanifest",
   "assets/icon.png"
@@ -31,9 +32,25 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const req = e.request;
   if (req.method !== "GET") return;
+  const file = new URL(req.url).pathname.split("/").pop();
+
+  // data.js IS the live backend feed — network-first so business-data edits
+  // (hours, menu, reviews) reach installed PWAs without an app-version bump;
+  // cache is the offline fallback only.
+  if (file === "data.js") {
+    e.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone()));
+          return res;
+        })
+        .catch(() => caches.match(req).then((hit) => hit || Response.error()))
+    );
+    return;
+  }
 
   // app shell: cache-first, refresh in the background
-  if (SHELL.includes(new URL(req.url).pathname.split("/").pop())) {
+  if (SHELL.includes(file)) {
     e.respondWith(
       caches.match(req).then((hit) => {
         const fetchAndPut = fetch(req).then((res) => {

@@ -26,6 +26,7 @@
      views. Mode only changes which nav links are visible + the default
      view — every view and component is shared by both. */
   const S = window.NaekiStore;
+  const D = window.NaekiData;      // the data layer ("backend") — single source of truth
   let mode = S.get().profile ? "app" : "landing";
   const DEFAULT_VIEW = { landing: "home", app: "menu" };
 
@@ -97,23 +98,103 @@
     applyMode();
   });
 
-  /* ---------------- Landing home: featured overview ---------------- */
-  const FEATURED = [
-    "Roasted Salmon", "Salmon Nigiri", "Salmon & Ikura Don", "Ultimate Chirashi Don",
-    "Aburi Salmon Roll", "Salmon Sashimi", "Iced Matcha", "Matcha Pudding"
-  ];
-  (() => {
-    const root = $("#home-dishes");
-    FEATURED.forEach(name => {
-      for (const group of NAEKI.MENU) {
-        const item = group.items.find(it => it.name === name);
-        if (item) { root.appendChild(dishCard(item, group)); return; }
-      }
-      console.warn("featured dish not found:", name);
-    });
-  })();
+  /* ---------------- Live frames (turbo-frames-style) ----------------
+     Landing regions are data-frame mounts (see frames.js). Each renderer
+     sources from the data layer, so a business-data edit — hours, menu,
+     reviews — repaints the landing page on the next refresh with no view
+     code changes. Renderers are defined before NaekiFrames.mount(). */
+
+  const F = window.NaekiFrames;
+
+  const fact = (strong, span) =>
+    `<div class="fact"><strong>${strong}</strong><span>${span}</span></div>`;
+
+  F.define("facts", {
+    topics: ["refresh"],
+    render(el, D) {
+      const s = D.stats();
+      el.innerHTML =
+        fact(D.INFO.founded, D.INFO.foundedNote) +
+        fact(s.branchCount, "branches across the city") +
+        fact(s.openCount + " open", "right now, live from branch hours") +
+        fact(D.INFO.flagshipRating, D.INFO.flagshipReviews) +
+        fact(s.dishCount, "dishes highlighted · " + s.alsoCount + " more daily");
+    }
+  });
+
+  F.define("open-now", {
+    topics: ["refresh", "tick"],
+    render(el, D) {
+      const s = D.stats();
+      const closing = s.nextClose
+        ? ` · next closes ${D.shortName(s.nextClose)} @ ${s.nextClose.close}`
+        : "";
+      el.innerHTML = `
+        <span class="lb-dot ${s.openCount ? "open" : "closed"}"></span>
+        <strong>${s.openCount}</strong> of ${s.branchCount} branches open now${closing}
+        <span class="lb-live">LIVE · refreshed ${s.lastRefreshAt ? s.lastRefreshAt.str.slice(0, 5) : "just now"} ICT</span>`;
+    }
+  });
+
+  F.define("featured", {
+    topics: ["refresh"],
+    render(el, D) {
+      el.innerHTML = "";
+      D.featured().forEach(({ item, group }) => el.appendChild(dishCard(item, group)));
+    }
+  });
+
+  F.define("reviews", {
+    topics: ["refresh"],
+    render(el, D) {
+      el.innerHTML = D.REVIEWS
+        .map(r => `<div class="quote"><p>“${r.text}”</p><span>${r.src}</span></div>`)
+        .join("");
+    }
+  });
+
+  F.define("hours", {
+    topics: ["refresh", "tick"],
+    render(el, D) {
+      const s = D.stats();
+      el.innerHTML = "";
+      D.BRANCHES
+        .filter(b => b.kind === "flagship")
+        .slice(0, D.LANDING.previewBranches)
+        .forEach(b => {
+          const open = D.isOpenNow(b, s.now);
+          const card = document.createElement("article");
+          card.className = "hour-card";
+          card.tabIndex = 0;
+          card.setAttribute("role", "link");
+          card.setAttribute("aria-label", `${b.name} — open on Google Maps`);
+          card.innerHTML = `
+            <div class="hc-top">
+              <h4>${b.name}</h4>
+              <span class="b-kind ${b.kind}">${b.kind === "flagship" ? "SUSHI" : "GO!"}</span>
+            </div>
+            <div class="b-where">${b.where}${b.area ? " — " + b.area : ""}</div>
+            <div class="b-meta">
+              <span class="b-status ${open ? "open" : "closed"}">
+                <i class="dot ${open ? "open" : "closed"}"></i>${open ? "Open now" : "Closed for today"}
+              </span>
+              ${b.close ? `<span class="b-close">until ${b.close}</span>` : ""}
+            </div>`;
+          const go = () =>
+            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + " Bangkok")}`, "_blank");
+          card.addEventListener("click", go);
+          card.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+          el.appendChild(card);
+        });
+    }
+  });
+
+  F.mount();
+
   $("#home-browse-menu").addEventListener("click", () => goToView("menu"));
   $("#home-full-menu").addEventListener("click", () => goToView("menu"));
+  // "All branches in the app →" — gates into the app like the other CTAs
+  $("#hours-open-app").addEventListener("click", openSignin);
 
   applyMode();
 
@@ -127,7 +208,7 @@
 
   function renderChips() {
     const cats = [{ id: "all", name: "All", jp: "全て" }]
-      .concat(NAEKI.MENU.map(g => ({ id: g.id, name: g.name, jp: g.jp })));
+      .concat(D.MENU.map(g => ({ id: g.id, name: g.name, jp: g.jp })));
     chipRoot.innerHTML = "";
     cats.forEach(c => {
       const b = document.createElement("button");
@@ -168,7 +249,7 @@
     let shown = 0;
     menuRoot.innerHTML = "";
 
-    const groups = NAEKI.MENU.filter(g => activeCat === "all" || g.id === activeCat);
+    const groups = D.MENU.filter(g => activeCat === "all" || g.id === activeCat);
 
     groups.forEach(group => {
       const items = group.items.filter(it =>
@@ -201,44 +282,32 @@
     $("#also-strip").hidden = !!(q || activeCat !== "all");
   }
 
-  $("#also-list").innerHTML = NAEKI.ALSO.join('<span class="sep">·</span>');
+  $("#also-list").innerHTML = D.ALSO.join('<span class="sep">·</span>');
 
   searchInput.addEventListener("input", renderMenu);
   renderChips();
   renderMenu();
 
-  /* ---------------- Branches ---------------- */
+  /* ---------------- Branches ----------------
+     Consumes the same data layer + status helpers the landing frames use;
+     re-renders on the minute tick so statuses flip live at closing time. */
   const branchList = $("#branch-list");
   const branchSearch = $("#branch-search");
   const branchCount = $("#branch-count");
 
-  function parseClose(hhmm) {
-    if (!hhmm) return null;
-    const [h, m] = hhmm.split(":").map(Number);
-    return h * 60 + m;
-  }
-
-  function isOpenNow(closeStr) {
-    if (!closeStr) return true; // unknown → assume open, don't claim closed
-    const now = new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Bangkok", hour12: false });
-    const [h, m] = now.split(":").map(Number);
-    const mins = h * 60 + m;
-    const close = parseClose(closeStr);
-    return mins < close;
-  }
-
   function renderBranches() {
     const q = branchSearch.value.trim().toLowerCase();
+    const now = D.bangkokParts();
     branchList.innerHTML = "";
     let shown = 0;
-    NAEKI.BRANCHES
+    D.BRANCHES
       .filter(b => !q ||
         b.name.toLowerCase().includes(q) ||
         b.area.toLowerCase().includes(q) ||
         (b.where || "").toLowerCase().includes(q))
       .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "flagship" ? -1 : 1))
       .forEach(b => {
-        const open = isOpenNow(b.close);
+        const open = D.isOpenNow(b, now);
         const el = document.createElement("article");
         el.className = "branch";
         el.tabIndex = 0;
@@ -267,10 +336,11 @@
         branchList.appendChild(el);
         shown++;
       });
-    branchCount.textContent = `${shown} / ${NAEKI.BRANCHES.length} branches`;
+    branchCount.textContent = `${shown} / ${D.BRANCHES.length} branches`;
   }
   branchSearch.addEventListener("input", renderBranches);
   renderBranches();
+  D.subscribe("tick", renderBranches);
 
   /* ---------------- Stamp card (local demo, via NaekiStore) ---------------- */
   const stampGrid = $("#stamp-grid");

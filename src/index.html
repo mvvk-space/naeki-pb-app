@@ -165,11 +165,7 @@
             <button class="btn accent" id="home-open-app">Open the app</button>
             <button class="btn ghost" id="home-browse-menu">Browse the menu</button>
           </div>
-          <div class="hero-facts">
-            <div class="fact"><strong>2013</strong><span>founded, All Seasons Place</span></div>
-            <div class="fact"><strong>20</strong><span>branches across the city</span></div>
-            <div class="fact"><strong>4.7★</strong><span>BTS Siam flagship · 210 reviews</span></div>
-          </div>
+          <div class="hero-facts" data-frame="facts"><!-- live: data.js INFO + branch stats --></div>
         </div>
         <figure class="hero-photo">
           <img src="assets/kiosk_siam.jpg" alt="Naeki Sushi kiosk at BTS Siam station" />
@@ -177,7 +173,14 @@
         </figure>
       </header>
 
-      <!-- featured overview: same dishCard component the app menu uses -->
+      <!-- live status band — sourced from the data layer, re-renders on
+           refresh + minute tick (open/closed flips at closing time) -->
+      <div class="live-band" data-frame="open-now" role="status" aria-live="polite">
+        <!-- live: data.js branch hours, computed against Bangkok time -->
+      </div>
+
+      <!-- featured overview: same dishCard component the app menu uses,
+           sourced from the data layer's featured rotation -->
       <div class="home-featured-head">
         <h3>From the daily case</h3>
         <span class="rule"></span>
@@ -186,7 +189,19 @@
       <p class="home-featured-sub">
         A taste of the line-up — the menu rotates daily, every piece shaped at the counter.
       </p>
-      <div class="dish-grid home-featured" id="home-dishes"><!-- injected by app.js --></div>
+      <div class="dish-grid home-featured" data-frame="featured"><!-- live: data.js featured rotation --></div>
+
+      <!-- live hours preview: the app's branch data surfaced on the landing
+           page — flagship counters with status computed against Bangkok time -->
+      <div class="home-featured-head">
+        <h3>Open today</h3>
+        <span class="rule"></span>
+        <button class="link-more" id="hours-open-app">All branches in the app →</button>
+      </div>
+      <p class="home-featured-sub">
+        Flagship counters, hours straight from the live branch data — tap a card for directions.
+      </p>
+      <div class="home-hours" data-frame="hours"><!-- live: data.js BRANCHES (flagships) --></div>
 
       <!-- teasers into the two marketing views -->
       <div class="home-teasers">
@@ -245,11 +260,7 @@
               Naeki puts chef-grade sushi and onigiri where Bangkok actually lives —
               along the BTS &amp; MRT lines, one perfect bite at a time.
             </p>
-            <div class="hero-facts">
-              <div class="fact"><strong>2013</strong><span>founded, All Seasons Place</span></div>
-              <div class="fact"><strong>20</strong><span>branches across the city</span></div>
-              <div class="fact"><strong>4.7★</strong><span>BTS Siam flagship · 210 reviews</span></div>
-            </div>
+            <div class="hero-facts" data-frame="facts"><!-- live: data.js INFO + branch stats --></div>
           </div>
           <figure class="hero-photo">
             <img src="assets/kiosk_siam.jpg" alt="Naeki Sushi kiosk at BTS Siam station" />
@@ -257,20 +268,7 @@
           </figure>
         </header>
 
-        <div class="quote-strip" aria-label="What diners say">
-          <div class="quote">
-            <p>“Quality just like Japanese people made it.”</p>
-            <span>Google review · BTS Siam</span>
-          </div>
-          <div class="quote">
-            <p>“They torched the top with a blowtorch — the rice sticks together exactly like sushi should.”</p>
-            <span>Google review · BTS Siam</span>
-          </div>
-          <div class="quote">
-            <p>“Loved the tuna and salmon sushi. Melts in your mouth.”</p>
-            <span>Google review · BTS Siam</span>
-          </div>
-        </div>
+        <div class="quote-strip" aria-label="What diners say" data-frame="reviews"><!-- live: data.js REVIEWS --></div>
 
         <div class="toolbar">
           <div class="chips" id="chips" role="tablist" aria-label="Menu categories"></div>
@@ -824,7 +822,8 @@
     </div>
   </div>
 
-  <script src="menu-data.js"></script>
+  <script src="data.js"></script>
+  <script src="frames.js"></script>
   <script src="store.js"></script>
   <script src="app.js"></script>
 </body>

@@ -36,6 +36,9 @@
   const DEFAULT_VIEW = { landing: "home", app: "menu" };
 
   function goToView(name) {
+    // "rewards/wallet" form deep-links a rewards sub-tab from anywhere
+    let sub = null;
+    if (name.includes("/")) [name, sub] = name.split("/");
     const view = $("#view-" + name);
     if (!view) return;
     const shell = view.closest("#landing") ? $("#landing") : $("#app");
@@ -46,7 +49,33 @@
     // each shell has its own scroller: the page (landing) or #main (app)
     if (shell.id === "landing") window.scrollTo({ top: 0, behavior: "smooth" });
     else $("#main").scrollTo({ top: 0, behavior: "smooth" });
+    // merged Rewards section: land on the requested tab (or keep the current one)
+    if (sub) showRwTab(sub);
+    else if (name === "rewards") showRwTab(activeRwTab);
   }
+
+  /* ---------------- Rewards tabs (Points · Wallet · Milestones) ----------------
+     One section, three panes. State lives here so goToView can deep-link
+     ("rewards/wallet") and the pane keeps its tab across revisits. Panes
+     are plain class swaps — no re-render needed; every renderer paints its
+     mounts regardless of which pane is visible. */
+  const RW_TABS = ["points", "wallet", "milestones"];
+  let activeRwTab = "points";
+
+  function showRwTab(tab) {
+    if (!RW_TABS.includes(tab)) return;
+    activeRwTab = tab;
+    $$(".rw-tab").forEach(b => {
+      const on = b.dataset.rwtab === tab;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    $$(".rw-pane").forEach(p =>
+      p.classList.toggle("active", p.dataset.rwpane === tab));
+  }
+
+  $$(".rw-tab").forEach(btn =>
+    btn.addEventListener("click", () => showRwTab(btn.dataset.rwtab)));
 
   function applyMode(activateDefault = true) {
     mode = S.get().profile ? "app" : "landing";
@@ -631,7 +660,7 @@
     const rw = $("#receipt-rewards");
     if (rw) rw.addEventListener("click", () => {
       renderCart();
-      goToView("rewards");
+      goToView("rewards/wallet");
     });
   }
 
@@ -714,9 +743,9 @@
   const wlAmount = $("#wl-amount");
   const wlSub = $("#wl-sub");
   const wlGifts = $("#wl-gifts");
-  const wlPayNote = $("#wl-pay-note");
   const wlRedeemNote = $("#wl-redeem-note");
   const wlLedger = $("#wl-ledger");
+  const wlPay = $("#wl-pay");
 
   function renderWallet() {
     const w = S.walletState();
@@ -746,6 +775,46 @@
             <span class="wl-gift-state">${g.spent ? "redeemed" : "ready to send"}</span>
           </div>`).join("")
       : `<p class="wl-note">No gift cards yet — buy one above.</p>`;
+
+    renderExpressPay(w.expressPay);
+  }
+
+  /* express pay — one-time provisioning, the honest demo version of
+     Add to Apple Pay / Google Wallet: while unprovisioned the card shows
+     the two platform buttons; once added, they're gone for good (the card
+     lives in the phone's wallet), replaced by a quiet "Added" chip. */
+  function renderExpressPay(provider) {
+    if (!wlPay) return;
+    if (provider === "apple") {
+      wlPay.innerHTML = `
+        <div class="wl-added" role="status">Apple&nbsp;Pay card added
+          <span class="wl-added-sub">It lives in Wallet on this device — pay at checkout with a double-click.</span>
+        </div>`;
+    } else if (provider === "google") {
+      wlPay.innerHTML = `
+        <div class="wl-added" role="status">G&nbsp;Pay card added
+          <span class="wl-added-sub">It lives in Google Wallet on this device — pay at checkout in a tap.</span>
+        </div>`;
+    } else {
+      wlPay.innerHTML = `
+        <h3>One tap at checkout</h3>
+        <p>Put your Naeki balance a double-click away — the card lives in the
+           phone's wallet, in Safari on iPhone and on Apple&nbsp;Watch.</p>
+        <div class="wl-pay-row">
+          <button class="btn accent wl-pay-btn" id="wl-applepay" aria-label="Add to Apple Pay">
+            <svg viewBox="0 0 27 20" class="ap-mark" aria-hidden="true"><path d="M4.3 2.1c1.9-.3 3.4.6 4.9.5 1.6 0 3.5-1 5.7-.9 2.4 0 4.1 1 5.1 2.9-3.5 2-4.3 6.1-.3 8.5-.8 1.8-2.2 3.9-3.8 3.9-1.7 0-2.2-1.1-4.2-1.1-2 0-2.6 1.1-4.2 1.1-1.7 0-3.1-2.1-3.9-4C1.6 10.2.9 6 2.2 3.4c.5-.9 1.2-1.2 2.1-1.3zm6.9-1.8c.8-1.4 2.3-2.4 3.6-2.5.2 1.5-.6 3-1.4 3.9-.8.9-2.2 1.6-3.4 1.5-.2-1.3.5-2.5 1.2-2.9z" fill="currentColor"/></svg>
+            Add to Apple Pay
+          </button>
+          <button class="btn ghost" id="wl-gpay" aria-label="Add to Google Wallet">G&nbsp;Pay</button>
+        </div>
+        <p class="wl-note">One-time — once added, the card is in the phone's wallet and this prompt is done.</p>`;
+      $("#wl-applepay").addEventListener("click", () => {
+        if (S.setExpressPay("apple")) flash("Naeki balance added to Apple Pay");
+      });
+      $("#wl-gpay").addEventListener("click", () => {
+        if (S.setExpressPay("google")) flash("Naeki balance added to Google Wallet");
+      });
+    }
   }
 
   // top-up chips + TrueMoney CTA
@@ -780,18 +849,7 @@
     if (gift) $("#wl-redeem-code").value = "";
   });
 
-  // express pay surfaces — honest demo: they mark intent locally
-  $("#wl-applepay").addEventListener("click", () => {
-    const w = S.walletState();
-    wlPayNote.textContent = w.balance > 0
-      ? "Demo: in the real app this opens Apple's Add Card sheet for your Naeki balance."
-      : "Load a balance first — then this would provision an Apple Pay card.";
-  });
-  $("#wl-gpay").addEventListener("click", () => {
-    wlPayNote.textContent = "Demo: the real app would launch Google Wallet's Add to Wallet flow.";
-  });
-
-  // loyalty changes repaint both views + every dish stepper; the offers
+  // loyalty changes repaint the three panes + every dish stepper; the offers
   // inbox also flips when the data layer refreshes (weekday deals)
   S.onLoyalty(() => { renderRewards(); renderWallet(); renderMilestones(); syncSessionLoyalty(); });
   D.subscribe("refresh", () => { renderRewards(); renderMilestones(); });

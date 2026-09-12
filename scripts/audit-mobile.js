@@ -67,7 +67,7 @@ const AUDIT_JS = `(() => {
 
   const isLanding = "__SHELL__" === "landing";
   const names = isLanding ? ["home", "lmenu", "about", "franchise", "servicedesk"]
-                          : ["menu", "cart", "branches", "stamps", "rewards", "wallet", "order", "milestones"];
+                          : ["menu", "cart", "branches", "stamps", "rewards", "order"];
 
   names.forEach(v => {
     const btn = document.querySelector(
@@ -99,6 +99,21 @@ const AUDIT_JS = `(() => {
       if (v === "lmenu") {
         out.lmenuRows = view.querySelectorAll(".lmenu-list li").length;
       }
+    }
+    /* rewards is one section with three tab panes (points / wallet /
+       milestones) — measure each pane the way a user reaches it: by
+       clicking its tab chip while the view is active */
+    if (!isLanding && v === "rewards") {
+      out.rewardsTabs = {};
+      view.querySelectorAll(".rw-tab").forEach(tabBtn => {
+        tabBtn.click();
+        const pane = view.querySelector('.rw-pane[data-rwpane="' + tabBtn.dataset.rwtab + '"]');
+        out.rewardsTabs[tabBtn.dataset.rwtab] = pane ? {
+          overflowX: document.documentElement.scrollWidth - vw,
+          offenders: offenders(pane)
+        } : null;
+      });
+      document.querySelector('.rw-tab[data-rwtab="points"]').click();  // restore default
     }
   });
 
@@ -154,15 +169,19 @@ const AUDIT_JS = `(() => {
      button), so the cart view renders via the real sync path, then verify
      the row geometry at phone width */
   if (!isLanding) {
-    /* milestones view renders all 7 achievements + the 7-point trust pane */
-    const mmBtn = document.querySelector('.side-link[data-view="milestones"]');
-    if (mmBtn) {
-      mmBtn.click();
-      const mmView = document.getElementById('view-milestones');
+    /* milestones tab (inside the merged rewards section) renders all 7
+       achievements + the 7-point trust pane */
+    const rewardsBtn = document.querySelector('.side-link[data-view="rewards"]');
+    if (rewardsBtn) {
+      rewardsBtn.click();
+      const mmTab = document.querySelector('.rw-tab[data-rwtab="milestones"]');
+      if (mmTab) mmTab.click();
+      const mmView = document.getElementById('view-rewards');
       out.milestones = {
         tiles: mmView ? mmView.querySelectorAll('.mm-tile').length : -1,
         trust: mmView ? mmView.querySelectorAll('.mm-trust li').length : -1
       };
+      document.querySelector('.side-link[data-view="menu"]')?.click();
     }
     try {
       const firstDish = document.querySelector('#view-menu .dish .d-plus');
@@ -234,6 +253,14 @@ function shellReport(report, shellName, expectedViews) {
   }
   if (report.touch.length) fail(`touch targets under ${TOUCH_FLOOR}px in ${shellName}: ${report.touch.join(", ")}`);
   else pass(`${shellName}: touch targets ≥ ${TOUCH_FLOOR}px`);
+  if (shellName === "app" && report.rewardsTabs) {
+    for (const [tab, r] of Object.entries(report.rewardsTabs)) {
+      if (!r) { fail(`rewards tab ${tab}: pane missing`); continue; }
+      if (r.overflowX > 1) fail(`rewards/${tab}: horizontal overflow ${r.overflowX}px`);
+      else pass(`rewards/${tab} pane: no horizontal overflow`);
+      if (r.offenders.length) fail(`rewards/${tab}: ${r.offenders.length} element(s) past viewport — ${r.offenders.join(" | ")}`);
+    }
+  }
   if (shellName === "app") {
     if (report.modal) {
       if (report.modal.fits) pass(`dish modal fits (${report.modal.width}px)`);
@@ -321,7 +348,7 @@ async function main() {
   } else {
     pass("sign-in swaps to the app shell (body[data-mode=app])");
     const appReport = await auditPass(win, "app");
-    shellReport(appReport, "app", ["menu", "cart", "branches", "stamps", "rewards", "wallet", "order", "milestones"]);
+    shellReport(appReport, "app", ["menu", "cart", "branches", "stamps", "rewards", "order"]);
   }
 
   console.log("\nNaeki mobile audit — 390px rendered layout");

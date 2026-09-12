@@ -708,17 +708,11 @@
         <button class="side-link" data-view="rewards">
           <span class="n">05</span> Rewards
         </button>
-        <button class="side-link" data-view="wallet">
-          <span class="n">06</span> Wallet
-        </button>
         <button class="side-link" data-view="order">
-          <span class="n">07</span> Order &amp; Info
+          <span class="n">06</span> Order &amp; Info
         </button>
         <button class="side-link" data-view="chat">
-          <span class="n">08</span> Chat
-        </button>
-        <button class="side-link" data-view="milestones">
-          <span class="n">09</span> Milestones
+          <span class="n">07</span> Chat
         </button>
       </nav>
 
@@ -882,18 +876,30 @@
         </div>
       </section>
 
-      <!-- ================= REWARDS VIEW (points + tiers + offers) ================= -->
+      <!-- ================= REWARDS — one section, three tabs (Points · Wallet · Milestones) =================
+           The whole loyalty loop under one nav entry: earn (points), spend
+           (wallet), climb (milestones). The three panes share the same
+           wl-card / progress vocabulary; the tab chips swap them in place. -->
       <section id="view-rewards" class="view">
         <header class="view-head">
           <h2>Rewards <span class="jp-inline" lang="ja">ポイント</span></h2>
           <p>
-            Earn points on every demo order — 1 pt per 10฿, doubled on
-            Thursdays, multiplied by your tier. The offers inbox pairs the
-            brand's weekly deals with matches computed from this device's
-            order history. Nothing leaves this device — the honest version
-            of the personalization the big apps do server-side.
+            The loyalty loop in one place — earn points on every demo order,
+            spend them from the wallet, climb the milestones for one-time
+            bonuses. 1 pt per 10฿, doubled on Thursdays, multiplied by your
+            tier. Everything is computed on this device and nothing leaves it.
           </p>
         </header>
+
+        <!-- tab chips — one active pane at a time -->
+        <div class="rw-tabs" role="tablist" aria-label="Rewards sections">
+          <button class="chip rw-tab active" role="tab" aria-selected="true" data-rwtab="points">Points <span class="jp">ポイント</span></button>
+          <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="wallet">Wallet <span class="jp">ウォレット</span></button>
+          <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="milestones">Milestones <span class="jp">達成</span></button>
+        </div>
+
+        <!-- pane: points (tiers + offers) -->
+        <div class="rw-pane active" data-rwpane="points">
 
         <!-- tier + points card -->
         <div class="rw-hero" id="rw-hero"><!-- rendered by app.js --></div>
@@ -919,19 +925,10 @@
             would serve.
           </p>
         </div>
-      </section>
+        </div><!-- /rw-pane points -->
 
-      <!-- ================= WALLET VIEW (stored value) ================= -->
-      <section id="view-wallet" class="view">
-        <header class="view-head">
-          <h2>Wallet <span class="jp-inline" lang="ja">ウォレット</span></h2>
-          <p>
-            Stored value, Starbucks-style: load once, tap to pay at demo
-            checkout. Top up with TrueMoney, redeem gift codes, add the card
-            to Apple Pay — every step is a local demo, nothing is transmitted
-            or charged for real.
-          </p>
-        </header>
+        <!-- pane: wallet (stored value) -->
+        <div class="rw-pane" data-rwpane="wallet">
 
         <div class="wl-grid">
           <!-- balance card -->
@@ -950,20 +947,12 @@
             </div>
           </div>
 
-          <!-- apple pay card -->
+          <!-- express pay — one-time: app.js renders either the provisioning
+               button or the "added" chip from wallet.expressPay; it never
+               re-appears once the card is in the phone's wallet -->
           <div class="wl-card wl-pay">
             <div class="oc-kicker">Express pay</div>
-            <h3>Add to Apple&nbsp;Pay</h3>
-            <p>Put your Naeki balance a double-click away — wallet works in
-               Safari on iPhone and Apple&nbsp;Watch.</p>
-            <div class="wl-pay-row">
-              <button class="btn accent wl-pay-btn" id="wl-applepay" aria-label="Add to Apple Pay">
-                <svg viewBox="0 0 27 20" class="ap-mark" aria-hidden="true"><path d="M4.3 2.1c1.9-.3 3.4.6 4.9.5 1.6 0 3.5-1 5.7-.9 2.4 0 4.1 1 5.1 2.9-3.5 2-4.3 6.1-.3 8.5-.8 1.8-2.2 3.9-3.8 3.9-1.7 0-2.2-1.1-4.2-1.1-2 0-2.6 1.1-4.2 1.1-1.7 0-3.1-2.1-3.9-4C1.6 10.2.9 6 2.2 3.4c.5-.9 1.2-1.2 2.1-1.3zm6.9-1.8c.8-1.4 2.3-2.4 3.6-2.5.2 1.5-.6 3-1.4 3.9-.8.9-2.2 1.6-3.4 1.5-.2-1.3.5-2.5 1.2-2.9z" fill="currentColor"/></svg>
-                Add to Apple Pay
-              </button>
-              <button class="btn ghost" id="wl-gpay" aria-label="Add to Google Wallet">G&nbsp;Pay</button>
-            </div>
-            <p class="wl-note" id="wl-pay-note"></p>
+            <div id="wl-pay"><!-- rendered by app.js (one-time provisioning) --></div>
           </div>
 
           <!-- gift cards -->
@@ -999,14 +988,60 @@
 
         <div class="disclaimer">
           <p>
-            Demo wallet — balances, top-ups, gift codes and the Apple Pay /
-            Google Wallet buttons are local simulations; no payment rails, no
-            charges, nothing leaves this device. Real stored value and real
-            wallet provisioning require the brand, a payment processor and
+            Demo wallet — balances, top-ups, gift codes and the express-pay
+            button are local simulations; no payment rails, no charges,
+            nothing leaves this device. Real stored value and real wallet
+            provisioning require the brand, a payment processor and
             Apple/Google's merchant programs — the future-path section of the
             README covers what that takes.
           </p>
         </div>
+        </div><!-- /rw-pane wallet -->
+
+        <!-- pane: milestones (seven achievements + referral + trust) -->
+        <div class="rw-pane" data-rwpane="milestones">
+
+        <!-- the mission-of-the-week card (Starbucks-style stretch goal) -->
+        <div class="mm-card mm-mission" id="mm-mission"><!-- rendered by app.js --></div>
+
+        <!-- the seven achievement tiles -->
+        <div class="mm-list" id="mm-list"><!-- rendered by app.js --></div>
+
+        <!-- referral: give + get (Qwen / Mixue-style share loop) -->
+        <div class="mm-grid">
+          <div class="wl-card wl-balance mm-referral">
+            <div class="oc-kicker">Give + get</div>
+            <h3>Bring a friend</h3>
+            <p>Generate a code, share it — when it's redeemed, you earn the Give + Get
+               milestone and your friend starts with a bonus too.</p>
+            <button class="btn accent" id="mm-make-ref">Generate my code</button>
+            <div class="mm-ref-codes" id="mm-ref-codes"><!-- rendered by app.js --></div>
+          </div>
+
+          <div class="wl-card wl-redeem mm-referral">
+            <div class="oc-kicker">Got a code?</div>
+            <h3>Redeem a friend's</h3>
+            <p>Paste a <code>NK-FRIEND-…</code> code to claim your +100 welcome points.</p>
+            <form id="mm-ref-form" class="wl-redeem-form">
+              <input id="mm-ref-code" type="text" placeholder="NK-FRIEND-…"
+                     autocomplete="off" aria-label="Referral code" />
+              <button type="submit" class="btn accent">Redeem</button>
+            </form>
+            <p class="wl-note" id="mm-ref-note"></p>
+          </div>
+        </div>
+
+        <!-- trust pane: the seven things that live here -->
+        <div class="disclaimer">
+          <h4>What stays on this device — and what never leaves it</h4>
+          <ul class="mm-trust" id="mm-trust"><!-- rendered by app.js --></ul>
+          <p>
+            This is the honest version of the data playbook: the personalization the
+            big apps do on their servers, done here on your phone where no one can
+            sell it. Sign out or use Reset to wipe it all at any time.
+          </p>
+        </div>
+        </div><!-- /rw-pane milestones -->
       </section>
 
       <section id="view-order" class="view">
@@ -1072,66 +1107,8 @@
         </div>
       </section>
 
-      <!-- ================= MILESTONES & TRUST (seven achievements) =================
-           The "hidden gems" the franchise apps use to drive habit — applied on
-           this device, honestly. Seven achievements computed from your own order
-           history, each a one-time bonus you claim when you've earned it, plus a
-           referral loop. Nothing leaves this device. -->
-      <section id="view-milestones" class="view">
-        <header class="view-head">
-          <h2>Milestones <span class="jp-inline" lang="ja">達成</span></h2>
-          <p>
-            Seven achievements — the loop the mega apps quietly build around you.
-            Every one is computed from this device's own order history and pays a
-            one-time bonus you claim when you've earned it. Nothing is synced,
-            nothing is sold, nobody follows you home.
-          </p>
-        </header>
 
-        <!-- the mission-of-the-week card (Starbucks-style stretch goal) -->
-        <div class="mm-card mm-mission" id="mm-mission"><!-- rendered by app.js --></div>
 
-        <!-- the seven achievement tiles -->
-        <div class="mm-list" id="mm-list"><!-- rendered by app.js --></div>
-
-        <!-- referral: give + get (Qwen / Mixue-style share loop) -->
-        <div class="mm-grid">
-          <div class="wl-card wl-balance mm-referral">
-            <div class="oc-kicker">Give + get</div>
-            <h3>Bring a friend</h3>
-            <p>Generate a code, share it — when it's redeemed, you earn the Give + Get
-               milestone and your friend starts with a bonus too.</p>
-            <button class="btn accent" id="mm-make-ref">Generate my code</button>
-            <div class="mm-ref-codes" id="mm-ref-codes"><!-- rendered by app.js --></div>
-          </div>
-
-          <div class="wl-card wl-redeem mm-referral">
-            <div class="oc-kicker">Got a code?</div>
-            <h3>Redeem a friend's</h3>
-            <p>Paste a <code>NK-FRIEND-…</code> code to claim your +100 welcome points.</p>
-            <form id="mm-ref-form" class="wl-redeem-form">
-              <input id="mm-ref-code" type="text" placeholder="NK-FRIEND-…"
-                     autocomplete="off" aria-label="Referral code" />
-              <button type="submit" class="btn accent">Redeem</button>
-            </form>
-            <p class="wl-note" id="mm-ref-note"></p>
-          </div>
-        </div>
-
-        <!-- trust pane: the seven things that live here -->
-        <div class="disclaimer">
-          <h4>What stays on this device — and what never leaves it</h4>
-          <ul class="mm-trust" id="mm-trust"><!-- rendered by app.js --></ul>
-          <p>
-            This is the honest version of the data playbook: the personalization the
-            big apps do on their servers, done here on your phone where no one can
-            sell it. Sign out or use Reset to wipe it all at any time.
-          </p>
-        </div>
-      </section>
-
-      
-      
     </main>
   </div>
 

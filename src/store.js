@@ -79,10 +79,17 @@
       return redemption;
     },
 
-    /** wipe all local data (used by "reset card") */
+    /** wipe all local data */
     reset() {
       state = structuredClone(DEFAULTS);
       persist();
+    },
+
+    /** reset only the stamp card — the profile (and with it the app/landing
+        mode) is left intact, so "Reset card" can't sign the user out */
+    resetCard() {
+      state.card = structuredClone(DEFAULTS.card);
+      return persist();
     }
   };
 })();

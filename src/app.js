@@ -13,12 +13,6 @@
     $("#clock").textContent = t;
     return t;
   }
-  const bangkokHour = () => {
-    const h = new Date().toLocaleString("en-GB", {
-      timeZone: "Asia/Bangkok", hour: "2-digit", hour12: false
-    });
-    return parseInt(h, 10);
-  };
 
   /* ---------------- Landing / App modes ----------------
      One app, two modes. "landing" (signed out) leads with the marketing
@@ -32,7 +26,10 @@
 
   function goToView(name) {
     const link = $('.side-link[data-view="' + name + '"]');
-    $$(".side-link").forEach(b => b.classList.toggle("active", b === link));
+    // only light up a link that is actually visible in this mode — views a
+    // mode doesn't navigate to (About/Franchise from the app session footer)
+    // shouldn't highlight a hidden nav item
+    $$(".side-link").forEach(b => b.classList.toggle("active", b === link && !b.hidden));
     $$(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + name));
     $("#main").scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -60,11 +57,17 @@
     if (activateDefault) goToView(DEFAULT_VIEW[mode]);
   }
 
+  /* sign-in handoff: flip to app mode, then land on the CTA's target (if any)
+     instead of the default view — "All branches in the app →" reaches branches */
+  function enterApp(view) {
+    applyMode(false);                     // don't bounce through the default
+    goToView(view || DEFAULT_VIEW.app);
+  }
+
   $$(".side-link").forEach(btn => {
     btn.addEventListener("click", () => {
       if (btn.hidden) return; // view not part of this mode
-      $$(".side-link").forEach(b => b.classList.toggle("active", b === btn));
-      $$(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + btn.dataset.view));
+      goToView(btn.dataset.view); // single nav path — also scrolls #main to top
     });
   });
   $("#brand-home").addEventListener("click", () => goToView(DEFAULT_VIEW[mode]));
@@ -76,13 +79,17 @@
 
   /* ---------------- Sign in / out (local demo) ---------------- */
   const signin = $("#signin");
-  function openSignin() {
+  // landing CTAs may carry data-goto to say where sign-in should land
+  // ("All branches in the app →" → branches, not the default menu)
+  let pendingView = null;
+  function openSignin(e) {
+    pendingView = (e && e.currentTarget && e.currentTarget.dataset.goto) || null;
     $("#signin-name").value = "";
     signin.hidden = false;
     $("#signin-name").focus();
   }
   function closeSignin() { signin.hidden = true; }
-  ["#side-open-app", "#home-open-app", "#cta-open-app"].forEach(sel => {
+  ["#side-open-app", "#home-open-app", "#cta-open-app", "#hours-open-app"].forEach(sel => {
     $(sel).addEventListener("click", openSignin);
   });
   $$("#signin [data-close]").forEach(el => el.addEventListener("click", closeSignin));
@@ -90,7 +97,8 @@
     e.preventDefault();
     if (S.setProfile($("#signin-name").value)) {
       closeSignin();
-      applyMode();
+      enterApp(pendingView);
+      pendingView = null;
     }
   });
   $("#side-signout").addEventListener("click", () => {
@@ -193,8 +201,8 @@
 
   $("#home-browse-menu").addEventListener("click", () => goToView("menu"));
   $("#home-full-menu").addEventListener("click", () => goToView("menu"));
-  // "All branches in the app →" — gates into the app like the other CTAs
-  $("#hours-open-app").addEventListener("click", openSignin);
+  // "All branches in the app →" — gates into the app (wired to openSignin via
+  // the CTA list above); its data-goto hands sign-in off to the branches view
 
   applyMode();
 
@@ -415,7 +423,7 @@
   });
 
   $("#stamp-reset").addEventListener("click", () => {
-    S.reset();
+    S.resetCard(); // card only — keeps the signed-in profile (and app mode)
     renderStamps();
   });
 

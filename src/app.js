@@ -8,6 +8,13 @@
   /* indicative-price formatter (see data.js: prices are demo THB) */
   const fmtBaht = (n) => "฿" + Math.round(Number(n) || 0);
 
+  /* shared timestamp formatter (ledger rows, receipt, stamp + chat history) */
+  function fmtWhen(ts) {
+    return new Date(ts).toLocaleString(undefined, {
+      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+    });
+  }
+
   /* registry of live dish-card qty syncs, keyed by menu-item name —
      lets the cart view / checkout resync every visible stepper at once.
      Declared here (not near dishCard) because F.mount() builds featured
@@ -36,22 +43,32 @@
   const DEFAULT_VIEW = { landing: "home", app: "menu" };
 
   function goToView(name) {
-    // "rewards/wallet" form deep-links a rewards sub-tab from anywhere
+    // "rewards/wallet" form deep-links a rewards sub-tab from anywhere;
+    // "menu/cart" does the same for the Order tab's segments
     let sub = null;
     if (name.includes("/")) [name, sub] = name.split("/");
+    // cart + branches are segments of the Order tab now
+    const parent = SEGMENT_PARENT[name];
+    if (parent) { showOdTab(name); name = parent; }
     const view = $("#view-" + name);
     if (!view) return;
     const shell = view.closest("#landing") ? $("#landing") : $("#app");
     // one active view per shell; light up that shell's nav links to match
     $$(".view", shell).forEach(v => v.classList.toggle("active", v === view));
-    $$(".lp-link, .side-link", shell).forEach(b =>
+    $$(".lp-link, .side-link, .tab-btn", shell).forEach(b =>
       b.classList.toggle("active", b.dataset.view === name));
     // each shell has its own scroller: the page (landing) or #main (app)
     if (shell.id === "landing") window.scrollTo({ top: 0, behavior: "smooth" });
     else $("#main").scrollTo({ top: 0, behavior: "smooth" });
-    // merged Rewards section: land on the requested tab (or keep the current one)
-    if (sub) showRwTab(sub);
+    // merged Rewards section: land on the requested tab (or keep the current one);
+    // Order segments deep-link the same way ("menu/cart", "menu/branches")
+    if (sub) {
+      if (RW_TABS.includes(sub)) showRwTab(sub);
+      if (OD_TABS.includes(sub)) showOdTab(sub);
+    }
     else if (name === "rewards") showRwTab(activeRwTab);
+    // Order tab: land on the requested segment (or keep the current one)
+    if (name === "menu" && !parent && !sub) showOdTab(activeOdTab);
   }
 
   /* ---------------- Rewards tabs (Points · Wallet · Milestones) ----------------
@@ -59,7 +76,7 @@
      ("rewards/wallet") and the pane keeps its tab across revisits. Panes
      are plain class swaps — no re-render needed; every renderer paints its
      mounts regardless of which pane is visible. */
-  const RW_TABS = ["points", "wallet", "milestones"];
+  const RW_TABS = ["points", "stamps", "wallet", "milestones"];
   let activeRwTab = "points";
 
   function showRwTab(tab) {
@@ -76,6 +93,33 @@
 
   $$(".rw-tab").forEach(btn =>
     btn.addEventListener("click", () => showRwTab(btn.dataset.rwtab)));
+
+  /* ---------------- Order segments (Menu · Cart · Branches) ----------------
+     The Order tab's inner nav — same chip/pane mechanic as the rewards
+     tabs. State lives here so goToView can deep-link ("menu/cart") and
+     the segment survives revisits. */
+  const OD_TABS = ["menu", "cart", "branches"];
+  let activeOdTab = "menu";
+
+  function showOdTab(tab) {
+    if (!OD_TABS.includes(tab)) return;
+    activeOdTab = tab;
+    $$(".od-tab").forEach(b => {
+      const on = b.dataset.odtab === tab;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    $$(".od-pane").forEach(p =>
+      p.classList.toggle("active", p.dataset.odpane === tab));
+  }
+
+  $$(".od-tab").forEach(btn =>
+    btn.addEventListener("click", () => showOdTab(btn.dataset.odtab)));
+
+  // segment shortcuts: goToView("menu/cart") shows the Order tab on Cart,
+  // goToView("branches") lands on its segment — the phone's IA without
+  // extra top-level destinations
+  const SEGMENT_PARENT = { menu: null, cart: "menu", branches: "menu" };
 
   function applyMode(activateDefault = true) {
     mode = S.get().profile ? "app" : "landing";
@@ -539,9 +583,14 @@
   }
 
   function syncCartUI() {
-    const { count, total } = cartTotals();
+    const { count } = cartTotals();
+    // both cart badges: the sidebar Cart row (desktop) + the Order tab chip (phone)
     cartBadge.textContent = count;
     cartBadge.hidden = count === 0;
+    const odBadge = $("#od-cart-badge");
+    if (odBadge) { odBadge.textContent = count; odBadge.hidden = count === 0; }
+    const tabBadge = $("#tab-cart-badge");
+    if (tabBadge) { tabBadge.textContent = count; tabBadge.hidden = count === 0; }
     renderCart();
     orderables.forEach(sync => sync());
     // dish modal shows the add-to-cart affordance too
@@ -561,7 +610,7 @@
         <p class="cart-empty-sub">Add dishes from the menu — your lines wait here.</p>
         <button class="btn accent" id="cart-browse">Browse the menu</button>`;
       cartRoot.appendChild(empty);
-      $("#cart-browse").addEventListener("click", () => goToView("menu"));
+      $("#cart-browse").addEventListener("click", () => goToView("menu/menu"));
       return;
     }
     const wrap = document.createElement("div");
@@ -655,7 +704,7 @@
     cartRoot.appendChild(card);
     $("#receipt-done").addEventListener("click", () => {
       renderCart();
-      goToView("menu");
+      goToView("menu/menu");
     });
     const rw = $("#receipt-rewards");
     if (rw) rw.addEventListener("click", () => {
@@ -681,8 +730,12 @@
      styles. Declared ABOVE the Rewards section: renderRewards() paints the
      offer ledger, so the consts here must exist before its first call. */
   const offerPop = $("#offer-pop");
-  const offerBell = $("#offer-bell");
-  const offerBellDot = $("#offer-bell-dot");
+  // two bell mounts: the sidebar Rewards row (desktop) + the Rewards tab
+  // button (phone thumb-zone). One queue, every mount shows the same state.
+  const offerBells = [
+    { root: $("#offer-bell"), dot: $("#offer-bell-dot") },
+    { root: $("#tab-offer-bell"), dot: $("#tab-offer-bell-dot") }
+  ];
   let shownOfferKey = null;              // key currently in the popup, or null
 
   // the composition key: weekday for weekly deals, "any" for personal matches
@@ -704,10 +757,12 @@
   }
 
   function syncOfferBell(pending) {
-    if (!offerBell) return;
-    offerBell.hidden = false;                    // bell rides the nav once signed in
-    if (offerBellDot) offerBellDot.hidden = pending.length === 0;
-    offerBell.classList.toggle("has-mail", pending.length > 0);
+    offerBells.forEach(({ root, dot }) => {
+      if (!root) return;
+      root.hidden = false;                       // bell rides the nav once signed in
+      if (dot) dot.hidden = pending.length === 0;
+      root.classList.toggle("has-mail", pending.length > 0);
+    });
   }
 
   function hideOfferPop() {
@@ -1225,7 +1280,9 @@
 
   syncCartUI();
 
-  /* ---------------- Stamp card (local demo, via NaekiStore) ---------------- */
+  /* ---------------- Stamp card (Rewards · Stamps pane) ----------------
+     The collecting card lives inside the Rewards section now; this engine
+     paints its pane and wires its three actions. */
   const stampGrid = $("#stamp-grid");
   const stampCount = $("#stamp-count");
   const stampTotal = $("#stamp-total");
@@ -1240,12 +1297,6 @@
       <rect class="st-nori" x="16" y="21" width="8" height="7" rx="2"/>
       <circle class="st-salmon" cx="14" cy="11" r="2.6"/>
     </svg>`;
-
-  function fmtWhen(ts) {
-    return new Date(ts).toLocaleString(undefined, {
-      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
-    });
-  }
 
   function renderStamps() {
     const card = S.card();

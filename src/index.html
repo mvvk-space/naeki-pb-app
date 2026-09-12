@@ -699,14 +699,8 @@
           <span class="n">02</span> Cart
           <span class="cart-badge" id="cart-badge" hidden>0</span>
         </button>
-        <button class="side-link" data-view="branches">
-          <span class="n">03</span> Branches
-        </button>
-        <button class="side-link" data-view="stamps">
-          <span class="n">04</span> Stamp Card
-        </button>
         <button class="side-link" data-view="rewards">
-          <span class="n">05</span> Rewards
+          <span class="n">03</span> Rewards
           <span class="offer-bell" id="offer-bell" role="img" hidden>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 3a6 6 0 0 0-6 6v3.2L4.2 16a1 1 0 0 0 .9 1.5h13.8a1 1 0 0 0 .9-1.5L18 12.2V9a6 6 0 0 0-6-6z"/>
@@ -715,11 +709,8 @@
             <span class="offer-bell-dot" id="offer-bell-dot" hidden></span>
           </span>
         </button>
-        <button class="side-link" data-view="order">
-          <span class="n">06</span> Order &amp; Info
-        </button>
         <button class="side-link" data-view="chat">
-          <span class="n">07</span> Chat
+          <span class="n">04</span> Chat
         </button>
       </nav>
 
@@ -742,6 +733,34 @@
       </div>
     </aside>
 
+    <!-- ============ MOBILE TAB BAR ============
+       The phone thumb-zone: exactly three tabs — Order (menu · cart ·
+       branches), Rewards (points · stamps · wallet · milestones), Chat.
+       Desktop keeps the full sidebar; body[data-mode] + the 640px media
+       query own which nav is visible. -->
+    <nav id="tabbar" aria-label="App sections">
+      <button class="tab-btn active" data-view="menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+        <span>Order</span>
+        <span class="tab-badge" id="tab-cart-badge" hidden>0</span>
+      </button>
+      <button class="tab-btn" data-view="rewards">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9" r="5.2"/><path d="M8.6 13.2 7 21l5-2.6L17 21l-1.6-7.8"/></svg>
+        <span>Rewards</span>
+        <span class="offer-bell" id="tab-offer-bell" role="img" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3a6 6 0 0 0-6 6v3.2L4.2 16a1 1 0 0 0 .9 1.5h13.8a1 1 0 0 0 .9-1.5L18 12.2V9a6 6 0 0 0-6-6z"/>
+            <path class="offer-bell-clapper" d="M9.8 19.5a2.3 2.3 0 0 0 4.4 0z"/>
+          </svg>
+          <span class="offer-bell-dot" id="tab-offer-bell-dot" hidden></span>
+        </span>
+      </button>
+      <button class="tab-btn" data-view="chat">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 0-3.1 6.3L20 19.5l-.9-3.2A8 8 0 0 0 20 12z"/></svg>
+        <span>Chat</span>
+      </button>
+    </nav>
+
     <!-- offer popup: the bell's doorbell — one live unacknowledged offer at a
          time, Marc-Lou style. app.js fills it; acknowledging (✕ / Got it /
          See rewards) removes it and the offer stays acknowledged. -->
@@ -751,18 +770,29 @@
     <main id="main">
 
       
-    <!-- ================= MENU VIEW ================= -->
-      <section id="view-menu" class="view active">
+    <!-- ================= ORDER TAB — three segments (Menu · Cart · Branches) =================
+         The phone's first tab. The menu is the order surface; the cart and the
+         branch list are its two supporting segments. One active segment at a
+         time, swapped by app.js exactly like the rewards panes. -->
+    <section id="view-menu" class="view active">
 
         <header class="view-head">
-          <h2>The menu <span class="jp-inline" lang="ja">メニュー</span></h2>
+          <h2>Order <span class="jp-inline" lang="ja">注文</span></h2>
           <p>
-            Thirty-eight highlighted dishes across six categories — the signature
-            onigiri, nigiri, rolls, sashimi &amp; sets, donburi &amp; bento, drinks
-            &amp; sweets. Items rotate daily and prices vary by branch; tap a dish
-            for its story.
+            Pick up where the line's shortest — build the order here, show the
+            reference at any kiosk. Items rotate daily and prices vary by branch.
           </p>
         </header>
+
+        <!-- segment chips: menu · cart · branches -->
+        <div class="od-tabs" role="tablist" aria-label="Order sections">
+          <button class="chip od-tab active" role="tab" aria-selected="true" data-odtab="menu">Menu <span class="jp">メニュー</span></button>
+          <button class="chip od-tab" role="tab" aria-selected="false" data-odtab="cart">Cart <span class="jp">カート</span>
+            <span class="cart-badge" id="od-cart-badge" hidden>0</span></button>
+          <button class="chip od-tab" role="tab" aria-selected="false" data-odtab="branches">Branches <span class="jp">店舗</span></button>
+        </div>
+
+        <div class="od-pane active" data-odpane="menu">
 
         <div class="quote-strip" aria-label="What diners say" data-frame="reviews"><!-- live: data.js REVIEWS --></div>
 
@@ -781,42 +811,25 @@
           <p id="also-list"></p>
         </div>
 
-      </section>
+        </div><!-- /od-pane menu -->
 
-      <!-- ================= CART VIEW ================= -->
-      <section id="view-cart" class="view">
-        <header class="view-head">
-          <h2>Your cart <span class="jp-inline" lang="ja">カート</span></h2>
-          <p>
-            A demo ordering flow — lines persist on this device only and never
-            leave it. Checkout hands you a reference to order with at the
-            counter or via LINE. Prices are indicative.
-          </p>
-        </header>
-
+        <!-- pane: cart -->
+        <div class="od-pane" data-odpane="cart">
         <div id="cart-root"><!-- rendered by app.js --></div>
-      </section>
+        </div><!-- /od-pane cart -->
 
-      <!-- ================= BRANCHES VIEW ================= -->
-      <section id="view-branches" class="view">
-        <header class="view-head">
-          <h2>Find your Naeki</h2>
-          <p>
-            Twenty kiosks and counters along Bangkok's commute — BTS and MRT gates,
-            office lobbies, mall basements. Closing times below are from naeki.co;
-            status updates live against Bangkok time.
-          </p>
-          <div class="search-wrap wide">
-            <input id="branch-search" type="search" placeholder="Search by station, building or area…" aria-label="Search branches" />
-            <span class="count" id="branch-count"></span>
-          </div>
-          <div class="legend">
-            <span class="legend-item"><i class="dot open"></i> Open now</span>
-            <span class="legend-item"><i class="dot closed"></i> Closed for today</span>
-            <span class="legend-item"><i class="dot flagship"></i> ▮ Naeki Sushi counter</span>
-            <span class="legend-item"><i class="dot go"></i> ▯ Naeki GO! kiosk</span>
-          </div>
-        </header>
+        <!-- pane: branches -->
+        <div class="od-pane" data-odpane="branches">
+        <div class="search-wrap wide">
+          <input id="branch-search" type="search" placeholder="Search by station, building or area…" aria-label="Search branches" />
+          <span class="count" id="branch-count"></span>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><i class="dot open"></i> Open now</span>
+          <span class="legend-item"><i class="dot closed"></i> Closed for today</span>
+          <span class="legend-item"><i class="dot flagship"></i> ▮ Naeki Sushi counter</span>
+          <span class="legend-item"><i class="dot go"></i> ▯ Naeki GO! kiosk</span>
+        </div>
         <div id="branch-list" class="branch-list"></div>
 
         <!-- naeki.co's own coverage map: the same "naeki go" Google Maps
@@ -833,18 +846,64 @@
                   referrerpolicy="no-referrer-when-downgrade"
                   title="Naeki GO! locations across Bangkok — Google Maps embed from naeki.co"></iframe>
         </div>
+        </div><!-- /od-pane branches -->
+
       </section>
 
-      <!-- ================= STAMP CARD VIEW ================= -->
-      <section id="view-stamps" class="view">
+      <!-- ================= REWARDS — one section, four tabs (Points · Stamps · Wallet · Milestones) =================
+           The whole loyalty loop under one nav entry: earn (points + stamps),
+           spend (wallet), climb (milestones). The panes share the same
+           wl-card / progress vocabulary; the tab chips swap them in place. -->
+      <section id="view-rewards" class="view">
         <header class="view-head">
-          <h2>Stamp card <span class="jp-inline" lang="ja">スタンプカード</span></h2>
+          <h2>Rewards <span class="jp-inline" lang="ja">ポイント</span></h2>
           <p>
-            Your personal collecting card — ten stamps, one treat. Everything is
-            stored only on this device; nothing is sent anywhere.
+            The loyalty loop in one place — earn points on every demo order,
+            spend them from the wallet, climb the milestones for one-time
+            bonuses. 1 pt per 10฿, doubled on Thursdays, multiplied by your
+            tier. Everything is computed on this device and nothing leaves it.
           </p>
         </header>
 
+        <!-- tab chips — one active pane at a time -->
+        <div class="rw-tabs" role="tablist" aria-label="Rewards sections">
+          <button class="chip rw-tab active" role="tab" aria-selected="true" data-rwtab="points">Points <span class="jp">ポイント</span></button>
+          <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="stamps">Stamps <span class="jp">スタンプ</span></button>
+          <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="wallet">Wallet <span class="jp">ウォレット</span></button>
+          <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="milestones">Milestones <span class="jp">達成</span></button>
+        </div>
+
+        <!-- pane: points (tiers + offers) -->
+        <div class="rw-pane active" data-rwpane="points">
+
+        <!-- tier + points card -->
+        <div class="rw-hero" id="rw-hero"><!-- rendered by app.js --></div>
+
+        <!-- tier ladder -->
+        <div class="rw-tiers" id="rw-tiers"><!-- rendered by app.js --></div>
+
+        <!-- offers inbox -->
+        <div class="home-featured-head sec-head">
+          <h3>Offers for you</h3>
+          <span class="rule"></span>
+          <span class="n-items" id="rw-offers-note">this week</span>
+        </div>
+        <div class="rw-offers" id="rw-offers"><!-- rendered by app.js --></div>
+
+        <div class="disclaimer">
+          <p>
+            Demo loyalty program — points and offers are computed locally from
+            your demo orders and never verified by Naeki. A real program would
+            need the brand's involvement (verified stamps, real offers feed,
+            push). The engine lives in <code>src/data.js</code> (rules) and
+            <code>src/store.js</code> (balances) — the same shape a backend
+            would serve.
+          </p>
+        </div>
+        </div><!-- /rw-pane points -->
+
+        <!-- pane: stamps (the collecting card, folded into Rewards) -->
+        <div class="rw-pane" data-rwpane="stamps">
         <!-- the card -->
         <div class="stamp-card" aria-label="Naeki stamp card">
           <div class="stamp-card-head">
@@ -886,58 +945,7 @@
             own involvement. Your stamps and history never leave this device.
           </p>
         </div>
-      </section>
-
-      <!-- ================= REWARDS — one section, three tabs (Points · Wallet · Milestones) =================
-           The whole loyalty loop under one nav entry: earn (points), spend
-           (wallet), climb (milestones). The three panes share the same
-           wl-card / progress vocabulary; the tab chips swap them in place. -->
-      <section id="view-rewards" class="view">
-        <header class="view-head">
-          <h2>Rewards <span class="jp-inline" lang="ja">ポイント</span></h2>
-          <p>
-            The loyalty loop in one place — earn points on every demo order,
-            spend them from the wallet, climb the milestones for one-time
-            bonuses. 1 pt per 10฿, doubled on Thursdays, multiplied by your
-            tier. Everything is computed on this device and nothing leaves it.
-          </p>
-        </header>
-
-        <!-- tab chips — one active pane at a time -->
-        <div class="rw-tabs" role="tablist" aria-label="Rewards sections">
-          <button class="chip rw-tab active" role="tab" aria-selected="true" data-rwtab="points">Points <span class="jp">ポイント</span></button>
-          <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="wallet">Wallet <span class="jp">ウォレット</span></button>
-          <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="milestones">Milestones <span class="jp">達成</span></button>
-        </div>
-
-        <!-- pane: points (tiers + offers) -->
-        <div class="rw-pane active" data-rwpane="points">
-
-        <!-- tier + points card -->
-        <div class="rw-hero" id="rw-hero"><!-- rendered by app.js --></div>
-
-        <!-- tier ladder -->
-        <div class="rw-tiers" id="rw-tiers"><!-- rendered by app.js --></div>
-
-        <!-- offers inbox -->
-        <div class="home-featured-head sec-head">
-          <h3>Offers for you</h3>
-          <span class="rule"></span>
-          <span class="n-items" id="rw-offers-note">this week</span>
-        </div>
-        <div class="rw-offers" id="rw-offers"><!-- rendered by app.js --></div>
-
-        <div class="disclaimer">
-          <p>
-            Demo loyalty program — points and offers are computed locally from
-            your demo orders and never verified by Naeki. A real program would
-            need the brand's involvement (verified stamps, real offers feed,
-            push). The engine lives in <code>src/data.js</code> (rules) and
-            <code>src/store.js</code> (balances) — the same shape a backend
-            would serve.
-          </p>
-        </div>
-        </div><!-- /rw-pane points -->
+        </div><!-- /rw-pane stamps -->
 
         <!-- pane: wallet (stored value) -->
         <div class="rw-pane" data-rwpane="wallet">
@@ -1056,35 +1064,12 @@
         </div><!-- /rw-pane milestones -->
       </section>
 
-      <section id="view-order" class="view">
-        <header class="view-head">
-          <h2>Order &amp; info</h2>
-          <p>Naeki runs on LINE, delivery apps and walk-up kiosks. Big orders and party sets go direct.</p>
-        </header>
-
-        <!-- live: data.js INFO + BRANCHES via D.order() — same frame the
-             landing page's bottom section renders -->
-        <div class="order-grid" data-frame="order"></div>
-
-        <div class="disclaimer">
-          <p>
-            Unofficial showcase app built as a fan tribute with public information and photography
-            from naeki.co, Google Maps and Naeki's public listings. Menu items rotate daily;
-            prices vary by branch — check the LINE OA for today's menu. Not affiliated with
-            Naeki Sushi Co., Ltd.
-            <br /><br />
-            On iPhone or Android you can install this showcase to your home screen:
-            in Safari, tap <strong>Share</strong> → <strong>Add to Home Screen</strong>
-            (Chrome: menu → <strong>Add to Home screen</strong>). It then runs full-screen,
-            offline, just like the desktop app.
-          </p>
-        </div>
-      </section>
-
       <!-- ================= CHAT → LINE OA (large orders & catering) =================
-           The in-app chat is a thin, honest surface: it collects the enquiry and
-           hands it to the LINE OA (@naekisushi) — the channel Naeki actually answers
-           on, and where the centralized comms + my-restaurant/order flow lives.
+           The app's third tab. The in-app chat is a thin, honest surface: it
+           collects the enquiry and hands it to the LINE OA (@naekisushi) — the
+           channel Naeki actually answers on. Order & Info (LINE OA, flagship
+           counter, catering line, the company) lives here as the chat's
+           contact directory — same live frame the landing page renders.
            Nothing typed here leaves the device; the real reply happens in LINE. -->
       <section id="view-chat" class="view">
         <header class="view-head">
@@ -1108,6 +1093,15 @@
         </form>
         <p class="wl-note" id="ch-note"></p>
 
+        <!-- order & info: the contact cards (LINE OA · flagship counter ·
+             catering · company) — same live frame the landing page renders -->
+        <div class="home-featured-head sec-head">
+          <h3>Order &amp; info</h3>
+          <span class="rule"></span>
+          <span class="n-items">LINE · phone · HQ</span>
+        </div>
+        <div class="order-grid" data-frame="order"></div>
+
         <div class="disclaimer">
           <p>
             This chat never carries a real message — it hands you to the
@@ -1115,6 +1109,15 @@
             large orders, party trays and customer service. Replies, ordering
             and delivery happen inside LINE (including LINE MAN). Everything you
             draft here stays on this device only.
+            <br /><br />
+            Unofficial showcase app built as a fan tribute with public information
+            and photography from naeki.co, Google Maps and Naeki's public listings.
+            Not affiliated with Naeki Sushi Co., Ltd.
+            <br /><br />
+            On iPhone or Android you can install this showcase to your home screen:
+            in Safari, tap <strong>Share</strong> → <strong>Add to Home Screen</strong>
+            (Chrome: menu → <strong>Add to Home screen</strong>). It then runs full-screen,
+            offline, just like the desktop app.
           </p>
         </div>
       </section>

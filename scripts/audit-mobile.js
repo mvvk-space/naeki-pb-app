@@ -67,7 +67,7 @@ const AUDIT_JS = `(() => {
 
   const isLanding = "__SHELL__" === "landing";
   const names = isLanding ? ["home", "lmenu", "about", "franchise", "servicedesk"]
-                          : ["menu", "cart", "branches", "stamps", "rewards", "order"];
+                          : ["menu", "rewards", "chat"];
 
   names.forEach(v => {
     const btn = document.querySelector(
@@ -100,9 +100,9 @@ const AUDIT_JS = `(() => {
         out.lmenuRows = view.querySelectorAll(".lmenu-list li").length;
       }
     }
-    /* rewards is one section with three tab panes (points / wallet /
-       milestones) — measure each pane the way a user reaches it: by
-       clicking its tab chip while the view is active */
+    /* rewards is one section with four tab panes (points / stamps /
+       wallet / milestones) — measure each pane the way a user reaches it:
+       by clicking its tab chip while the view is active */
     if (!isLanding && v === "rewards") {
       out.rewardsTabs = {};
       view.querySelectorAll(".rw-tab").forEach(tabBtn => {
@@ -115,11 +115,25 @@ const AUDIT_JS = `(() => {
       });
       document.querySelector('.rw-tab[data-rwtab="points"]').click();  // restore default
     }
+    /* the Order tab is one section with three segment panes (menu / cart /
+       branches) — same measurement-by-interaction approach */
+    if (!isLanding && v === "menu") {
+      out.orderTabs = {};
+      view.querySelectorAll(".od-tab").forEach(tabBtn => {
+        tabBtn.click();
+        const pane = view.querySelector('.od-pane[data-odpane="' + tabBtn.dataset.odtab + '"]');
+        out.orderTabs[tabBtn.dataset.odtab] = pane ? {
+          overflowX: document.documentElement.scrollWidth - vw,
+          offenders: offenders(pane)
+        } : null;
+      });
+      document.querySelector('.od-tab[data-odtab="menu"]').click();    // restore default
+    }
   });
 
   /* touch targets: visible controls must clear the floor */
   const seen = new Set();
-  document.querySelectorAll(".side-link, .lp-link, .chip, .btn").forEach(el => {
+  document.querySelectorAll(".side-link, .lp-link, .chip, .btn, .tab-btn").forEach(el => {
     const r = el.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return;     // display:none shells/views
     if (seen.has(el)) return;
@@ -167,11 +181,12 @@ const AUDIT_JS = `(() => {
 
   /* populated-cart layout (app shell): seed lines THROUGH THE UI (the plus
      button), so the cart view renders via the real sync path, then verify
-     the row geometry at phone width */
+     the row geometry at phone width. The cart is a segment of the Order
+     tab — reached the way a user reaches it. */
   if (!isLanding) {
     /* milestones tab (inside the merged rewards section) renders all 7
        achievements + the 7-point trust pane */
-    const rewardsBtn = document.querySelector('.side-link[data-view="rewards"]');
+    const rewardsBtn = document.querySelector('.side-link[data-view="rewards"], .tab-btn[data-view="rewards"]');
     if (rewardsBtn) {
       rewardsBtn.click();
       const mmTab = document.querySelector('.rw-tab[data-rwtab="milestones"]');
@@ -181,14 +196,13 @@ const AUDIT_JS = `(() => {
         tiles: mmView ? mmView.querySelectorAll('.mm-tile').length : -1,
         trust: mmView ? mmView.querySelectorAll('.mm-trust li').length : -1
       };
-      document.querySelector('.side-link[data-view="menu"]')?.click();
+      document.querySelector('.side-link[data-view="menu"], .tab-btn[data-view="menu"]')?.click();
     }
     try {
       const firstDish = document.querySelector('#view-menu .dish .d-plus');
       if (firstDish) {
         firstDish.click(); firstDish.click();
-        const cartBtn = document.querySelector('.side-link[data-view="cart"]');
-        if (cartBtn) cartBtn.click();
+        document.querySelector('.od-tab[data-odtab="cart"]')?.click();
         const li = document.querySelector(".cart-list li");
         if (li) {
           const r = li.getBoundingClientRect();
@@ -201,7 +215,7 @@ const AUDIT_JS = `(() => {
       }
       // leave the store clean for the next run
       NaekiStore.clearCart();
-      document.querySelector('.side-link[data-view="menu"]')?.click();
+      document.querySelector('.od-tab[data-odtab="menu"]')?.click();
     } catch (e) { out.cartRow = { error: String(e).slice(0, 60) }; }
   }
 
@@ -259,6 +273,14 @@ function shellReport(report, shellName, expectedViews) {
       if (r.overflowX > 1) fail(`rewards/${tab}: horizontal overflow ${r.overflowX}px`);
       else pass(`rewards/${tab} pane: no horizontal overflow`);
       if (r.offenders.length) fail(`rewards/${tab}: ${r.offenders.length} element(s) past viewport — ${r.offenders.join(" | ")}`);
+    }
+  }
+  if (shellName === "app" && report.orderTabs) {
+    for (const [tab, r] of Object.entries(report.orderTabs)) {
+      if (!r) { fail(`order segment ${tab}: pane missing`); continue; }
+      if (r.overflowX > 1) fail(`order/${tab}: horizontal overflow ${r.overflowX}px`);
+      else pass(`order/${tab} pane: no horizontal overflow`);
+      if (r.offenders.length) fail(`order/${tab}: ${r.offenders.length} element(s) past viewport — ${r.offenders.join(" | ")}`);
     }
   }
   if (shellName === "app") {
@@ -348,7 +370,7 @@ async function main() {
   } else {
     pass("sign-in swaps to the app shell (body[data-mode=app])");
     const appReport = await auditPass(win, "app");
-    shellReport(appReport, "app", ["menu", "cart", "branches", "stamps", "rewards", "order"]);
+    shellReport(appReport, "app", ["menu", "rewards", "chat"]);
   }
 
   console.log("\nNaeki mobile audit — 390px rendered layout");

@@ -17,7 +17,7 @@ function createWindow () {
   });
 
   // renderer is the shared src/ core — same files the PWA serves
-  win.loadFile(path.join(__dirname, 'src', 'index.html'), { query: { v: '2.1.0' } });
+  win.loadFile(path.join(__dirname, 'src', 'index.html'), { query: { v: '2.2.0' } });
 
   // open external links (maps, line, etc.) in the default browser
   win.webContents.setWindowOpenHandler(({ url }) => {

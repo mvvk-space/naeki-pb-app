@@ -1851,6 +1851,91 @@ a:hover { text-decoration: underline; }
 .signin-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 .signin-actions .btn { margin-top: 0; }
 
+/* ---------------- MILESTONES & TRUST (seven achievements) ---------------- */
+
+.mm-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(160deg, var(--ink-2), var(--ink-1));
+  padding: 22px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 26px;
+  max-width: 720px;
+}
+.mm-kicker {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--salmon);
+}
+.mm-card h3 { font-family: var(--font-display); font-size: 21px; line-height: 1.2; }
+.mm-card p { color: var(--paper-dim); font-size: 13px; }
+.mm-progress { margin-top: 6px; }
+
+.mm-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+  margin: 14px 0 26px;
+  max-width: 860px;
+}
+.mm-tile {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--ink-1);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+.mm-tile.earned { opacity: 1; border-color: rgba(255,138,60,0.55); }
+.mm-tile.claimed { opacity: 1; border-color: rgba(159,184,63,0.5); }
+.mm-tile-head { display: flex; justify-content: space-between; align-items: center; }
+.mm-tile-jp { font-family: var(--font-display); font-size: 18px; color: var(--paper-faint); }
+.mm-tile.earned .mm-tile-jp { color: var(--salmon); }
+.mm-tile.claimed .mm-tile-jp { color: var(--wasabi); }
+.mm-tile-pts {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--paper-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.mm-tile.earned .mm-tile-pts { color: var(--salmon); border-color: rgba(255,138,60,0.4); }
+.mm-tile.claimed .mm-tile-pts { color: var(--wasabi); border-color: rgba(159,184,63,0.4); }
+.mm-tile-kicker {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--paper-faint);
+}
+.mm-tile h4 { font-family: var(--font-display); font-size: 16.5px; line-height: 1.25; }
+.mm-tile p { font-size: 12px; color: var(--paper-dim); line-height: 1.5; }
+.mm-tile-prog {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--paper-faint);
+}
+.mm-tile .btn { margin-top: 6px; width: 100%; }
+
+.mm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; max-width: 860px; }
+.mm-referral { align-self: start; }
+.mm-ref-codes { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.mm-ref-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.mm-ref-row code { font-family: var(--font-mono); font-size: 11px; color: var(--salmon); }
+.mm-ref-row span { font-size: 10px; color: var(--paper-faint); }
+
+.mm-trust { margin: 12px 0 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 7px; }
+.mm-trust li::before { content: "✓ "; color: var(--wasabi); font-weight: bold; }
+.mm-trust li { color: var(--paper-dim); font-size: 13px; }
+
 /* ---------------- PHONE (~400px) ---------------- */
 
 @media (max-width: 640px) {
@@ -1874,6 +1959,10 @@ a:hover { text-decoration: underline; }
   .wl-grid { grid-template-columns: 1fr; }
   .wl-redeem-form { flex-direction: column; }
   .session-loyalty { display: none; }   /* sidebar is a top bar here */
+
+  /* milestones: referral cards stack, mission card pads tighter */
+  .mm-grid { grid-template-columns: 1fr; }
+  .mm-card { padding: 20px 18px; }
 
   /* sidebar folds into a compact top bar: brand row + scrollable nav */
   #sidebar {

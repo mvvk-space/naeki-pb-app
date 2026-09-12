@@ -672,6 +672,9 @@
         <button class="side-link" data-view="order">
           <span class="n">07</span> Order &amp; Info
         </button>
+        <button class="side-link" data-view="milestones">
+          <span class="n">08</span> Milestones
+        </button>
       </nav>
 
       <div class="side-session" id="side-session">
@@ -982,6 +985,64 @@
             in Safari, tap <strong>Share</strong> → <strong>Add to Home Screen</strong>
             (Chrome: menu → <strong>Add to Home screen</strong>). It then runs full-screen,
             offline, just like the desktop app.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= MILESTONES & TRUST (seven achievements) =================
+           The "hidden gems" the franchise apps use to drive habit — applied on
+           this device, honestly. Seven achievements computed from your own order
+           history, each a one-time bonus you claim when you've earned it, plus a
+           referral loop. Nothing leaves this device. -->
+      <section id="view-milestones" class="view">
+        <header class="view-head">
+          <h2>Milestones <span class="jp-inline" lang="ja">達成</span></h2>
+          <p>
+            Seven achievements — the loop the mega apps quietly build around you.
+            Every one is computed from this device's own order history and pays a
+            one-time bonus you claim when you've earned it. Nothing is synced,
+            nothing is sold, nobody follows you home.
+          </p>
+        </header>
+
+        <!-- the mission-of-the-week card (Starbucks-style stretch goal) -->
+        <div class="mm-card mm-mission" id="mm-mission"><!-- rendered by app.js --></div>
+
+        <!-- the seven achievement tiles -->
+        <div class="mm-list" id="mm-list"><!-- rendered by app.js --></div>
+
+        <!-- referral: give + get (Qwen / Mixue-style share loop) -->
+        <div class="mm-grid">
+          <div class="wl-card wl-balance mm-referral">
+            <div class="oc-kicker">Give + get</div>
+            <h3>Bring a friend</h3>
+            <p>Generate a code, share it — when it's redeemed, you earn the Give + Get
+               milestone and your friend starts with a bonus too.</p>
+            <button class="btn accent" id="mm-make-ref">Generate my code</button>
+            <div class="mm-ref-codes" id="mm-ref-codes"><!-- rendered by app.js --></div>
+          </div>
+
+          <div class="wl-card wl-redeem mm-referral">
+            <div class="oc-kicker">Got a code?</div>
+            <h3>Redeem a friend's</h3>
+            <p>Paste a <code>NK-FRIEND-…</code> code to claim your +100 welcome points.</p>
+            <form id="mm-ref-form" class="wl-redeem-form">
+              <input id="mm-ref-code" type="text" placeholder="NK-FRIEND-…"
+                     autocomplete="off" aria-label="Referral code" />
+              <button type="submit" class="btn accent">Redeem</button>
+            </form>
+            <p class="wl-note" id="mm-ref-note"></p>
+          </div>
+        </div>
+
+        <!-- trust pane: the seven things that live here -->
+        <div class="disclaimer">
+          <h4>What stays on this device — and what never leaves it</h4>
+          <ul class="mm-trust" id="mm-trust"><!-- rendered by app.js --></ul>
+          <p>
+            This is the honest version of the data playbook: the personalization the
+            big apps do on their servers, done here on your phone where no one can
+            sell it. Sign out or use Reset to wipe it all at any time.
           </p>
         </div>
       </section>

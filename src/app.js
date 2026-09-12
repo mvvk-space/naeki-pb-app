@@ -765,11 +765,128 @@
 
   // loyalty changes repaint both views + every dish stepper; the offers
   // inbox also flips when the data layer refreshes (weekday deals)
-  S.onLoyalty(() => { renderRewards(); renderWallet(); syncSessionLoyalty(); });
-  D.subscribe("refresh", renderRewards);
+  S.onLoyalty(() => { renderRewards(); renderWallet(); renderMilestones(); syncSessionLoyalty(); });
+  D.subscribe("refresh", () => { renderRewards(); renderMilestones(); });
   renderRewards();
   renderWallet();
   syncSessionLoyalty();
+
+  /* ---------------- Milestones & Trust (seven achievements) ----------------
+     Renders the mission-of-the-week card, the seven achievement tiles, the
+     referral give+get loop, and the seven-point trust pane. Repaints on every
+     loyalty change and on data refresh (the weekly mission advances live).
+     CSP-note: all dynamic styling goes through class swaps / CSSOM, never
+     inline style attributes. */
+
+  const MM_MISSION = $("#mm-mission");
+  const MM_LIST = $("#mm-list");
+  const MM_REF_CODES = $("#mm-ref-codes");
+  const MM_REF_NOTE = $("#mm-ref-note");
+  const MM_TRUST = $("#mm-trust");
+
+  function renderMilestones() {
+    if (!MM_LIST) return;                       // view not mounted yet
+    const lo = S.loyalty();
+    const ach = S.achievementState();
+    const claimed = S.claimedState();
+    const mission = D.weeklyMission(lo.history);
+
+    // mission-of-the-week card
+    if (MM_MISSION) {
+      const pct = Math.min(100, Math.round(mission.have / mission.need * 100));
+      MM_MISSION.innerHTML = `
+        <div class="mm-kicker">${mission.kicker}</div>
+        <h3>${mission.title}</h3>
+        <p>${mission.text}</p>
+        <div class="rw-tier-progress mm-progress">
+          <span class="rw-progress-label">${mission.have} / ${mission.need} orders this week</span>
+          <div class="rw-progress-track"><div class="rw-progress-fill mm-fill" data-pct="${pct}"></div></div>
+        </div>`;
+      const fill = MM_MISSION.querySelector(".mm-fill");
+      if (fill) fill.style.setProperty("--rw-pct", pct + "%");
+    }
+
+    // the seven achievement tiles
+    MM_LIST.innerHTML = D.MILESTONES.map(m => {
+      const done = !!ach.done[m.id];
+      const isClaimed = claimed.includes(m.id);
+      const state = done && isClaimed ? "claimed"
+                  : done            ? "earned"
+                  :                   "locked";
+      // progress hints for the two "measured" ones
+      const prog = m.id === "breadth" ? `${ach.breadth} / ${D.MENU.length} categories`
+                : m.id === "cadence"  ? `${Math.min(ach.cadence, 7)} / 7 days`
+                : m.id === "week"     ? `${Math.min(ach.week, 3)} / 3 this week`
+                : m.id === "lifetime" ? `${fmtBaht(Math.min(ach.lifetime, 1000))} / ฿1,000`
+                :                       "";
+      return `
+        <div class="mm-tile ${state} ${m.id}" data-id="${m.id}">
+          <div class="mm-tile-head">
+            <span class="mm-tile-jp" lang="ja">${m.jp}</span>
+            <span class="mm-tile-pts">+${m.pts} pts</span>
+          </div>
+          <div class="mm-tile-kicker">${m.kicker}</div>
+          <h4>${m.title}</h4>
+          <p>${m.text}</p>
+          ${prog ? `<div class="mm-tile-prog">${prog}</div>` : ""}
+          <button class="btn ${state === "earned" ? "accent" : "ghost"}"
+                  id="mm-claim-${m.id}" ${state === "earned" ? "" : "disabled"}>
+            ${state === "claimed" ? "Claimed ✓" 
+              : state === "earned" ? "Claim +" + m.pts + " pts"
+              : "Locked"}
+          </button>
+        </div>`;
+    }).join("");
+
+    // claim buttons
+    D.MILESTONES.forEach(m => {
+      const btn = MM_LIST.querySelector("#mm-claim-" + m.id);
+      if (!btn || btn.disabled) return;
+      btn.addEventListener("click", () => {
+        const res = S.claimMilestone(m.id);
+        if (res) flash(`Milestone complete! +${res.pts} points`);
+        renderMilestones();
+      });
+    });
+
+    // referral codes (the giver's list)
+    if (MM_REF_CODES && S.referralCodesState().length) {
+      MM_REF_CODES.innerHTML = S.referralCodesState()
+        .slice(0, 3)
+        .map(c => `<div class="mm-ref-row"><code>${c.code}</code><span>${fmtWhen(c.created)}</span></div>`)
+        .join("");
+    }
+
+    // trust pane — seven, always
+    if (MM_TRUST) {
+      MM_TRUST.innerHTML = D.TRUST.map(t => `<li>${t}</li>`).join("");
+    }
+  }
+
+  // referral: generate
+  const mmMakeRef = $("#mm-make-ref");
+  if (mmMakeRef) mmMakeRef.addEventListener("click", () => {
+    const code = S.makeReferral();
+    flash("Share this code: " + code);
+    renderMilestones();
+  });
+
+  // referral: redeem
+  const mmRefForm = $("#mm-ref-form");
+  if (mmRefForm) mmRefForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const codeVal = $("#mm-ref-code").value;
+    const res = S.redeemReferral(codeVal);
+    if (MM_REF_NOTE) {
+      MM_REF_NOTE.textContent = res
+        ? `Welcome! +${res.pts} points from ${res.code}.`
+        : "Code not found, already used, or it's your own."
+                            + (res === null && codeVal ? " (Codes stay on one device.)" : "");
+    }
+    if (res) { $("#mm-ref-code").value = ""; renderMilestones(); }
+  });
+
+  renderMilestones();
 
   /* sidebar glance: points + wallet balance chips */
   function syncSessionLoyalty() {

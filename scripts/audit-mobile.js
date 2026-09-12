@@ -67,7 +67,7 @@ const AUDIT_JS = `(() => {
 
   const isLanding = "__SHELL__" === "landing";
   const names = isLanding ? ["home", "lmenu", "about", "franchise"]
-                           : ["menu", "cart", "branches", "stamps", "rewards", "wallet", "order"];
+                           : ["menu", "cart", "branches", "stamps", "rewards", "wallet", "order", "milestones"];
 
   names.forEach(v => {
     const btn = document.querySelector(
@@ -154,6 +154,16 @@ const AUDIT_JS = `(() => {
      button), so the cart view renders via the real sync path, then verify
      the row geometry at phone width */
   if (!isLanding) {
+    /* milestones view renders all 7 achievements + the 7-point trust pane */
+    const mmBtn = document.querySelector('.side-link[data-view="milestones"]');
+    if (mmBtn) {
+      mmBtn.click();
+      const mmView = document.getElementById('view-milestones');
+      out.milestones = {
+        tiles: mmView ? mmView.querySelectorAll('.mm-tile').length : -1,
+        trust: mmView ? mmView.querySelectorAll('.mm-trust li').length : -1
+      };
+    }
     try {
       const firstDish = document.querySelector('#view-menu .dish .d-plus');
       if (firstDish) {
@@ -251,6 +261,12 @@ function shellReport(report, shellName, expectedViews) {
       pass(`cart row fits, stepper ${report.cartRow.stepperH}px tall`);
     } else fail(`cart row problem: fits=${report.cartRow.fits} stepperH=${report.cartRow.stepperH}`);
   }
+  if (shellName === "app" && report.milestones) {
+    if (report.milestones.tiles === 7) pass(`milestones: 7 achievement tiles render`);
+    else fail(`milestones: expected 7 tiles, got ${report.milestones.tiles}`);
+    if (report.milestones.trust === 7) pass(`trust pane: 7 items render`);
+    else fail(`trust pane: expected 7 items, got ${report.milestones.trust}`);
+  }
 }
 
 async function auditPass(win, shell) {
@@ -305,7 +321,7 @@ async function main() {
   } else {
     pass("sign-in swaps to the app shell (body[data-mode=app])");
     const appReport = await auditPass(win, "app");
-    shellReport(appReport, "app", ["menu", "cart", "branches", "stamps", "rewards", "wallet", "order"]);
+    shellReport(appReport, "app", ["menu", "cart", "branches", "stamps", "rewards", "wallet", "order", "milestones"]);
   }
 
   console.log("\nNaeki mobile audit — 390px rendered layout");

@@ -35,7 +35,14 @@
       topups: []                // [{ ts, amount, method, ref }]
     },
     // demo gift cards the user has "bought" (for themselves / to give away)
-    gifts: []                    // [{ code, amount, ts, spent }]
+    gifts: [],                    // [{ code, amount, ts, spent }]
+    // milestone engine state: which achievement bonuses have been claimed
+    // (atomically with the award — persists the exact claim), and how many
+    // referral codes the user has redeemed (the "give + get" loop)
+    claimed: [],                  // string milestone id, once each
+    referralsRedeemed: 0,
+    referralCodes: [],            // [{ code, created }] — codes THEY generate to share
+    redeemedRefs: []             // [code, ...] — referral codes already redeemed here
   };
 
   /* loyalty store events — app.js subscribes to repaint tier/offers UI */
@@ -56,7 +63,11 @@
         cart: Array.isArray(saved.cart) ? saved.cart : [],
         loyalty: { ...DEFAULTS.loyalty, ...(saved.loyalty || {}) },
         wallet: { ...DEFAULTS.wallet, ...(saved.wallet || {}) },
-        gifts: Array.isArray(saved.gifts) ? saved.gifts : []
+        gifts: Array.isArray(saved.gifts) ? saved.gifts : [],
+        claimed: Array.isArray(saved.claimed) ? saved.claimed : [],
+        referralsRedeemed: Number(saved.referralsRedeemed) || 0,
+        referralCodes: Array.isArray(saved.referralCodes) ? saved.referralCodes : [],
+        redeemedRefs: Array.isArray(saved.redeemedRefs) ? saved.redeemedRefs : []
       };
     } catch {
       // private browsing, disabled storage, corrupt JSON → fresh state
@@ -206,6 +217,63 @@
     onLoyalty(fn) {
       listeners.push(fn);
       return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); };
+    },
+
+    /* ---------------- milestone engine (seven achievements) ---------------- */
+
+    /** claimed ids (forfeit-proof): the bonus awarded once per milestone */
+    claimedState: () => state.claimed,
+
+    /** current achievement state computed from LIVE history — done vs claimed */
+    achievementState(opts = {}) {
+      return window.NaekiData.achievements(state.loyalty.history, {
+        referralsRedeemed: state.referralsRedeemed, ...opts
+      });
+    },
+
+    /** award a completed milestone's bonus exactly once (atomic claim);
+        returns { id, pts, total } or null if nothing to claim */
+    claimMilestone(id) {
+      const M = window.NaekiData;
+      const m = (M.MILESTONES || []).find(x => x.id === id);
+      if (!m) return null;
+      if (state.claimed.includes(id)) return null;      // forfeit-proof
+      const ach = this.achievementState();
+      if (!ach.done[id]) return null;                   // not achieved yet
+      state.claimed.push(id);
+      state.loyalty.points += m.pts;
+      state.loyalty.lifetime += m.pts;
+      persist(); emit();
+      return { id, pts: m.pts, total: state.loyalty.points };
+    },
+
+    /* ---- referral code: the "give + get" loop — both sides earn ---- */
+
+    /** generate a shareable demo referral code (the giver's side) */
+    makeReferral() {
+      const code = "NK-FRIEND-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+      state.referralCodes.unshift({ code, created: Date.now() });
+      persist(); emit();
+      return code;
+    },
+    referralCodesState: () => state.referralCodes,
+
+    /** redeem a shared code (the friend's side): +pts to the redeemer AND
+        counts a "referral redeemed" that feeds the giver's milestone */
+    redeemReferral(code) {
+      code = String(code || "").trim().toUpperCase();
+      if (!code) return null;
+      const mine = state.referralCodes.some(c => c.code === code);
+      if (mine) return null;                // don't self-redeem
+      if (state.redeemedRefs && state.redeemedRefs.includes(code)) return null;
+      state.redeemedRefs = state.redeemedRefs || [];
+      state.redeemedRefs.push(code);
+      state.referralsRedeemed += 1;
+      // the redeemer earns the Give+Get bonus too (100 pts), friend-side
+      state.loyalty.points += 100;
+      state.loyalty.lifetime += 100;
+      persist(); emit();
+      return { pts: 100, code };
     },
 
     /* ---------------- wallet (stored value) ---------------- */

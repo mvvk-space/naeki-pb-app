@@ -489,6 +489,126 @@ window.NaekiData = (() => {
     return out;
   }
 
+  /* ============================================================
+     MILESTONES + TRUST — the franchise-app hidden gems, applied
+     on-device. Seven achievements that map one-to-one onto the
+     mechanics the research surfaced:
+       1. Mixue/Alibaba Qwen  — the free-first-order hook that rockets
+          adoption (here, honestly: a one-time welcome bonus).
+       2. Starbucks "breadth"  — reward trying every category, not
+          just spending more.
+       3. Starbucks "frequency"— reward showing up on different days
+          (visit cadence), the thing gamified loyalty lifts most.
+       4. McDonald's B2B       — reward the big tray order.
+       5. Starbucks weekly     — a stretch goal pitched just past habit
+          ("order 3× this week") with a bonus on completion.
+       6. Alibaba Qwen referral— give + get: both sides earn.
+       7. McDonald's lifetime  — a loyalty-floor threshold reward.
+     Every milestone is computed from THIS device's own history; the
+     store awards the points once and records the claim. Nothing
+     leaves the device — the honest version of the data playbook.
+     ============================================================ */
+
+  const MILESTONES = [
+    { id: "first",   kicker: "First bite",    title: "Your first order",
+      text: "Welcome in — here's a one-time bonus to make your first counter visit count.",
+      pts: 50, jp: "初注文" },
+    { id: "breadth", kicker: "Full-menu tour",title: "Try all six categories",
+      text: "Every onigiri, nigiri, roll, sashimi, don and sweet — rewarded for breadth.",
+      pts: 100, jp: "全種類" },
+    { id: "cadence", kicker: "Weekly regular", title: "Order on 7 different days",
+      text: "Showing up is the habit the big apps gamify hardest; here it earns real points.",
+      pts: 150, jp: "常連" },
+    { id: "party",   kicker: "Office hero",    title: "One order of ฿500+",
+      text: "The tray run for the team — bonus points for the big order.",
+      pts: 100, jp: "大皿" },
+    { id: "week",    kicker: "This week",     title: "Order 3× in one calendar week",
+      text: "A stretch goal past your normal cadence — finish it and bank the points.",
+      pts: 100, jp: "今週" },
+    { id: "friend",  kicker: "Give + get",    title: "Redeem a friend's referral",
+      text: "When a shared code lands, both sides earn — the loop that took Qwen to #1.",
+      pts: 100, jp: "紹介" },
+    { id: "lifetime",kicker: "Loyal wallet",   title: "Spend ฿1,000 lifetime",
+      text: "A loyalty floor: cross the ฿1,000 mark and the house thanks you.",
+      pts: 200, jp: "生涯" }
+  ];
+
+  /* the seven things that live on this device — the trust pane copy.
+     Keeps the "honest data brokerage" stance a first-class surface. */
+  const TRUST = [
+    "Your order history stays on this device",
+    "Your stamp card is self-issued, never verified by Naeki",
+    "Your wallet balance is a local simulation",
+    "Your points and offers are computed from this device's data",
+    "No account, no login, no tracker follows you",
+    "Nothing — points, offers, balance — is transmitted anywhere",
+    "You can wipe it all any time with the sign-out and reset buttons"
+  ];
+
+  /* distinct calendar days the user has ordered on (Bangkok) */
+  function streakOf(history, now = Date.now()) {
+    const days = new Set();
+    for (const o of history) days.add(bangkokDayKey(o.ts));
+    return { count: days.size, days };
+  }
+
+  function bangkokDayKey(ts) {
+    return new Date(ts).toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+  }
+
+  /* how many orders fall in the current calendar week (Mon-start, Bangkok) */
+  function ordersThisWeek(history, now = Date.now()) {
+    const nowKey = bangkokDayKey(now);
+    const nowD = new Date(nowKey + "T00:00:00Z");
+    const dow = (nowD.getUTCDay() + 6) % 7;       // 0=Monday
+    const monday = new Date(nowD); monday.setUTCDate(monday.getUTCDate() - dow);
+    return history.filter(o => bangkokDayKey(o.ts) >= bangkokDayKey(monday.getTime()) &&
+                                bangkokDayKey(o.ts) <= nowKey).length;
+  }
+
+  /* distinct categories present across history */
+  function categoriesSeen(history) {
+    const cats = new Set();
+    for (const o of history) if (o.category) cats.add(o.category);
+    return cats.size;
+  }
+
+  /* computed achievement state — done but not-yet-claimed lives here;
+     the store persists the claim atomically when it awards. */
+  function achievements(history, opts = {}) {
+    const referralsRedeemed = opts.referralsRedeemed ?? 0;
+    const order3Week = ordersThisWeek(history, opts.now ?? Date.now());
+    const stk = streakOf(history, opts.now ?? Date.now()).count;
+    const breadth = Math.min(categoriesSeen(history), MENU.length);
+    const lifetimeSpend = history.reduce((s, o) => s + (o.total || 0), 0);
+    const done = {
+      first:     history.length > 0,
+      breadth:   breadth >= MENU.length,
+      cadence:   stk >= 7,
+      party:     history.some(o => o.total >= 500),
+      week:      order3Week >= 3,
+      friend:    referralsRedeemed >= 1,
+      lifetime:  lifetimeSpend >= 1000
+    };
+    return { done, breadth, cadence: stk, week: order3Week, lifetime: lifetimeSpend };
+  }
+
+  /* the mission-of-the-week card (Starbucks stretch goal) + its progress
+     out of 3 — computed from this week's orders */
+  function weeklyMission(history, now = Date.now()) {
+    const n = ordersThisWeek(history, now);
+    const weekday = bangkokWeekday(now);
+    const left = weekday < 6;                      // Mon–Sat still live
+    return {
+      kicker: "This week's mission",
+      title: "Order 3× for +100 pts",
+      text: left
+        ? `You've ordered ${n} time${n === 1 ? "" : "s"} this week. One more stretch, then it's yours.`
+        : "Week's over — Sunday refresh resets the mission.",
+      have: n, need: 3, live: left
+    };
+  }
+
   /* ---- the "backend feed": in production this becomes a fetch()/SSE
      poll of the real Naeki backend; here the interval stands in and
      republishes so every frame re-sources itself from this module.
@@ -516,6 +636,9 @@ window.NaekiData = (() => {
     POINTS_PER_BAHT, TIERS, POINTS_DAY, POINTS_DAY_NAME,
     pointsFor, tierMultOf, tierFor, nextTier, offers,
     bangkokWeekday, daysSince,
+    // milestone engine + trust pane
+    MILESTONES, TRUST,
+    streakOf, categoriesSeen, ordersThisWeek, achievements, weeklyMission,
     refresh
   };
   return Data;

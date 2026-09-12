@@ -1,7 +1,7 @@
 /* NAEKI SHOWCASE — service worker (PWA only; Electron never loads this).
    Cache-first app shell + runtime-cached images. The cache name tracks the
    app version — bump both together with the ?v= query in main.js. */
-const VERSION = "2.1.0";
+const VERSION = "2.2.0";
 const CACHE = `naeki-v${VERSION}`;
 
 const SHELL = [

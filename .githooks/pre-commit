@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Naeki CI: block commits that fail the zero-dep check + rendered mobile audit.
+# Bypass only in a pinch with: NAEKI_SKIP=1 git commit
+#   (mobile-only skip: NAEKI_SKIP_MOBILE=1 git commit)
+set -u
+if [ -n "${NAEKI_SKIP:-}" ]; then exit 0; fi
+
+node "$(dirname "$0")/../scripts/validate.mjs"
+status=$?
+if [ $status -ne 0 ]; then
+  echo "NAEKI-CHECK: commit blocked by failing validation (see above)." >&2
+  echo "NAEKI-CHECK: fix the problems, or run: NAEKI_SKIP=1 git commit --no-verify" >&2
+  exit $status
+fi
+
+# rendered mobile audit (Electron offscreen at 390px) — the layout checks
+# file-level validation cannot see. Skip with NAEKI_SKIP_MOBILE=1.
+if [ -z "${NAEKI_SKIP_MOBILE:-}" ]; then
+  npx electron "$(dirname "$0")/../scripts/audit-mobile.js"
+  status=$?
+  if [ $status -ne 0 ]; then
+    echo "NAEKI-MOBILE: commit blocked — mobile layout audit failed (see above)." >&2
+    echo "NAEKI-MOBILE: fix styles.css, or skip in a pinch: NAEKI_SKIP_MOBILE=1 git commit" >&2
+    exit $status
+  fi
+fi
+exit 0

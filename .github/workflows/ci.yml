@@ -1,0 +1,26 @@
+# Naeki CI — GitHub Actions (dormant until a remote exists; it's just a file).
+# The check is zero-dependency, so this deliberately does NOT `npm ci`:
+# nothing here touches node_modules, and skipping it avoids downloading
+# Electron in CI. When unit tests / lint land, add `npm ci` + a test step here.
+#
+# This file is inert on a repo with no remote. The same check already runs locally:
+# commit-time via .githooks/pre-commit (core.hooksPath), and on demand via `npm run check`.
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/validate.mjs

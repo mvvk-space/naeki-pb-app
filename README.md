@@ -23,6 +23,23 @@ npm start       # launches the Electron window
 cd src && python3 -m http.server 8000
 ```
 
+## Quality gates
+
+- `npm run check` — zero-dep file-level validation (JS syntax, JSON, data-layer
+  integrity, assets, featured rotation). Runs in `.githooks/pre-commit`.
+- `npm run check:mobile` — **rendered** mobile-layout audit: real Electron at
+  390px, both shells, every view. Catches what file checks can't see — horizontal
+  overflow, off-viewport elements, grids that didn't collapse, undersized touch
+  targets, modals that don't fit. Also runs in `.githooks/pre-commit`.
+- `npm run check:all` — both, in order.
+- `NAEKI_AUDIT_BREAK=1 npm run check:mobile` — audit self-test: plants a 520px
+  defect in the active view; the audit must catch it (exit 0 = detector works).
+- Skip in a pinch: `NAEKI_SKIP_MOBILE=1 git commit` (mobile only) or
+  `NAEKI_SKIP=1 git commit` (everything).
+
+GitHub Actions runs the file-level check only (`.github/workflows/ci.yml`) — the
+rendered audit needs a display + Electron and stays local to the pre-commit hook.
+
 ## What's inside
 
 The app has two modes over one codebase — a **landing experience** (signed out)

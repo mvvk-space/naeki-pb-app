@@ -1,7 +1,7 @@
 {
   "name": "naeki-sushi-showcase",
   "productName": "Naeki Sushi Showcase",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Showcase app for Naeki Sushi — premium onigiri & sushi grab-and-go, Bangkok",
   "main": "main.js",
   "scripts": {

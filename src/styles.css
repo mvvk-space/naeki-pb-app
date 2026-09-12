@@ -1359,8 +1359,8 @@ a:hover { text-decoration: underline; }
   .lp-brand .brand-mark { width: 26px; height: 26px; flex: 0 0 26px; }
   .lp-nav { gap: 0; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
   .lp-nav::-webkit-scrollbar { display: none; }
-  .lp-link { padding: 8px 9px; font-size: 12px; white-space: nowrap; }
-  .lp-header .btn { padding: 8px 12px; font-size: 11.5px; }
+  .lp-link { padding: 10px 9px; font-size: 12px; white-space: nowrap; }
+  .lp-header .btn { padding: 10px 12px; font-size: 11.5px; }
   #landing .view { padding: 0 18px 60px; }
   #landing .view.active { padding-top: 24px; }
 

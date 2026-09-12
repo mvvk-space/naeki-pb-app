@@ -61,7 +61,15 @@
     // ✓ in the inbox); the ack key pins that exact composition, so the same
     // weekly deal returns next week and a "welcome back" nudge can re-fire
     // after it fires anew. Nothing is synced — this ledger is the device's.
-    offerAcks: {}                 // { "weekday|kicker|title": { ts, via } }
+    offerAcks: {},                 // { "weekday|kicker|title": { ts, via } }
+    // brand-portal work: offers a franchise partner drafts for their own
+    // branch, and what's been approved + published. Local and honest like
+    // everything else — the portal is a demo of the send flow, and "sent to
+    // N subscribers" is a seeded number (see data.js SUBSCRIBERS), because
+    // there's no server-side fan-out here. A published offer reaches this
+    // device's Rewards bell only if THIS device subscribes to that branch.
+    franchiseDrafts: [],           // [{ id, branchId, title, text, tag, status, submittedAt }]
+    publishedOffers: []           // [{ uid, branchId, kicker, title, text, tag, sentAt, sendCount }]
   };
 
   /* loyalty store events — app.js subscribes to repaint tier/offers UI */
@@ -107,7 +115,18 @@
           !Array.isArray(saved.offerAcks))
           ? Object.fromEntries(Object.entries(saved.offerAcks)
               .filter(([k, v]) => k && v && typeof v === "object" && v.via))
-          : {}
+          : {},
+        // brand-portal drafts: branch names must still exist in the data layer
+        franchiseDrafts: Array.isArray(saved.franchiseDrafts)
+          ? saved.franchiseDrafts.filter(d =>
+              d && typeof d.branchId === "string" &&
+              window.NaekiData?.BRANCHES?.some(b => b.name === d.branchId))
+          : [],
+        publishedOffers: Array.isArray(saved.publishedOffers)
+          ? saved.publishedOffers.filter(o =>
+              o && typeof o.branchId === "string" &&
+              window.NaekiData?.BRANCHES?.some(b => b.name === o.branchId))
+          : []
       };
     } catch {
       // private browsing, disabled storage, corrupt JSON → fresh state
@@ -462,6 +481,85 @@
       state.offerAcks = {};
       persist();
       return state.offerAcks;
+    },
+
+    /* ---------------- brand portal (franchise drafts → approval → publish) ---------------- */
+
+    /** live copy of franchise drafts + published offers */
+    franchiseDraftsState: () => state.franchiseDrafts,
+    publishedOffersState: () => state.publishedOffers,
+
+    /** franchisee drafts an offer for their branch (status: draft).
+        Branch is the franchisee's own — derived here, not client-chosen,
+        so a branch admin can only ever create for the branch they hold. */
+    createDraft({ branchId, title, text, tag }) {
+      const valid = window.NaekiData?.BRANCHES?.some(b => b.name === (branchId || ""));
+      title = String(title || "").trim().slice(0, 60);
+      text  = String(text  || "").trim().slice(0, 160);
+      if (!valid || !title || !text) return null;
+      const draft = { id: "id" + Date.now(), branchId, title, text,
+        tag: tag || "deal", status: "draft", submittedAt: 0 };
+      state.franchiseDrafts.push(draft);
+      persist();
+      return draft;
+    },
+
+    /** update a draft that's still in draft status (edits). */
+    updateDraft(id, { title, text, tag }) {
+      const d = state.franchiseDrafts.find(x => x.id === id);
+      if (!d || d.status !== "draft") return null;
+      if (typeof title === "string")  d.title = title.trim().slice(0, 60) || d.title;
+      if (typeof text  === "string")  d.text  = text.trim().slice(0, 160) || d.text;
+      if (tag) d.tag = tag;
+      persist();
+      return d;
+    },
+
+    /** franchisee submits a draft → pending, ready for marketing review. */
+    submitDraft(id) {
+      const d = state.franchiseDrafts.find(x => x.id === id);
+      if (!d || d.status !== "draft") return null;
+      d.status = "pending";
+      d.submittedAt = Date.now();
+      persist();
+      return d;
+    },
+
+    /** marketing-admin review: approve → published to N (seeded) subscribers
+        + merged into the offers feed; return → back to draft for rework.
+        publishCount comes from the data layer (seeded demo figures). */
+    reviewDraft(id, decision) {
+      const d = state.franchiseDrafts.find(x => x.id === id);
+      if (!d || d.status !== "pending") return null;
+      if (decision === "approve") {
+        const sendCount = window.NaekiData?.subscriberCountOf
+          ? window.NaekiData.subscriberCountOf(d.branchId) : 1;
+        const pub = {
+          uid: "pub" + Date.now() + Math.floor(Math.random() * 1e4),
+          branchId: d.branchId,
+          kicker: window.NaekiData.branchKicker(d.branchId),
+          title: d.title, text: d.text, tag: d.tag,
+          sentAt: Date.now(), sendCount
+        };
+        state.publishedOffers.unshift(pub);
+        d.status = "approved";
+        persist();
+        return pub;
+      }
+      if (decision === "return") {
+        d.status = "draft";
+        d.submittedAt = 0;
+        persist();
+        return d;
+      }
+      return null;
+    },
+
+    /** remove a draft (franchisee discards; nothing was sent). */
+    deleteDraft(id) {
+      state.franchiseDrafts = state.franchiseDrafts.filter(x => x.id !== id);
+      persist();
+      return state.franchiseDrafts.slice();
     }
   };
 

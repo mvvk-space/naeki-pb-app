@@ -184,6 +184,128 @@
     applyMode();
   });
 
+  /* ---------------- Partner portal (landing) — the send-flow demo ----------------
+     Two local personas, one store. Franchisee drafts for their branch, submits;
+     marketing admin approves → published (to a seeded subscriber count) and merged
+     into the offers feed. Everything stays on-device — see the portal disclaimer. */
+  const $id = (x) => document.getElementById(x);
+  const personaBox = $id("pt-persona");
+  const frPane = $id("pt-franchisee");
+  const adPane = $id("pt-admin");
+  const branchSel = $id("pt-branch");
+  const myDraftsEl = $id("pt-my-drafts");
+  const reviewEl = $id("pt-review-list");
+  const sentEl = $id("pt-sent");
+
+  function fillBranchSel() {
+    if (!branchSel) return;
+    branchSel.innerHTML = D.BRANCHES.map(b =>
+      `<option value="${b.name}">${b.name}</option>`).join("");
+  }
+  fillBranchSel();
+
+  const PT_STATUS = { draft: "Draft", pending: "Awaiting approval", approved: "Approved" };
+
+  function ptPublishedCard(po) {
+    return `\
+      <div class="pt-item pt-sent">
+        <div class="pt-item-top">
+          <span class="pt-tag">${po.kicker || "From your branch"}</span>
+          <span class="pt-when">${fmtWhen(po.sentAt)}</span>
+        </div>
+        <div class="pt-item-title">${po.title}</div>
+        <p>${po.text}</p>
+        <span class="pt-sub">Sent to ${po.sendCount} subscriber${po.sendCount === 1 ? "" : "s"}</span>
+      </div>`;
+  }
+
+  function renderPt() {
+    if (!myDraftsEl) return;
+    const drafts = S.franchiseDraftsState();
+
+    const mine = drafts.filter(d => d.status !== "approved");
+    myDraftsEl.innerHTML = mine.length
+      ? mine.map(d => {
+          const canSubmit = d.status === "draft";
+          const canDel = d.status === "draft";
+          return `\
+            <div class="pt-item">
+              <div class="pt-item-top">
+                <span class="pt-tag">${PT_STATUS[d.status]}</span>
+                <span class="pt-branch">${D.shortName({ name: d.branchId })}</span>
+              </div>
+              <div class="pt-item-title">${d.title}</div>
+              <p>${d.text}</p>
+              <div class="pt-item-actions">
+                ${canSubmit ? `<button class="btn ghost sm" data-ptsubmit="${d.id}">Submit for approval</button>` : ""}
+                ${canDel ? `<button class="btn ghost sm" data-ptdel="${d.id}">Discard</button>` : ""}
+              </div>
+            </div>`;
+        }).join("")
+      : `<div class="pt-empty">No drafts yet — draft an offer above.</div>`;
+
+    const pending = drafts.filter(d => d.status === "pending");
+    reviewEl.innerHTML = pending.length
+      ? pending.map(d => `\
+          <div class="pt-item">
+            <div class="pt-item-top">
+              <span class="pt-tag">${d.title}</span>
+              <span class="pt-branch">${D.shortName({ name: d.branchId })}</span>
+            </div>
+            <p>${d.text}</p>
+            <div class="pt-item-actions">
+              <button class="btn accent sm" data-ptapprove="${d.id}">Approve & send</button>
+              <button class="btn ghost sm" data-ptreturn="${d.id}">Return for edits</button>
+            </div>
+          </div>`).join("")
+      : `<div class="pt-empty">Nothing awaiting approval right now.</div>`;
+
+    const sent = S.publishedOffersState();
+    sentEl.innerHTML = sent.length
+      ? sent.map(ptPublishedCard).join("")
+      : `<div class="pt-empty">Nothing sent yet — published offers land here.</div>`;
+  }
+
+  if (personaBox) {
+    $$("[data-ptrole]", personaBox).forEach(btn => {
+      btn.addEventListener("click", () => {
+        const role = btn.dataset.ptrole;
+        frPane.hidden = role !== "franchisee";
+        adPane.hidden = role !== "admin";
+        renderPt();
+      });
+    });
+  }
+
+  const draftForm = $id("pt-draft-form");
+  draftForm && draftForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const made = S.createDraft({
+      branchId: branchSel.value,
+      title: $id("pt-title").value,
+      text: $id("pt-text").value
+    });
+    if (made) { $id("pt-title").value = ""; $id("pt-text").value = ""; renderPt(); }
+  });
+
+  [myDraftsEl, reviewEl].forEach(root => root && root.addEventListener("click",
+    (e) => {
+      const t = e.target;
+      if (t.matches("[data-ptsubmit]")) { S.submitDraft(t.dataset.ptsubmit); renderPt(); }
+      else if (t.matches("[data-ptdel]")) { S.deleteDraft(t.dataset.ptdel); renderPt(); }
+      else if (t.matches("[data-ptapprove]")) { S.reviewDraft(t.dataset.ptapprove, "approve"); renderPt(); syncBellAndPop(); }
+      else if (t.matches("[data-ptreturn]")) { S.reviewDraft(t.dataset.ptreturn, "return"); renderPt(); }
+    }));
+
+  D.subscribe("refresh", () => renderPt());
+  const partnersView = $id("view-partners");
+  if (partnersView) {
+    new MutationObserver(() => {
+      if (partnersView.classList.contains("active")) renderPt();
+    }).observe(partnersView, { attributes: true, attributeFilter: ["class"] });
+  }
+  renderPt();
+
   /* ---------------- Live frames (turbo-frames-style) ----------------
      Landing regions are data-frame mounts (see frames.js). Each renderer
      sources from the data layer, so a business-data edit — hours, menu,
@@ -793,7 +915,8 @@
     const acks = S.offerAcksState();
     const list = D.offers({
       history: lo.history, points: lo.points,
-      subscribedBranches: S.subscribedBranchesState()
+      subscribedBranches: S.subscribedBranchesState(),
+      publishedOffers: S.publishedOffersState()
     })
       .filter(o => o.live)
       .map(o => ({ ...o, key: offerKey(o, weekday) }))
@@ -881,7 +1004,8 @@
     const acks = S.offerAcksState();
     const list = D.offers({
       history: lo.history, points: lo.points,
-      subscribedBranches: S.subscribedBranchesState()
+      subscribedBranches: S.subscribedBranchesState(),
+      publishedOffers: S.publishedOffersState()
     });
     const live = list.filter(o => o.live && !acks[offerKey(o, weekday)]);
     rwNote.textContent = acks && Object.keys(acks).length

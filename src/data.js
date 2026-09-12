@@ -367,6 +367,28 @@ window.NaekiData = (() => {
     return stripped || b.name;
   }
 
+  /* short "notifications from X" label used by published offers (the bell's
+     kicker line): reuse shortName so a published offer reads as coming from
+     that branch. Accepts a branch record OR its name. */
+  function branchKicker(nameOrRecord) {
+    const b = typeof nameOrRecord === "string"
+      ? BRANCHES.find(x => x.name === nameOrRecord) : nameOrRecord;
+    if (!b) return "your branch";
+    return "From " + shortName(b);
+  }
+
+  /* seeded demo subscriber figure per branch — stands in for the server-side
+     registry of "who subscribed to this branch". Deterministic from the branch
+     name so it looks stable, and flagship (larger) branches read higher than
+     GO! kiosks. Honest: this is a number, not a send — see store comments. */
+  function subscriberCountOf(branchName) {
+    const b = BRANCHES.find(x => x.name === branchName);
+    if (!b) return 12;
+    let n = 38;
+    for (let i = 0; i < branchName.length; i++) n += branchName.charCodeAt(i) % 7;
+    return b.kind === "flagship" ? n * 2 : n;
+  }
+
   /* true when the branch is still serving (naeki.co publishes closing
      times only; unknown hours are treated as open rather than claiming closed) */
   function isOpenNow(branch, now = bangkokParts()) {
@@ -481,12 +503,27 @@ window.NaekiData = (() => {
     return new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
   }
 
-  /* the offers inbox: weekly brand deals + locally-personalized matches */
+  /* the offers inbox: weekly brand deals + locally-personalized matches +
+     published franchise offers (reach you only if this device subscribes to
+     that branch — the "from your branches" notifications) */
   function offers(opts = {}) {
     const history = opts.history || [];
     const now = opts.now || Date.now();
     const weekday = bangkokWeekday(now);
     const out = [];
+
+    // published offers from the brand portal: delivered through the bell,
+    // but only surfaced when THIS device has subscribed to the sending branch
+    // (opts.publishedOffers comes from the store each call).
+    const subSet = opts.subscribedBranches || [];
+    for (const po of (opts.publishedOffers || [])) {
+      if (!subSet.includes(po.branchId)) continue;   // not subscribed → not shown
+      out.push({
+        kicker: po.kicker || "From your branch",
+        title: po.title, text: po.text,
+        tag: po.tag || "deal", personal: false, branchOffer: true, live: true
+      });
+    }
 
     const WEEKLY = [
       { day: 1, kicker: "Monday set",   title: "Onigiri + Iced Matcha 89฿",
@@ -693,6 +730,7 @@ window.NaekiData = (() => {
     MENU, ALSO, BRANCHES, REVIEWS, INFO, LANDING,
     subscribe, publish,
     bangkokParts, toMins, isOpenNow, shortName, stats, featured, order,
+    branchKicker, subscriberCountOf,
     // chat → line handoff
     CHAT_ROUTES, chatTopics,
     // loyalty engine

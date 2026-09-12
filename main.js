@@ -9,14 +9,15 @@ function createWindow () {
     minHeight: 700,
     backgroundColor: '#101012',
     autoHideMenuBar: true,
-    icon: path.join(__dirname, 'assets', 'icon.png'),
+    icon: path.join(__dirname, 'src', 'assets', 'icon.png'),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false
     }
   });
 
-  win.loadFile('index.html', { query: { v: '1.2.0' } });
+  // renderer is the shared src/ core — same files the PWA serves
+  win.loadFile(path.join(__dirname, 'src', 'index.html'), { query: { v: '1.4.0' } });
 
   // open external links (maps, line, etc.) in the default browser
   win.webContents.setWindowOpenHandler(({ url }) => {

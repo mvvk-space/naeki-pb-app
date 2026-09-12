@@ -187,6 +187,86 @@
   branchSearch.addEventListener("input", renderBranches);
   renderBranches();
 
+  /* ---------------- Stamp card (local demo, via NaekiStore) ---------------- */
+  const S = window.NaekiStore;
+  const stampGrid = $("#stamp-grid");
+  const stampCount = $("#stamp-count");
+  const stampTotal = $("#stamp-total");
+  const stampFill = $("#stamp-progress-fill");
+  const stampHistory = $("#stamp-history");
+  const stampRedeem = $("#stamp-redeem");
+
+  // one triangular onigiri stamp, reused for every slot
+  const STAMP_SVG = `
+    <svg viewBox="0 0 40 36" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path class="st-body" d="M20 3 L34.5 28.5 Q35.4 31 32.5 31 L7.5 31 Q4.6 31 5.5 28.5 Z"/>
+      <rect class="st-nori" x="16" y="21" width="8" height="7" rx="2"/>
+      <circle class="st-salmon" cx="14" cy="11" r="2.6"/>
+    </svg>`;
+
+  function fmtWhen(ts) {
+    return new Date(ts).toLocaleString(undefined, {
+      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  function renderStamps() {
+    const card = S.card();
+    const n = card.stamps.length;
+
+    stampGrid.innerHTML = "";
+    for (let i = 0; i < card.size; i++) {
+      const slot = document.createElement("div");
+      slot.className = "stamp-slot" + (i < n ? " filled" : "");
+      slot.innerHTML = STAMP_SVG;
+      stampGrid.appendChild(slot);
+    }
+    stampCount.textContent = n;
+    stampTotal.textContent = "/ " + card.size;
+    stampFill.style.width = (n / card.size) * 100 + "%";
+    stampRedeem.disabled = n < card.size;
+
+    stampHistory.innerHTML = "";
+    const entries = [
+      ...card.redemptions.map(r => ({ ts: r.ts, cls: "redeem", text: `Redeemed — ${r.reward} (${r.stampCount} stamps)` })),
+      ...card.stamps.map(s => ({ ts: s.ts, cls: "stamp", text: "Stamp collected" }))
+    ].sort((a, b) => b.ts - a.ts);
+
+    if (!entries.length) {
+      const li = document.createElement("li");
+      li.className = "stamp-empty";
+      li.textContent = "No stamps yet — collect your first one.";
+      stampHistory.appendChild(li);
+    } else {
+      entries.forEach(e => {
+        const li = document.createElement("li");
+        li.className = e.cls;
+        li.innerHTML = `<span class="sh-what"></span><span class="sh-when"></span>`;
+        li.querySelector(".sh-what").textContent = e.text;
+        li.querySelector(".sh-when").textContent = fmtWhen(e.ts);
+        stampHistory.appendChild(li);
+      });
+    }
+  }
+
+  $("#stamp-add").addEventListener("click", () => {
+    S.addStamp();
+    const n = S.card().stamps.length;
+    if (n === S.card().size) $("#stamp-redeem").focus();
+    renderStamps();
+  });
+
+  stampRedeem.addEventListener("click", () => {
+    if (S.redeem("Free drink (demo)")) renderStamps();
+  });
+
+  $("#stamp-reset").addEventListener("click", () => {
+    S.reset();
+    renderStamps();
+  });
+
+  renderStamps();
+
   /* ---------------- Modal ---------------- */
   const modal = $("#modal");
   function openModal(item, group) {
@@ -220,6 +300,15 @@
   /* ---------------- Clock loop ---------------- */
   tickClock();
   setInterval(tickClock, 1000);
+
+  /* ---------------- PWA service worker ----------------
+     Only registers when actually served over http(s) — the Electron build
+     loads via file://, and dev file:// opens shouldn't error in console. */
+  if ("serviceWorker" in navigator &&
+      (location.protocol === "https:" ||
+       ["localhost", "127.0.0.1"].includes(location.hostname))) {
+    navigator.serviceWorker.register("sw.js").catch(() => { /* offline-first still works without it */ });
+  }
 
   /* ---------------- Splash sequence ----------------
      stand draws → ball rolls → POP! (onigiri + stars) → fade to app.

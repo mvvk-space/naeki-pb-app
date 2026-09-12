@@ -3,7 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://www.google.com https://www.gstatic.com; style-src 'self'; script-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101012" />
   <title>Naeki Sushi — Bangkok Showcase</title>
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" href="assets/icon.png" />
 </head>
@@ -105,14 +108,17 @@
         <button class="side-link" data-view="branches">
           <span class="n">02</span> Branches
         </button>
+        <button class="side-link" data-view="stamps">
+          <span class="n">03</span> Stamp Card
+        </button>
         <button class="side-link" data-view="order">
-          <span class="n">03</span> Order &amp; Info
+          <span class="n">04</span> Order &amp; Info
         </button>
         <button class="side-link" data-view="franchise">
-          <span class="n">04</span> Franchise
+          <span class="n">05</span> Franchise
         </button>
         <button class="side-link" data-view="about">
-          <span class="n">05</span> About Naeki
+          <span class="n">06</span> About Naeki
         </button>
       </nav>
 
@@ -208,6 +214,59 @@
         <div id="branch-list" class="branch-list"></div>
       </section>
 
+      <!-- ================= STAMP CARD VIEW ================= -->
+      <section id="view-stamps" class="view">
+        <header class="view-head">
+          <h2>Stamp card <span class="jp-inline" lang="ja">スタンプカード</span></h2>
+          <p>
+            Your personal collecting card — ten stamps, one treat. Everything is
+            stored only on this device; nothing is sent anywhere.
+          </p>
+        </header>
+
+        <!-- the card -->
+        <div class="stamp-card" aria-label="Naeki stamp card">
+          <div class="stamp-card-head">
+            <div>
+              <div class="oc-kicker">Naeki · collect 10</div>
+              <h3 id="stamp-progress-label">Stamps toward a treat</h3>
+            </div>
+            <div class="stamp-count">
+              <strong id="stamp-count">0</strong><span id="stamp-total">/ 10</span>
+            </div>
+          </div>
+
+          <div class="stamp-grid" id="stamp-grid" role="img" aria-labelledby="stamp-progress-label"><!-- slots injected by app.js --></div>
+
+          <div class="stamp-progress-track" aria-hidden="true">
+            <div class="stamp-progress-fill" id="stamp-progress-fill"></div>
+          </div>
+
+          <div class="stamp-actions">
+            <button class="btn accent" id="stamp-add">Add a stamp</button>
+            <button class="btn ghost" id="stamp-redeem" disabled>Redeem treat</button>
+            <button class="btn ghost" id="stamp-reset">Reset card</button>
+          </div>
+        </div>
+
+        <!-- history -->
+        <div class="stamp-history-head">
+          <h3>Card history</h3>
+          <span class="rule"></span>
+          <span class="n-items">newest first</span>
+        </div>
+        <ul class="stamp-history" id="stamp-history"><!-- entries injected by app.js --></ul>
+
+        <div class="disclaimer">
+          <p>
+            Demo feature — stamps here are self-issued by you; no Naeki branch
+            scans or honors this card, and it is not affiliated with
+            Naeki Sushi Co., Ltd. A real loyalty program would need the brand's
+            own involvement. Your stamps and history never leave this device.
+          </p>
+        </div>
+      </section>
+
       <!-- ================= ORDER VIEW ================= -->
       <section id="view-order" class="view">
         <header class="view-head">
@@ -256,6 +315,11 @@
             from naeki.co, Google Maps and Naeki's public listings. Menu items rotate daily;
             prices vary by branch — check the LINE OA for today's menu. Not affiliated with
             Naeki Sushi Co., Ltd.
+            <br /><br />
+            On iPhone or Android you can install this showcase to your home screen:
+            in Safari, tap <strong>Share</strong> → <strong>Add to Home Screen</strong>
+            (Chrome: menu → <strong>Add to Home screen</strong>). It then runs full-screen,
+            offline, just like the desktop app.
           </p>
         </div>
       </section>
@@ -641,6 +705,7 @@
   </div>
 
   <script src="menu-data.js"></script>
+  <script src="store.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

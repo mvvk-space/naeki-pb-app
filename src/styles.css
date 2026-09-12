@@ -1026,3 +1026,179 @@ a:hover { text-decoration: underline; }
   .fr-steps { grid-template-columns: 1fr; }
   .fr-step::after { content: none !important; }
 }
+
+/* ---------------- STAMP CARD VIEW ---------------- */
+
+.jp-inline {
+  font-size: 0.55em;
+  letter-spacing: 0.2em;
+  color: var(--salmon);
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.stamp-card {
+  margin-top: 30px;
+  background: var(--ink-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 26px 28px 24px;
+  max-width: 620px;
+}
+
+.stamp-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.stamp-card-head h3 { font-family: var(--font-display); font-size: 21px; margin-top: 4px; }
+
+.stamp-count { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; }
+.stamp-count strong {
+  font-family: var(--font-display);
+  font-size: 40px;
+  line-height: 1;
+  color: var(--salmon);
+}
+.stamp-count span { font-family: var(--font-mono); font-size: 14px; color: var(--paper-dim); }
+
+/* 5-up on desktop, stamps flip from outline to inked as they fill */
+.stamp-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.stamp-slot {
+  aspect-ratio: 5 / 4;
+  border: 1.5px dashed #3d3d46;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--ink-2);
+}
+.stamp-slot svg { width: 34px; height: 31px; opacity: 0.28; }
+.stamp-slot .st-body { stroke: var(--paper); stroke-width: 2.4; fill: none; }
+.stamp-slot .st-nori { fill: var(--nori); }
+.stamp-slot .st-salmon { fill: var(--salmon); }
+
+.stamp-slot.filled {
+  border-style: solid;
+  border-color: rgba(255, 138, 60, 0.55);
+  background: rgba(255, 138, 60, 0.08);
+}
+.stamp-slot.filled svg { opacity: 1; animation: stamp-pop 0.3s cubic-bezier(0.34, 1.7, 0.5, 1); }
+.stamp-slot.filled .st-body { stroke: var(--salmon); fill: rgba(255, 138, 60, 0.12); }
+
+@keyframes stamp-pop {
+  0% { transform: scale(0.4); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.stamp-progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--ink-2);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.stamp-progress-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: repeating-linear-gradient(-45deg, var(--salmon) 0 8px, var(--salmon-deep) 8px 16px);
+  transition: width 0.35s cubic-bezier(0.25, 1.4, 0.45, 1);
+}
+
+.stamp-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.stamp-actions .btn { margin-top: 0; }
+.stamp-actions .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+.stamp-history-head {
+  margin-top: 36px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.stamp-history-head h3 { font-family: var(--font-display); font-size: 21px; }
+.stamp-history-head .rule { flex: 1; height: 1px; background: var(--line); }
+.stamp-history-head .n-items { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--paper-dim); }
+
+.stamp-history {
+  list-style: none;
+  max-width: 620px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stamp-history li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  background: var(--ink-1);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px 15px;
+  font-size: 13px;
+}
+.stamp-history .sh-when { font-family: var(--font-mono); font-size: 10px; color: var(--paper-dim); white-space: nowrap; }
+.stamp-history li.stamp .sh-what::before { content: "◉ "; color: var(--salmon); }
+.stamp-history li.redeem .sh-what::before { content: "★ "; color: var(--wasabi); }
+.stamp-history li.redeem .sh-what { color: var(--paper); }
+.stamp-history .stamp-empty {
+  border-style: dashed;
+  color: var(--paper-dim);
+  justify-content: center;
+}
+
+/* ---------------- PHONE (~400px) ---------------- */
+
+@media (max-width: 640px) {
+  #app { height: 100vh; height: 100dvh; }
+
+  /* sidebar folds into a compact top bar: brand row + scrollable nav */
+  #sidebar {
+    padding: 10px 16px 0;
+    flex-wrap: wrap;
+    row-gap: 0;
+  }
+  .brand { width: 100%; flex-direction: row; align-items: center; gap: 9px; }
+  .brand-mark { width: 26px; height: 26px; margin: 0; }
+  .brand-name { font-size: 16px; letter-spacing: 0.1em; }
+  .brand-name span { margin-left: 5px; font-size: 9px; }
+  .side-nav {
+    width: 100%;
+    margin: 8px 0 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    gap: 2px;
+  }
+  .side-nav::-webkit-scrollbar { display: none; }
+  .side-link {
+    padding: 12px 13px;      /* ≥ 44px touch target with font */
+    font-size: 13.5px;
+    white-space: nowrap;
+    border-radius: 10px 10px 0 0;
+  }
+  .side-link.active { border-radius: 10px; }
+
+  .view { padding: 24px 18px 60px; }
+  .hero h1 { font-size: 34px; }
+  .hero-facts { gap: 18px; }
+  .fact strong { font-size: 21px; }
+  .search-wrap { width: 100%; }
+  #menu-search { width: 100%; }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .stamp-card { padding: 20px 18px 18px; }
+  .stamp-grid { gap: 8px; }
+  .stamp-slot svg { width: 28px; height: 26px; }
+  .ab-banner-copy, .fr-banner-copy { padding: 24px 20px; }
+  .ab-pair { grid-template-columns: 1fr; }
+  .modal-card { width: calc(100vw - 24px); max-height: calc(100dvh - 40px); }
+}

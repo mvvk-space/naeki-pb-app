@@ -8,6 +8,9 @@ research_*.txt
 menu_images_en.json
 branch_links.json
 
+# standalone dev test probes (e.g. .dev-pixel-test.html) — harnesses, not the app
+.dev-*.html
+
 # OS / editor noise
 .DS_Store
 Thumbs.db

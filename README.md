@@ -25,12 +25,19 @@ cd src && python3 -m http.server 8000
 
 ## What's inside
 
-| View | Contents |
-|---|---|
-| **Menu** | 38 highlighted dishes across 6 categories (onigiri, nigiri, rolls, sashimi & sets, donburi & bento, drinks & sweets) with real product photography, click-for-story modal, live search, category chips, plus a strip of the other ~54 daily items |
-| **Branches** | All 20 Bangkok branches with live **open/closed status** computed against Bangkok time, flagship vs GO! kiosk badges, Google Maps deep links, search |
-| **Stamp Card** | Local demo loyalty card — collect 10 stamps, redeem a treat, history log. Self-issued; stored only on-device (`localStorage` via `src/store.js`), never sent anywhere |
-| **Order & Info** | LINE OA, flagship counter phone, catering line, HQ address, socials |
+The app has two modes over one codebase — a **landing experience** (signed out)
+and an **app experience** (signed in with a local, on-device display name; no
+accounts, nothing leaves the device). Every component is shared by both modes;
+mode only changes which nav links are visible and the default view.
+
+| View | Modes | Contents |
+|---|---|---|
+| **Home** | landing | Landing page — hero, featured menu overview (same dish cards the app menu uses), About & Franchise teasers, sign-in CTA |
+| **Menu** | both | 38 highlighted dishes across 6 categories (onigiri, nigiri, rolls, sashimi & sets, donburi & bento, drinks & sweets) with real product photography, click-for-story modal, live search, category chips, plus a strip of the other ~54 daily items |
+| **Branches** | app | All 20 Bangkok branches with live **open/closed status** computed against Bangkok time, flagship vs GO! kiosk badges, Google Maps deep links, search |
+| **Stamp Card** | app | Local demo loyalty card — collect 10 stamps, redeem a treat, history log. Self-issued; stored only on-device (`localStorage` via `src/store.js`), never sent anywhere |
+| **Order & Info** | app | LINE OA, flagship counter phone, catering line, HQ address, socials |
+| **About / Franchise** | landing | Brand story, kiosk gallery, FAQ / franchise pitch from naeki.co |
 
 Also: a live Bangkok clock in the sidebar, real Google-review quotes,
 and the actual BTS Siam kiosk photo as the hero.

@@ -102,25 +102,39 @@
       </div>
 
       <nav class="side-nav" aria-label="Sections">
-        <button class="side-link active" data-view="menu">
-          <span class="n">01</span> Menu
+        <button class="side-link active" data-view="home" data-modes="landing">
+          <span class="n">01</span> Home
         </button>
-        <button class="side-link" data-view="branches">
-          <span class="n">02</span> Branches
+        <button class="side-link" data-view="menu" data-modes="landing app">
+          <span class="n">02</span> Menu
         </button>
-        <button class="side-link" data-view="stamps">
-          <span class="n">03</span> Stamp Card
+        <button class="side-link" data-view="branches" data-modes="app">
+          <span class="n">03</span> Branches
         </button>
-        <button class="side-link" data-view="order">
-          <span class="n">04</span> Order &amp; Info
+        <button class="side-link" data-view="stamps" data-modes="app">
+          <span class="n">04</span> Stamp Card
         </button>
-        <button class="side-link" data-view="franchise">
-          <span class="n">05</span> Franchise
+        <button class="side-link" data-view="order" data-modes="app">
+          <span class="n">05</span> Order &amp; Info
         </button>
-        <button class="side-link" data-view="about">
-          <span class="n">06</span> About Naeki
+        <button class="side-link" data-view="franchise" data-modes="landing">
+          <span class="n">06</span> Franchise
+        </button>
+        <button class="side-link" data-view="about" data-modes="landing">
+          <span class="n">07</span> About Naeki
         </button>
       </nav>
+
+      <!-- landing-mode CTA; app-mode shows greeting + sign-out -->
+      <button class="btn accent side-cta" id="side-open-app">Open the app</button>
+
+      <div class="side-session" id="side-session" hidden>
+        <div class="session-greeting" id="session-greeting"></div>
+        <button class="side-signout" id="side-signout">Sign out</button>
+        <div class="side-more">
+          <button data-view="about">About</button><span>·</span><button data-view="franchise">Franchise</button>
+        </div>
+      </div>
 
       <div class="side-foot">
         <div class="hazard-strip" aria-hidden="true"></div>
@@ -135,7 +149,91 @@
     <!-- ============ MAIN ============ -->
     <main id="main">
 
-      <!-- ================= MENU VIEW ================= -->
+      <!-- ================= LANDING HOME VIEW ================= -->
+    <section id="view-home" class="view">
+
+      <header class="hero home-hero">
+        <div class="hero-copy">
+          <div class="hero-kicker">Premium grab &amp; go · Bangkok <span lang="ja">· 東京式</span></div>
+          <h1>The art &amp; science<br />of <em>onigiri</em>.</h1>
+          <p class="hero-sub">
+            Hand-shaped to order, fresh every day, no preservatives.
+            Naeki puts chef-grade sushi and onigiri where Bangkok actually lives —
+            along the BTS &amp; MRT lines, one perfect bite at a time.
+          </p>
+          <div class="home-hero-actions">
+            <button class="btn accent" id="home-open-app">Open the app</button>
+            <button class="btn ghost" id="home-browse-menu">Browse the menu</button>
+          </div>
+          <div class="hero-facts">
+            <div class="fact"><strong>2013</strong><span>founded, All Seasons Place</span></div>
+            <div class="fact"><strong>20</strong><span>branches across the city</span></div>
+            <div class="fact"><strong>4.7★</strong><span>BTS Siam flagship · 210 reviews</span></div>
+          </div>
+        </div>
+        <figure class="hero-photo">
+          <img src="assets/kiosk_siam.jpg" alt="Naeki Sushi kiosk at BTS Siam station" />
+          <figcaption>The Naeki kiosk — BTS Siam station</figcaption>
+        </figure>
+      </header>
+
+      <!-- featured overview: same dishCard component the app menu uses -->
+      <div class="home-featured-head">
+        <h3>From the daily case</h3>
+        <span class="rule"></span>
+        <button class="link-more" id="home-full-menu">Full menu →</button>
+      </div>
+      <p class="home-featured-sub">
+        A taste of the line-up — the menu rotates daily, every piece shaped at the counter.
+      </p>
+      <div class="dish-grid home-featured" id="home-dishes"><!-- injected by app.js --></div>
+
+      <!-- teasers into the two marketing views -->
+      <div class="home-teasers">
+        <div class="home-teaser">
+          <figure><img src="assets/about/chef_hands.png" alt="A sushi chef's hands shaping nigiri" /></figure>
+          <div class="ht-copy">
+            <div class="oc-kicker">Since 2013</div>
+            <h3>A familiar brand, loved by Thais for over a decade</h3>
+            <p>From the first counter at CRC Tower, All Seasons Place to kiosks along
+               the city's commute — fresh, fast, preservative-free.</p>
+            <button class="link-more" data-view="about">Read the story →</button>
+          </div>
+        </div>
+        <div class="home-teaser">
+          <figure><img src="assets/franchise/Fresh-Opportunity-1.png" alt="A Naeki onigiri held up in front of a stocked retail shelf" /></figure>
+          <div class="ht-copy">
+            <div class="oc-kicker">Franchise · フランチャイズ</div>
+            <h3>Own a Naeki — 4 steps to your own kiosk</h3>
+            <p>A proven Healthy Quick Service Restaurant model with 20 branches and a
+               path to 50. Prime locations, central-kitchen freshness, full support.</p>
+            <button class="link-more" data-view="franchise">Franchise opportunities →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA band -->
+      <div class="fr-cta home-cta">
+        <div class="fr-cta-copy">
+          <h3>Grab, collect, enjoy</h3>
+          <p>Open the app for branch-by-branch hours and a stamp card that
+             fills toward a treat. No account needed — everything stays on this device.</p>
+        </div>
+        <div class="fr-cta-actions">
+          <button class="btn accent" id="cta-open-app">Open the app</button>
+          <a class="btn ghost" href="https://lin.ee/DqJnedo" data-external>Order via LINE</a>
+        </div>
+      </div>
+
+      <div class="disclaimer">
+        <p>
+          Unofficial showcase built as a fan tribute with public information and photography
+          from naeki.co and Naeki's public listings. Not affiliated with Naeki Sushi Co., Ltd.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================= MENU VIEW ================= -->
       <section id="view-menu" class="view active">
 
         <header class="hero">
@@ -700,6 +798,28 @@
         <p id="modal-desc"></p>
         <blockquote id="modal-quote" hidden></blockquote>
         <a id="modal-find" class="btn ghost" href="#" data-external>Find it on Google Maps</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SIGN-IN MODAL (local demo — no account, nothing leaves the device) ============ -->
+  <div id="signin" class="modal modal-narrow" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card signin-card" role="dialog" aria-modal="true" aria-labelledby="signin-title">
+      <button class="modal-x" data-close aria-label="Close">×</button>
+      <div class="modal-body">
+        <div class="modal-cat">Local sign-in</div>
+        <h3 id="signin-title">Who's collecting?</h3>
+        <p>Pick a display name for your stamp card. This stays on this device only —
+           there are no accounts and nothing is sent anywhere.</p>
+        <form id="signin-form">
+          <input id="signin-name" type="text" maxlength="24" placeholder="Your name…"
+                 autocomplete="off" aria-label="Display name" required />
+          <div class="signin-actions">
+            <button type="submit" class="btn accent">Continue to the app</button>
+            <button type="button" class="btn ghost" data-close>Not now</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

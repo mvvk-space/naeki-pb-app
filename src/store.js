@@ -10,6 +10,8 @@
 
   /* ---- default state (also documents the data model) ---- */
   const DEFAULTS = {
+    // local, on-device only — switches landing/app modes; not an account
+    profile: null,              // { name: string, since: epoch-ms }
     // demo stamp card — stamps are self-issued, never verified by the brand
     card: {
       size: 10,                 // stamps per reward
@@ -45,6 +47,18 @@
   window.NaekiStore = {
     /** full state (read-only use) */
     get: () => state,
+
+    /** profile: local display name that switches landing/app modes */
+    setProfile(name) {
+      const trimmed = (name || "").trim().slice(0, 24);
+      if (!trimmed) return false;
+      state.profile = { name: trimmed, since: Date.now() };
+      return persist();
+    },
+    signOut() {
+      state.profile = null; // stamps/history survive sign-out
+      return persist();
+    },
 
     /** stamp card accessors */
     card: () => state.card,

@@ -20,17 +20,102 @@
     return parseInt(h, 10);
   };
 
-  /* ---------------- View switching ---------------- */
+  /* ---------------- Landing / App modes ----------------
+     One app, two modes. "landing" (signed out) leads with the marketing
+     views; "app" (local, on-device profile set) leads with the utility
+     views. Mode only changes which nav links are visible + the default
+     view — every view and component is shared by both. */
+  const S = window.NaekiStore;
+  let mode = S.get().profile ? "app" : "landing";
+  const DEFAULT_VIEW = { landing: "home", app: "menu" };
+
+  function goToView(name) {
+    const link = $('.side-link[data-view="' + name + '"]');
+    $$(".side-link").forEach(b => b.classList.toggle("active", b === link));
+    $$(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + name));
+    $("#main").scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function applyMode(activateDefault = true) {
+    mode = S.get().profile ? "app" : "landing";
+
+    // show this mode's links, renumber them 01, 02, …
+    const visible = [];
+    $$(".side-link").forEach(btn => {
+      const allowed = (btn.dataset.modes || "").split(" ").includes(mode);
+      btn.hidden = !allowed;
+      if (allowed) visible.push(btn);
+    });
+    visible.forEach((btn, i) => {
+      btn.querySelector(".n").textContent = String(i + 1).padStart(2, "0");
+    });
+
+    // sidebar session area vs landing CTA
+    const profile = S.get().profile;
+    $("#side-open-app").hidden = mode !== "landing";
+    $("#side-session").hidden = mode !== "app";
+    if (profile) $("#session-greeting").textContent = "Hi, " + profile.name;
+
+    if (activateDefault) goToView(DEFAULT_VIEW[mode]);
+  }
+
   $$(".side-link").forEach(btn => {
     btn.addEventListener("click", () => {
+      if (btn.hidden) return; // view not part of this mode
       $$(".side-link").forEach(b => b.classList.toggle("active", b === btn));
       $$(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + btn.dataset.view));
     });
   });
-  $("#brand-home").addEventListener("click", () => {
-    $('.side-link[data-view="menu"]').click();
-    $("#main").scrollTo({ top: 0, behavior: "smooth" });
+  $("#brand-home").addEventListener("click", () => goToView(DEFAULT_VIEW[mode]));
+
+  // secondary nav (side-foot "About · Franchise", landing "read more" links)
+  $$("button[data-view]:not(.side-link)").forEach(btn => {
+    btn.addEventListener("click", () => goToView(btn.dataset.view));
   });
+
+  /* ---------------- Sign in / out (local demo) ---------------- */
+  const signin = $("#signin");
+  function openSignin() {
+    $("#signin-name").value = "";
+    signin.hidden = false;
+    $("#signin-name").focus();
+  }
+  function closeSignin() { signin.hidden = true; }
+  ["#side-open-app", "#home-open-app", "#cta-open-app"].forEach(sel => {
+    $(sel).addEventListener("click", openSignin);
+  });
+  $$("#signin [data-close]").forEach(el => el.addEventListener("click", closeSignin));
+  $("#signin-form").addEventListener("submit", e => {
+    e.preventDefault();
+    if (S.setProfile($("#signin-name").value)) {
+      closeSignin();
+      applyMode();
+    }
+  });
+  $("#side-signout").addEventListener("click", () => {
+    S.signOut();
+    applyMode();
+  });
+
+  /* ---------------- Landing home: featured overview ---------------- */
+  const FEATURED = [
+    "Roasted Salmon", "Salmon Nigiri", "Salmon & Ikura Don", "Ultimate Chirashi Don",
+    "Aburi Salmon Roll", "Salmon Sashimi", "Iced Matcha", "Matcha Pudding"
+  ];
+  (() => {
+    const root = $("#home-dishes");
+    FEATURED.forEach(name => {
+      for (const group of NAEKI.MENU) {
+        const item = group.items.find(it => it.name === name);
+        if (item) { root.appendChild(dishCard(item, group)); return; }
+      }
+      console.warn("featured dish not found:", name);
+    });
+  })();
+  $("#home-browse-menu").addEventListener("click", () => goToView("menu"));
+  $("#home-full-menu").addEventListener("click", () => goToView("menu"));
+
+  applyMode();
 
   /* ---------------- Menu render ---------------- */
   const chipRoot = $("#chips");
@@ -188,7 +273,6 @@
   renderBranches();
 
   /* ---------------- Stamp card (local demo, via NaekiStore) ---------------- */
-  const S = window.NaekiStore;
   const stampGrid = $("#stamp-grid");
   const stampCount = $("#stamp-count");
   const stampTotal = $("#stamp-total");
@@ -287,7 +371,12 @@
   }
   function closeModal() { modal.hidden = true; }
   $$("[data-close]", modal).forEach(el => el.addEventListener("click", closeModal));
-  document.addEventListener("keydown", e => { if (e.key === "Escape" && !modal.hidden) closeModal(); });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      if (!modal.hidden) closeModal();
+      if (!signin.hidden) closeSignin();
+    }
+  });
 
   /* ---------------- External links → system browser ---------------- */
   $$("a[data-external]").forEach(a => {

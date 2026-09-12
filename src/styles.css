@@ -1706,6 +1706,26 @@ a:hover { text-decoration: underline; }
 }
 #wl-redeem-code:focus { border-color: var(--salmon); }
 
+/* top-up history ledger */
+.wl-ledger-head {
+  font-family: var(--font-display);
+  font-size: 15px;
+  margin: 26px 2px 10px;
+}
+.wl-ledger { padding: 8px 24px; gap: 0; }
+.wl-ledger-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12.5px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+}
+.wl-ledger-row code { font-family: var(--font-mono); font-size: 11px; color: var(--salmon); flex: 1; }
+.wl-lt { color: var(--paper-faint); }
+.wl-la { font-family: var(--font-display); color: var(--paper); min-width: 58px; }
+.wl-lm { color: var(--paper-dim); }
+
 /* receipt loyalty line */
 .receipt-points {
   display: flex;

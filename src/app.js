@@ -688,6 +688,7 @@
   const wlGifts = $("#wl-gifts");
   const wlPayNote = $("#wl-pay-note");
   const wlRedeemNote = $("#wl-redeem-note");
+  const wlLedger = $("#wl-ledger");
 
   function renderWallet() {
     const w = S.walletState();
@@ -695,6 +696,18 @@
     wlSub.textContent = w.balance > 0
       ? `Pays at checkout before cash · ${S.giftsState().filter(g => !g.spent).length} gift code(s) unredeemed`
       : "Load to pay with one tap at checkout";
+
+    // top-up ledger — newest first, ts · amount · method · ref
+    const topups = w.topups;
+    wlLedger.innerHTML = topups.length
+      ? topups.map(t => `
+          <div class="wl-ledger-row">
+            <span class="wl-lt">${fmtWhen(t.ts)}</span>
+            <span class="wl-la">+${fmtBaht(t.amount)}</span>
+            <span class="wl-lm">${t.method}</span>
+            <code>${t.ref}</code>
+          </div>`).join("")
+      : `<p class="wl-note">No top-ups yet — load TrueMoney above to see it here.</p>`;
 
     const gifts = S.giftsState();
     wlGifts.innerHTML = gifts.length

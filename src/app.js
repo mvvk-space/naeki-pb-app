@@ -14,44 +14,37 @@
     return t;
   }
 
-  /* ---------------- Landing / App modes ----------------
-     One app, two modes. "landing" (signed out) leads with the marketing
-     views; "app" (local, on-device profile set) leads with the utility
-     views. Mode only changes which nav links are visible + the default
-     view — every view and component is shared by both. */
+  /* ---------------- Landing / App shells ----------------
+     Two shells over one data layer. Signed out: the PLAIN landing page
+     (#landing — own slim header, natural page scroll, marketing views).
+     Signed in (local, on-device profile): the app shell (#app — sidebar,
+     utility views). The landing page never shows app chrome; it references
+     the same live data through the frame engine. body[data-mode] owns
+     which shell is visible (see styles.css). */
   const S = window.NaekiStore;
   const D = window.NaekiData;      // the data layer ("backend") — single source of truth
   let mode = S.get().profile ? "app" : "landing";
   const DEFAULT_VIEW = { landing: "home", app: "menu" };
 
   function goToView(name) {
-    const link = $('.side-link[data-view="' + name + '"]');
-    // only light up a link that is actually visible in this mode — views a
-    // mode doesn't navigate to (About/Franchise from the app session footer)
-    // shouldn't highlight a hidden nav item
-    $$(".side-link").forEach(b => b.classList.toggle("active", b === link && !b.hidden));
-    $$(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + name));
-    $("#main").scrollTo({ top: 0, behavior: "smooth" });
+    const view = $("#view-" + name);
+    if (!view) return;
+    const shell = view.closest("#landing") ? $("#landing") : $("#app");
+    // one active view per shell; light up that shell's nav links to match
+    $$(".view", shell).forEach(v => v.classList.toggle("active", v === view));
+    $$(".lp-link, .side-link", shell).forEach(b =>
+      b.classList.toggle("active", b.dataset.view === name));
+    // each shell has its own scroller: the page (landing) or #main (app)
+    if (shell.id === "landing") window.scrollTo({ top: 0, behavior: "smooth" });
+    else $("#main").scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function applyMode(activateDefault = true) {
     mode = S.get().profile ? "app" : "landing";
+    // CSS owns shell visibility from here (body[data-mode])
+    document.body.dataset.mode = mode;
 
-    // show this mode's links, renumber them 01, 02, …
-    const visible = [];
-    $$(".side-link").forEach(btn => {
-      const allowed = (btn.dataset.modes || "").split(" ").includes(mode);
-      btn.hidden = !allowed;
-      if (allowed) visible.push(btn);
-    });
-    visible.forEach((btn, i) => {
-      btn.querySelector(".n").textContent = String(i + 1).padStart(2, "0");
-    });
-
-    // sidebar session area vs landing CTA
     const profile = S.get().profile;
-    $("#side-open-app").hidden = mode !== "landing";
-    $("#side-session").hidden = mode !== "app";
     if (profile) $("#session-greeting").textContent = "Hi, " + profile.name;
 
     if (activateDefault) goToView(DEFAULT_VIEW[mode]);
@@ -65,15 +58,15 @@
   }
 
   $$(".side-link").forEach(btn => {
-    btn.addEventListener("click", () => {
-      if (btn.hidden) return; // view not part of this mode
-      goToView(btn.dataset.view); // single nav path — also scrolls #main to top
-    });
+    btn.addEventListener("click", () => goToView(btn.dataset.view));
   });
-  $("#brand-home").addEventListener("click", () => goToView(DEFAULT_VIEW[mode]));
+  $("#brand-home").addEventListener("click", () => goToView(DEFAULT_VIEW.app));
 
-  // secondary nav (side-foot "About · Franchise", landing "read more" links)
-  $$("button[data-view]:not(.side-link)").forEach(btn => {
+  // secondary nav (landing header brand + section links, landing "read more" links)
+  $$("button[data-view]:not(.side-link):not(.lp-link)").forEach(btn => {
+    btn.addEventListener("click", () => goToView(btn.dataset.view));
+  });
+  $$(".lp-link, .lp-brand").forEach(btn => {
     btn.addEventListener("click", () => goToView(btn.dataset.view));
   });
 
@@ -89,7 +82,7 @@
     $("#signin-name").focus();
   }
   function closeSignin() { signin.hidden = true; }
-  ["#side-open-app", "#home-open-app", "#cta-open-app", "#hours-open-app"].forEach(sel => {
+  ["#lp-signin", "#home-open-app", "#cta-open-app", "#hours-open-app"].forEach(sel => {
     $(sel).addEventListener("click", openSignin);
   });
   $$("#signin [data-close]").forEach(el => el.addEventListener("click", closeSignin));
@@ -270,7 +263,7 @@
       const sec = document.createElement("section");
       sec.className = "menu-group";
       sec.innerHTML = `
-        <div class="group-head">
+        <div class="sec-head sec-head--sub">
           <h3>${group.name}</h3>
           <span class="jp">${group.jp}</span>
           <span class="rule"></span>
@@ -497,13 +490,14 @@
       };
       const popInDelay = 0.12 * 1000; // matches .splash-pop animation-delay
 
-      // app starts hidden behind the splash, fades in after
-      const app = $("#app");
-      app.style.opacity = "0";
-      app.style.transition = "opacity 0.3s ease";
+      // the active shell starts hidden behind the splash, fades in after —
+      // landing page when signed out, app shell when signed in
+      const shell = document.body.dataset.mode === "app" ? $("#app") : $("#landing");
+      shell.style.opacity = "0";
+      shell.style.transition = "opacity 0.3s ease";
 
       // per-stroke draw delays via CSSOM (CSP blocks inline style attributes)
-      $$("#art-stand .draw").forEach(p => {
+      $$("#art-scene .draw").forEach(p => {
         if (p.dataset.d) p.style.setProperty("--d", p.dataset.d);
       });
 
@@ -539,14 +533,13 @@
       requestAnimationFrame(() => {
         splash.classList.add("phase-draw");            // ring + stand draw on
         setTimeout(() => {                             // pie fill sweeps over it
-          splash.classList.add("phase-fill");
           fillSweep(T.fill);
         }, T.draw - 120);
         setTimeout(() => splash.classList.add("phase-roll"), T.draw + T.fill + 40);
         const popDone = T.draw + T.fill + popInDelay + T.popIn + T.hold;
         setTimeout(() => {                              // fade splash out
           splash.classList.add("phase-out");
-          app.style.opacity = "1";
+          shell.style.opacity = "1";
         }, popDone);
         setTimeout(() => {
           splash.classList.add("done");

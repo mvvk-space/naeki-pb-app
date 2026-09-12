@@ -1,11 +1,13 @@
 {
   "name": "naeki-sushi-showcase",
   "productName": "Naeki Sushi Showcase",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Showcase app for Naeki Sushi — premium onigiri & sushi grab-and-go, Bangkok",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "check": "node scripts/validate.mjs",
+    "postinstall": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "electron": "^33.0.0"

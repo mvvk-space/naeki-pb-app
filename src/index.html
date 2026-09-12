@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" href="assets/icon.png" />
 </head>
-<body>
+<body data-mode="landing">
   <!-- ============ SPLASH (decorative loading screen) ============ -->
   <div id="splash" aria-hidden="true">
     <div class="splash-stage">
@@ -87,70 +87,27 @@
     </div>
   </div>
 
-  <div id="app">
-
-    <!-- ============ SIDEBAR ============ -->
-    <aside id="sidebar">
-      <div class="brand" id="brand-home">
+  <!-- ============ LANDING SHELL (plain page — shown signed out) ============ -->
+  <div id="landing">
+    <header class="lp-header">
+      <button class="lp-brand" data-view="home" aria-label="Naeki Sushi — home">
         <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
           <path d="M32 6 L58 52 Q59 55 55 55 L9 55 Q5 55 6 52 Z" fill="#f3efe7"/>
           <rect x="24" y="38" width="16" height="14" rx="4" fill="#1c2e22"/>
           <circle cx="20" cy="26" r="6" fill="#ff8a3c"/>
         </svg>
         <div class="brand-name">NAEKI<span>SUSHI</span></div>
-        <div class="brand-kanji" lang="ja">佐ゑ巻</div>
-      </div>
-
-      <nav class="side-nav" aria-label="Sections">
-        <button class="side-link active" data-view="home" data-modes="landing">
-          <span class="n">01</span> Home
-        </button>
-        <button class="side-link" data-view="menu" data-modes="landing app">
-          <span class="n">02</span> Menu
-        </button>
-        <button class="side-link" data-view="branches" data-modes="app">
-          <span class="n">03</span> Branches
-        </button>
-        <button class="side-link" data-view="stamps" data-modes="app">
-          <span class="n">04</span> Stamp Card
-        </button>
-        <button class="side-link" data-view="order" data-modes="app">
-          <span class="n">05</span> Order &amp; Info
-        </button>
-        <button class="side-link" data-view="franchise" data-modes="landing">
-          <span class="n">06</span> Franchise
-        </button>
-        <button class="side-link" data-view="about" data-modes="landing">
-          <span class="n">07</span> About Naeki
-        </button>
+      </button>
+      <nav class="lp-nav" aria-label="Landing sections">
+        <button class="lp-link" data-view="home">Home</button>
+        <button class="lp-link" data-view="about">Story</button>
+        <button class="lp-link" data-view="franchise">Franchise</button>
       </nav>
+      <button class="btn accent" id="lp-signin">Open the app</button>
+    </header>
 
-      <!-- landing-mode CTA; app-mode shows greeting + sign-out -->
-      <button class="btn accent side-cta" id="side-open-app">Open the app</button>
-
-      <div class="side-session" id="side-session" hidden>
-        <div class="session-greeting" id="session-greeting"></div>
-        <button class="side-signout" id="side-signout">Sign out</button>
-        <div class="side-more">
-          <button data-view="about">About</button><span>·</span><button data-view="franchise">Franchise</button>
-        </div>
-      </div>
-
-      <div class="side-foot">
-        <div class="hazard-strip" aria-hidden="true"></div>
-        <div class="clock">
-          <div class="clock-label">BANGKOK</div>
-          <div class="clock-time" id="clock">--:--:--</div>
-        </div>
-        <div class="since">Premium sushi &amp; onigiri<br />since 2013 — est. All Seasons Place</div>
-      </div>
-    </aside>
-
-    <!-- ============ MAIN ============ -->
-    <main id="main">
-
-      <!-- ================= LANDING HOME VIEW ================= -->
-    <section id="view-home" class="view">
+<!-- ================= LANDING HOME VIEW ================= -->
+    <section id="view-home" class="view active">
 
       <header class="hero home-hero">
         <div class="hero-copy">
@@ -181,7 +138,7 @@
 
       <!-- featured overview: same dishCard component the app menu uses,
            sourced from the data layer's featured rotation -->
-      <div class="home-featured-head">
+      <div class="home-featured-head sec-head">
         <h3>From the daily case</h3>
         <span class="rule"></span>
         <button class="link-more" id="home-full-menu">Full menu →</button>
@@ -193,7 +150,7 @@
 
       <!-- live hours preview: the app's branch data surfaced on the landing
            page — flagship counters with status computed against Bangkok time -->
-      <div class="home-featured-head">
+      <div class="home-featured-head sec-head">
         <h3>Open today</h3>
         <span class="rule"></span>
         <button class="link-more" id="hours-open-app" data-goto="branches">All branches in the app →</button>
@@ -248,179 +205,7 @@
       </div>
     </section>
 
-    <!-- ================= MENU VIEW ================= -->
-      <section id="view-menu" class="view active">
-
-        <header class="hero">
-          <div class="hero-copy">
-            <div class="hero-kicker">Premium grab &amp; go · Bangkok <span lang="ja">· 東京式</span></div>
-            <h1>The art &amp; science<br />of <em>onigiri</em>.</h1>
-            <p class="hero-sub">
-              Hand-shaped to order, fresh every day, no preservatives.
-              Naeki puts chef-grade sushi and onigiri where Bangkok actually lives —
-              along the BTS &amp; MRT lines, one perfect bite at a time.
-            </p>
-            <div class="hero-facts" data-frame="facts"><!-- live: data.js INFO + branch stats --></div>
-          </div>
-          <figure class="hero-photo">
-            <img src="assets/kiosk_siam.jpg" alt="Naeki Sushi kiosk at BTS Siam station" />
-            <figcaption>The Naeki kiosk — BTS Siam station</figcaption>
-          </figure>
-        </header>
-
-        <div class="quote-strip" aria-label="What diners say" data-frame="reviews"><!-- live: data.js REVIEWS --></div>
-
-        <div class="toolbar">
-          <div class="chips" id="chips" role="tablist" aria-label="Menu categories"></div>
-          <div class="search-wrap">
-            <input id="menu-search" type="search" placeholder="Search the menu…" aria-label="Search the menu" />
-            <span class="count" id="menu-count"></span>
-          </div>
-        </div>
-
-        <div id="menu-root"><!-- groups injected by app.js --></div>
-
-        <div class="also-strip" id="also-strip">
-          <h3>Also on the daily menu</h3>
-          <p id="also-list"></p>
-        </div>
-
-      </section>
-
-      <!-- ================= BRANCHES VIEW ================= -->
-      <section id="view-branches" class="view">
-        <header class="view-head">
-          <h2>Find your Naeki</h2>
-          <p>
-            Twenty kiosks and counters along Bangkok's commute — BTS and MRT gates,
-            office lobbies, mall basements. Closing times below are from naeki.co;
-            status updates live against Bangkok time.
-          </p>
-          <div class="search-wrap wide">
-            <input id="branch-search" type="search" placeholder="Search by station, building or area…" aria-label="Search branches" />
-            <span class="count" id="branch-count"></span>
-          </div>
-          <div class="legend">
-            <span class="legend-item"><i class="dot open"></i> Open now</span>
-            <span class="legend-item"><i class="dot closed"></i> Closed for today</span>
-            <span class="legend-item"><i class="dot flagship"></i> ▮ Naeki Sushi counter</span>
-            <span class="legend-item"><i class="dot go"></i> ▯ Naeki GO! kiosk</span>
-          </div>
-        </header>
-        <div id="branch-list" class="branch-list"></div>
-      </section>
-
-      <!-- ================= STAMP CARD VIEW ================= -->
-      <section id="view-stamps" class="view">
-        <header class="view-head">
-          <h2>Stamp card <span class="jp-inline" lang="ja">スタンプカード</span></h2>
-          <p>
-            Your personal collecting card — ten stamps, one treat. Everything is
-            stored only on this device; nothing is sent anywhere.
-          </p>
-        </header>
-
-        <!-- the card -->
-        <div class="stamp-card" aria-label="Naeki stamp card">
-          <div class="stamp-card-head">
-            <div>
-              <div class="oc-kicker">Naeki · collect 10</div>
-              <h3 id="stamp-progress-label">Stamps toward a treat</h3>
-            </div>
-            <div class="stamp-count">
-              <strong id="stamp-count">0</strong><span id="stamp-total">/ 10</span>
-            </div>
-          </div>
-
-          <div class="stamp-grid" id="stamp-grid" role="img" aria-labelledby="stamp-progress-label"><!-- slots injected by app.js --></div>
-
-          <div class="stamp-progress-track" aria-hidden="true">
-            <div class="stamp-progress-fill" id="stamp-progress-fill"></div>
-          </div>
-
-          <div class="stamp-actions">
-            <button class="btn accent" id="stamp-add">Add a stamp</button>
-            <button class="btn ghost" id="stamp-redeem" disabled>Redeem treat</button>
-            <button class="btn ghost" id="stamp-reset">Reset card</button>
-          </div>
-        </div>
-
-        <!-- history -->
-        <div class="stamp-history-head">
-          <h3>Card history</h3>
-          <span class="rule"></span>
-          <span class="n-items">newest first</span>
-        </div>
-        <ul class="stamp-history" id="stamp-history"><!-- entries injected by app.js --></ul>
-
-        <div class="disclaimer">
-          <p>
-            Demo feature — stamps here are self-issued by you; no Naeki branch
-            scans or honors this card, and it is not affiliated with
-            Naeki Sushi Co., Ltd. A real loyalty program would need the brand's
-            own involvement. Your stamps and history never leave this device.
-          </p>
-        </div>
-      </section>
-
-      <!-- ================= ORDER VIEW ================= -->
-      <section id="view-order" class="view">
-        <header class="view-head">
-          <h2>Order &amp; info</h2>
-          <p>Naeki runs on LINE, delivery apps and walk-up kiosks. Big orders and party sets go direct.</p>
-        </header>
-
-        <div class="order-grid">
-          <div class="order-card">
-            <div class="oc-kicker">Line Official Account</div>
-            <h3>@Naekisushi</h3>
-            <p>Order ahead for pickup at your nearest kiosk and catch the seasonal drops.</p>
-            <a class="btn accent" href="https://lin.ee/DqJnedo" data-external>Open LINE OA</a>
-          </div>
-
-          <div class="order-card">
-            <div class="oc-kicker">Flagship counter</div>
-            <h3>Naeki Sushi · BTS Siam</h3>
-            <p>Inside BTS Siam station, Rama I Rd. Open daily until 21:00.</p>
-            <a class="btn ghost" href="tel:026584001" data-external>02 658 4001</a>
-            <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query=Naeki%20Sushi%20BTS%20Siam" data-external>Directions</a>
-          </div>
-
-          <div class="order-card">
-            <div class="oc-kicker">Catering &amp; party sets</div>
-            <h3>Party trays &amp; bulk orders</h3>
-            <p>Sushi platters, bento sets and party trays for offices and events — arranged through the Naeki team.</p>
-            <a class="btn ghost" href="tel:0982292278" data-external>098 229 2278</a>
-          </div>
-
-          <div class="order-card">
-            <div class="oc-kicker">The company</div>
-            <h3>Naeki Sushi Co., Ltd.</h3>
-            <p>487/8 Si Ayutthaya Rd, Phaya Thai,<br />Ratchathewi, Bangkok 10400</p>
-            <div class="oc-socials">
-              <a href="https://www.instagram.com/naekisushi/" data-external>Instagram</a>
-              <a href="https://www.tiktok.com/@naekisushi" data-external>TikTok</a>
-              <a href="https://www.facebook.com/naekisushi/" data-external>Facebook</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="disclaimer">
-          <p>
-            Unofficial showcase app built as a fan tribute with public information and photography
-            from naeki.co, Google Maps and Naeki's public listings. Menu items rotate daily;
-            prices vary by branch — check the LINE OA for today's menu. Not affiliated with
-            Naeki Sushi Co., Ltd.
-            <br /><br />
-            On iPhone or Android you can install this showcase to your home screen:
-            in Safari, tap <strong>Share</strong> → <strong>Add to Home Screen</strong>
-            (Chrome: menu → <strong>Add to Home screen</strong>). It then runs full-screen,
-            offline, just like the desktop app.
-          </p>
-        </div>
-      </section>
-
-      <!-- ================= FRANCHISE VIEW ================= -->
+<!-- ================= FRANCHISE VIEW ================= -->
       <section id="view-franchise" class="view">
 
         <!-- banner: kiosk photo, brand type over it -->
@@ -483,7 +268,7 @@
         </div>
 
         <!-- 4 steps, exactly as on naeki.co -->
-        <div class="fr-steps-head">
+        <div class="fr-steps-head sec-head">
           <h3><span class="fr-four">4</span> steps to own your business</h3>
           <span class="rule"></span>
           <span class="n-items">From naeki.co</span>
@@ -540,7 +325,7 @@
         </div>
       </section>
 
-      <!-- ================= ABOUT VIEW ================= -->
+<!-- ================= ABOUT VIEW ================= -->
       <section id="view-about" class="view">
 
         <!-- banner: brand kanji on black -->
@@ -619,7 +404,7 @@
         </div>
 
         <!-- branch gallery -->
-        <div class="ab-gallery-head">
+        <div class="ab-gallery-head sec-head">
           <h3>The kiosks, in the wild</h3>
           <span class="rule"></span>
           <span class="n-items">Naeki GO! branches — 2024 openings</span>
@@ -780,6 +565,223 @@
 
       </section>
 
+  </div>
+
+  <div id="app">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside id="sidebar">
+      <div class="brand" id="brand-home">
+        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+          <path d="M32 6 L58 52 Q59 55 55 55 L9 55 Q5 55 6 52 Z" fill="#f3efe7"/>
+          <rect x="24" y="38" width="16" height="14" rx="4" fill="#1c2e22"/>
+          <circle cx="20" cy="26" r="6" fill="#ff8a3c"/>
+        </svg>
+        <div class="brand-name">NAEKI<span>SUSHI</span></div>
+        <div class="brand-kanji" lang="ja">佐ゑ巻</div>
+      </div>
+
+      <nav class="side-nav" aria-label="Sections">
+        <button class="side-link active" data-view="menu">
+          <span class="n">01</span> Menu
+        </button>
+        <button class="side-link" data-view="branches">
+          <span class="n">02</span> Branches
+        </button>
+        <button class="side-link" data-view="stamps">
+          <span class="n">03</span> Stamp Card
+        </button>
+        <button class="side-link" data-view="order">
+          <span class="n">04</span> Order &amp; Info
+        </button>
+      </nav>
+
+      <div class="side-session" id="side-session">
+        <div class="session-greeting" id="session-greeting"></div>
+        <button class="side-signout" id="side-signout">Sign out</button>
+      </div>
+
+      <div class="side-foot">
+        <div class="hazard-strip" aria-hidden="true"></div>
+        <div class="clock">
+          <div class="clock-label">BANGKOK</div>
+          <div class="clock-time" id="clock">--:--:--</div>
+        </div>
+        <div class="since">Premium sushi &amp; onigiri<br />since 2013 — est. All Seasons Place</div>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main id="main">
+
+      
+    <!-- ================= MENU VIEW ================= -->
+      <section id="view-menu" class="view active">
+
+        <header class="view-head">
+          <h2>The menu <span class="jp-inline" lang="ja">メニュー</span></h2>
+          <p>
+            Thirty-eight highlighted dishes across six categories — the signature
+            onigiri, nigiri, rolls, sashimi &amp; sets, donburi &amp; bento, drinks
+            &amp; sweets. Items rotate daily and prices vary by branch; tap a dish
+            for its story.
+          </p>
+        </header>
+
+        <div class="quote-strip" aria-label="What diners say" data-frame="reviews"><!-- live: data.js REVIEWS --></div>
+
+        <div class="toolbar">
+          <div class="chips" id="chips" role="tablist" aria-label="Menu categories"></div>
+          <div class="search-wrap">
+            <input id="menu-search" type="search" placeholder="Search the menu…" aria-label="Search the menu" />
+            <span class="count" id="menu-count"></span>
+          </div>
+        </div>
+
+        <div id="menu-root"><!-- groups injected by app.js --></div>
+
+        <div class="also-strip" id="also-strip">
+          <h3>Also on the daily menu</h3>
+          <p id="also-list"></p>
+        </div>
+
+      </section>
+
+      <!-- ================= BRANCHES VIEW ================= -->
+      <section id="view-branches" class="view">
+        <header class="view-head">
+          <h2>Find your Naeki</h2>
+          <p>
+            Twenty kiosks and counters along Bangkok's commute — BTS and MRT gates,
+            office lobbies, mall basements. Closing times below are from naeki.co;
+            status updates live against Bangkok time.
+          </p>
+          <div class="search-wrap wide">
+            <input id="branch-search" type="search" placeholder="Search by station, building or area…" aria-label="Search branches" />
+            <span class="count" id="branch-count"></span>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><i class="dot open"></i> Open now</span>
+            <span class="legend-item"><i class="dot closed"></i> Closed for today</span>
+            <span class="legend-item"><i class="dot flagship"></i> ▮ Naeki Sushi counter</span>
+            <span class="legend-item"><i class="dot go"></i> ▯ Naeki GO! kiosk</span>
+          </div>
+        </header>
+        <div id="branch-list" class="branch-list"></div>
+      </section>
+
+      <!-- ================= STAMP CARD VIEW ================= -->
+      <section id="view-stamps" class="view">
+        <header class="view-head">
+          <h2>Stamp card <span class="jp-inline" lang="ja">スタンプカード</span></h2>
+          <p>
+            Your personal collecting card — ten stamps, one treat. Everything is
+            stored only on this device; nothing is sent anywhere.
+          </p>
+        </header>
+
+        <!-- the card -->
+        <div class="stamp-card" aria-label="Naeki stamp card">
+          <div class="stamp-card-head">
+            <div>
+              <div class="oc-kicker">Naeki · collect 10</div>
+              <h3 id="stamp-progress-label">Stamps toward a treat</h3>
+            </div>
+            <div class="stamp-count">
+              <strong id="stamp-count">0</strong><span id="stamp-total">/ 10</span>
+            </div>
+          </div>
+
+          <div class="stamp-grid" id="stamp-grid" role="img" aria-labelledby="stamp-progress-label"><!-- slots injected by app.js --></div>
+
+          <div class="stamp-progress-track" aria-hidden="true">
+            <div class="stamp-progress-fill" id="stamp-progress-fill"></div>
+          </div>
+
+          <div class="stamp-actions">
+            <button class="btn accent" id="stamp-add">Add a stamp</button>
+            <button class="btn ghost" id="stamp-redeem" disabled>Redeem treat</button>
+            <button class="btn ghost" id="stamp-reset">Reset card</button>
+          </div>
+        </div>
+
+        <!-- history -->
+        <div class="stamp-history-head sec-head">
+          <h3>Card history</h3>
+          <span class="rule"></span>
+          <span class="n-items">newest first</span>
+        </div>
+        <ul class="stamp-history" id="stamp-history"><!-- entries injected by app.js --></ul>
+
+        <div class="disclaimer">
+          <p>
+            Demo feature — stamps here are self-issued by you; no Naeki branch
+            scans or honors this card, and it is not affiliated with
+            Naeki Sushi Co., Ltd. A real loyalty program would need the brand's
+            own involvement. Your stamps and history never leave this device.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= ORDER VIEW ================= -->
+      <section id="view-order" class="view">
+        <header class="view-head">
+          <h2>Order &amp; info</h2>
+          <p>Naeki runs on LINE, delivery apps and walk-up kiosks. Big orders and party sets go direct.</p>
+        </header>
+
+        <div class="order-grid">
+          <div class="order-card">
+            <div class="oc-kicker">Line Official Account</div>
+            <h3>@Naekisushi</h3>
+            <p>Order ahead for pickup at your nearest kiosk and catch the seasonal drops.</p>
+            <a class="btn accent" href="https://lin.ee/DqJnedo" data-external>Open LINE OA</a>
+          </div>
+
+          <div class="order-card">
+            <div class="oc-kicker">Flagship counter</div>
+            <h3>Naeki Sushi · BTS Siam</h3>
+            <p>Inside BTS Siam station, Rama I Rd. Open daily until 21:00.</p>
+            <a class="btn ghost" href="tel:026584001" data-external>02 658 4001</a>
+            <a class="btn ghost" href="https://www.google.com/maps/search/?api=1&query=Naeki%20Sushi%20BTS%20Siam" data-external>Directions</a>
+          </div>
+
+          <div class="order-card">
+            <div class="oc-kicker">Catering &amp; party sets</div>
+            <h3>Party trays &amp; bulk orders</h3>
+            <p>Sushi platters, bento sets and party trays for offices and events — arranged through the Naeki team.</p>
+            <a class="btn ghost" href="tel:0982292278" data-external>098 229 2278</a>
+          </div>
+
+          <div class="order-card">
+            <div class="oc-kicker">The company</div>
+            <h3>Naeki Sushi Co., Ltd.</h3>
+            <p>487/8 Si Ayutthaya Rd, Phaya Thai,<br />Ratchathewi, Bangkok 10400</p>
+            <div class="oc-socials">
+              <a href="https://www.instagram.com/naekisushi/" data-external>Instagram</a>
+              <a href="https://www.tiktok.com/@naekisushi" data-external>TikTok</a>
+              <a href="https://www.facebook.com/naekisushi/" data-external>Facebook</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="disclaimer">
+          <p>
+            Unofficial showcase app built as a fan tribute with public information and photography
+            from naeki.co, Google Maps and Naeki's public listings. Menu items rotate daily;
+            prices vary by branch — check the LINE OA for today's menu. Not affiliated with
+            Naeki Sushi Co., Ltd.
+            <br /><br />
+            On iPhone or Android you can install this showcase to your home screen:
+            in Safari, tap <strong>Share</strong> → <strong>Add to Home Screen</strong>
+            (Chrome: menu → <strong>Add to Home screen</strong>). It then runs full-screen,
+            offline, just like the desktop app.
+          </p>
+        </div>
+      </section>
+
+      
+      
     </main>
   </div>
 

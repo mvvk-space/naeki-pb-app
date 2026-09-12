@@ -384,6 +384,19 @@ a:hover { text-decoration: underline; }
   gap: 12px;
 }
 
+/* naeki.co coverage map — remote Google Maps embed, framed like a card */
+.branch-map { margin-top: 34px; }
+.branch-map .sec-head { margin-bottom: 14px; }
+.branch-map-frame {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  height: auto;              /* aspect-ratio drives height; 450px attribute is the fallback */
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ink-2);
+}
+
 .branch {
   display: flex;
   flex-direction: column;

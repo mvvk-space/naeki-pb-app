@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://www.google.com https://www.gstatic.com; style-src 'self'; script-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://www.google.com https://www.gstatic.com; style-src 'self'; script-src 'self'; connect-src 'none'; frame-src https://www.google.com; object-src 'none'" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#101012" />
   <title>Naeki Sushi — Bangkok Showcase</title>
@@ -754,6 +754,21 @@
           </div>
         </header>
         <div id="branch-list" class="branch-list"></div>
+
+        <!-- naeki.co's own coverage map: the same "naeki go" Google Maps
+             embed the official site's branches page carries. Remote iframe —
+             needs the CSP frame-src https://www.google.com carve-out above. -->
+        <div class="branch-map">
+          <div class="branch-map-head sec-head">
+            <h3>The network on the map</h3>
+            <span class="rule"></span>
+            <span class="n-items">From naeki.co</span>
+          </div>
+          <iframe class="branch-map-frame" src="https://www.google.com/maps/embed?pb=!1m16!1m12!1m3!1d224354.47938232153!2d100.5015019637406!3d13.854255075142135!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!2m1!1snaeki%20go!5e1!3m2!1sth!2sth!4v1759988166328!5m2!1sth!2sth"
+                  width="600" height="450" allowfullscreen="" loading="lazy"
+                  referrerpolicy="no-referrer-when-downgrade"
+                  title="Naeki GO! locations across Bangkok — Google Maps embed from naeki.co"></iframe>
+        </div>
       </section>
 
       <!-- ================= STAMP CARD VIEW ================= -->

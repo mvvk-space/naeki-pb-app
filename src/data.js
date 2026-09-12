@@ -265,6 +265,53 @@ window.NaekiData = (() => {
     ];
   }
 
+  /* ---------------- CHAT ROUTES (line handoff topics) ----------------
+     Routed-intent cards for the in-app chat: each topic prefills the LINE
+     message with a sensible opener and deep-links to the OA. Edited here,
+     they repaint the Chat view on the next data refresh. */
+
+  const CHAT_ROUTES = [
+    {
+      topic: "Party trays & bulk",
+      icon: "sushi",
+      prompt: "I'd like to order party trays and party sets — can you help?"
+    },
+    {
+      topic: "Office / catering",
+      icon: "briefcase",
+      prompt: "I'd like catering for my office — can you help with a large order?"
+    },
+    {
+      topic: "Place a pickup order",
+      icon: "bag",
+      prompt: "I'd like to place a pickup order ahead — can you help?"
+    },
+    {
+      topic: "Line-man delivery",
+      icon: "delivery",
+      prompt: "Can I order Naeki via LINE MAN for delivery?"
+    },
+    {
+      topic: "Today's menu",
+      icon: "menu",
+      prompt: "Could you share today's line-up and available items?"
+    },
+    {
+      topic: "Something else",
+      icon: "chat",
+      prompt: "I have a question for the Naeki team."
+    }
+  ];
+
+  /** chat topic cards (routed intent) — UI-ready route objects. The LINE
+      deep-link itself is built in app.js from INFO.lineUrl + the prompt;
+      LINE's lin.ee links open the chat but can't prefill text, so the
+      topic's prompt is shown on the card and kept in the on-device thread
+      as the user is handed off to the OA. */
+  function chatTopics(topicCount = CHAT_ROUTES.length) {
+    return CHAT_ROUTES.slice(0, topicCount).map(r => ({ ...r }));
+  }
+
   /* ---------------- LANDING CONFIG ----------------
      The featured pool is the "pre-view" of the menu: every data refresh
      the frame engine serves `featuredCount` consecutive items from this
@@ -632,6 +679,8 @@ window.NaekiData = (() => {
     MENU, ALSO, BRANCHES, REVIEWS, INFO, LANDING,
     subscribe, publish,
     bangkokParts, toMins, isOpenNow, shortName, stats, featured, order,
+    // chat → line handoff
+    CHAT_ROUTES, chatTopics,
     // loyalty engine
     POINTS_PER_BAHT, TIERS, POINTS_DAY, POINTS_DAY_NAME,
     pointsFor, tierMultOf, tierFor, nextTier, offers,

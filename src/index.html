@@ -103,6 +103,7 @@
         <button class="lp-link" data-view="lmenu">Menu</button>
         <button class="lp-link" data-view="about">About Us</button>
         <button class="lp-link" data-view="franchise">Franchise</button>
+        <button class="lp-link" data-view="servicedesk">Customer Service</button>
       </nav>
       <button class="btn accent" id="lp-signin">Open the app</button>
     </header>
@@ -209,6 +210,21 @@
         Order ahead on LINE, call the flagship or the catering line, find the company — every contact in one place.
       </p>
       <div class="order-grid" data-frame="order"><!-- live: D.order() — same cards as the app's Order view --></div>
+
+      <!-- customer service desk: the app's Chat surfaced on the landing page —
+           same routed-intent topics, no sign-in needed -->
+      <div class="home-featured-head sec-head sd-head">
+        <h3>Customer service</h3>
+        <span class="rule"></span>
+        <span class="n-items">Ask on LINE</span>
+      </div>
+      <p class="home-featured-sub">
+        Party trays, catering, a big order or a question — tap a topic and jump to
+        the Naeki team on LINE. Nothing you draft here leaves this device.
+      </p>
+      <div class="ch-topic-grid" data-frame="servicedesk">
+        <!-- live: D.chatTopics() — same cards as the app's Chat view -->
+      </div>
 
       <div class="disclaimer">
         <p>
@@ -633,6 +649,32 @@
 
       </section>
 
+<!-- ================= CUSTOMER SERVICE DESK (landing) ================= -->
+      <section id="view-servicedesk" class="view">
+
+        <header class="view-head">
+          <h2>Customer Service <span class="jp-inline" lang="ja">お問い合わせ</span></h2>
+          <p>
+            Party trays, big orders, catering for the office, or just a question —
+            tap a topic and it opens the Naeki team on LINE (@Naekisushi), where
+            Naeki actually answers. Everything you draft here stays on this device.
+          </p>
+        </header>
+
+        <!-- routed-intent cards → open the OA with the topic (same live source
+             as the app's Chat view — a topic edit repaints both on refresh) -->
+        <div class="ch-topic-grid" data-frame="servicedesk"><!-- live: D.chatTopics() --></div>
+
+        <div class="disclaimer">
+          <p>
+            This desk never carries a real message — it hands you to the LINE
+            Official Account, which is how Naeki handles large orders, party
+            trays and customer service. Replies, ordering and delivery happen
+            inside LINE (including LINE MAN).
+          </p>
+        </div>
+      </section>
+
   </div>
 
   <div id="app">
@@ -672,8 +714,11 @@
         <button class="side-link" data-view="order">
           <span class="n">07</span> Order &amp; Info
         </button>
+        <button class="side-link" data-view="chat">
+          <span class="n">08</span> Chat
+        </button>
         <button class="side-link" data-view="milestones">
-          <span class="n">08</span> Milestones
+          <span class="n">09</span> Milestones
         </button>
       </nav>
 
@@ -985,6 +1030,44 @@
             in Safari, tap <strong>Share</strong> → <strong>Add to Home Screen</strong>
             (Chrome: menu → <strong>Add to Home screen</strong>). It then runs full-screen,
             offline, just like the desktop app.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= CHAT → LINE OA (large orders & catering) =================
+           The in-app chat is a thin, honest surface: it collects the enquiry and
+           hands it to the LINE OA (@naekisushi) — the channel Naeki actually answers
+           on, and where the centralized comms + my-restaurant/order flow lives.
+           Nothing typed here leaves the device; the real reply happens in LINE. -->
+      <section id="view-chat" class="view">
+        <header class="view-head">
+          <h2>Chat <span class="jp-inline" lang="ja">相談</span></h2>
+          <p>
+            Party trays, big orders, catering for the office, or just a question —
+            tap a topic to jump straight to the Naeki team on LINE. We reply on
+            LINE, where the orders and the offers already live.
+          </p>
+        </header>
+
+        <div class="ch-thread" id="ch-thread" aria-live="polite"><!-- rendered by app.js --></div>
+
+        <!-- routed-intent cards → open the OA with the topic prefilled -->
+        <div class="ch-topic-grid" id="ch-topics"><!-- rendered by app.js --></div>
+
+        <form id="ch-form" class="ch-composer">
+          <textarea id="ch-input" rows="2" maxlength="500" placeholder="Ask about a large order, a party set, or anything else…"
+                    aria-label="Your message to the Naeki team" autocomplete="off"></textarea>
+          <button type="submit" class="btn accent" id="ch-send">Send via LINE</button>
+        </form>
+        <p class="wl-note" id="ch-note"></p>
+
+        <div class="disclaimer">
+          <p>
+            This chat never carries a real message — it hands you to the
+            LINE Official Account (@naekisushi), which is how Naeki handles
+            large orders, party trays and customer service. Replies, ordering
+            and delivery happen inside LINE (including LINE MAN). Everything you
+            draft here stays on this device only.
           </p>
         </div>
       </section>

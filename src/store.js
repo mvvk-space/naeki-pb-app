@@ -32,7 +32,8 @@
     // codes), all on-device — nothing is transmitted anywhere
     wallet: {
       balance: 0,               // remaining stored value (THB)
-      topups: []                // [{ ts, amount, method, ref }]
+      topups: [],               // [{ ts, amount, method, ref }]
+      expressPay: null          // "apple" | "google" once provisioned (one-time, honest demo)
     },
     // demo gift cards the user has "bought" (for themselves / to give away)
     gifts: [],                    // [{ code, amount, ts, spent }]
@@ -42,7 +43,14 @@
     claimed: [],                  // string milestone id, once each
     referralsRedeemed: 0,
     referralCodes: [],            // [{ code, created }] — codes THEY generate to share
-    redeemedRefs: []             // [code, ...] — referral codes already redeemed here
+    redeemedRefs: [],            // [code, ...] — referral codes already redeemed here
+    // demo chat → LINE handoff. The in-app chat is a thin, honest surface
+    // that collects intent and passes it to the LINE OA (the channel Naeki
+    // actually answers on); it never carries a message beyond a local draft.
+    chat: {
+      thread: [],                 // [{ role:'user'|'system', text, ts }] — local transcript
+      connected: false            // demo flag: user has reached the OA once
+    }
   };
 
   /* loyalty store events — app.js subscribes to repaint tier/offers UI */
@@ -62,12 +70,21 @@
         card: { ...DEFAULTS.card, ...(saved.card || {}) },
         cart: Array.isArray(saved.cart) ? saved.cart : [],
         loyalty: { ...DEFAULTS.loyalty, ...(saved.loyalty || {}) },
-        wallet: { ...DEFAULTS.wallet, ...(saved.wallet || {}) },
+        wallet: {
+          ...DEFAULTS.wallet, ...(saved.wallet || {}),
+          // only the two known providers survive a round-trip
+          expressPay: ["apple", "google"].includes(saved.wallet?.expressPay)
+            ? saved.wallet.expressPay : null
+        },
         gifts: Array.isArray(saved.gifts) ? saved.gifts : [],
         claimed: Array.isArray(saved.claimed) ? saved.claimed : [],
         referralsRedeemed: Number(saved.referralsRedeemed) || 0,
         referralCodes: Array.isArray(saved.referralCodes) ? saved.referralCodes : [],
-        redeemedRefs: Array.isArray(saved.redeemedRefs) ? saved.redeemedRefs : []
+        redeemedRefs: Array.isArray(saved.redeemedRefs) ? saved.redeemedRefs : [],
+        chat: {
+          thread: Array.isArray(saved.chat && saved.chat.thread) ? saved.chat.thread : [],
+          connected: !!(saved.chat && saved.chat.connected)
+        }
       };
     } catch {
       // private browsing, disabled storage, corrupt JSON → fresh state
@@ -281,6 +298,18 @@
     walletState: () => state.wallet,
     giftsState: () => state.gifts,
 
+    /** provision an express-pay wallet once ("apple" | "google"); repeat
+        calls are no-ops — after provisioning the card lives in the
+        phone's wallet and the app has nothing more to do */
+    setExpressPay(provider) {
+      if (!["apple", "google"].includes(provider)) return null;
+      if (state.wallet.expressPay) return null;   // already added — one-time
+      state.wallet.expressPay = provider;
+      persist();
+      emit();
+      return state.wallet.expressPay;
+    },
+
     /** demo top-up: TrueMoney-style — adds balance, logs the method */
     topUp(amount, method = "TrueMoney") {
       amount = Math.round(Number(amount) || 0);
@@ -324,6 +353,46 @@
       persist();
       emit();
       return gift;
+    },
+
+    /* ---------------- chat → LINE handoff ---------------- */
+
+    chatState: () => state.chat,
+
+    /** append a message to the local transcript. Nothing leaves the device —
+        the real reply happens on the LINE OA. Returns the thread length. */
+    chatSend(text, topic = "") {
+      text = String(text || "").trim().slice(0, 500);
+      if (!text) return null;
+      state.chat.thread.push({ role: "user", text, topic: topic || null, ts: Date.now() });
+      persist();
+      return state.chat.thread.length;
+    },
+
+    /** append a system acknowledgement (e.g. the handoff note); persists like
+        a user message but renders on the left */
+    chatNote(text) {
+      text = String(text || "").trim().slice(0, 500);
+      if (!text) return null;
+      state.chat.thread.push({ role: "system", text, ts: Date.now() });
+      persist();
+      return state.chat.thread.length;
+    },
+
+    /** mark that the user has reached the OA once (drives the demo badge);
+        no other side effects */
+    chatConnect() {
+      state.chat.connected = true;
+      persist();
+      return state.chat.connected;
+    },
+
+    /** clear the local transcript + connected flag */
+    chatReset() {
+      state.chat.thread = [];
+      state.chat.connected = false;
+      persist();
+      return state.chat;
     }
   };
 

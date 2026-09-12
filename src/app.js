@@ -226,6 +226,34 @@
     }
   });
 
+  /* ---------------- Customer Service Desk (landing shared frame) ----------------
+     Surfaces the same routed-intent topics as the app's Chat view, but as a
+     standalone landing section — no sign-in needed. Topic edits in data.js
+     repaint this frame and the app Chat view on the next refresh. */
+  F.define("servicedesk", {
+    topics: ["refresh"],
+    render(el, D) {
+      el.innerHTML = D.chatTopics().map(r => `
+        <button type="button" class="ch-topic" data-topic="${r.topic}" role="button">
+          <span class="ch-topic-icon" aria-hidden="true">
+            ${r.icon === "sushi" ? "🍣" : r.icon === "briefcase" ? "💼"
+             : r.icon === "bag" ? "🛍️" : r.icon === "delivery" ? "🛵"
+             : r.icon === "menu" ? "📋" : "💬"}
+          </span>
+          <h4>${r.topic}</h4>
+          <p>${r.prompt}</p>
+          <span class="btn accent">Chat in LINE</span>
+        </button>`).join("");
+      el.querySelectorAll(".ch-topic").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const route = D.CHAT_ROUTES.find(x => x.topic === btn.dataset.topic) || {};
+          const prompt = route.prompt || "I have a question for the Naeki team.";
+          window.open(D.INFO.lineUrl, "_blank");
+        });
+      });
+    }
+  });
+
   /* ---------------- Landing full menu (display only) ----------------
      The landing page surfaces the app's menu data without ordering —
      the "stripped down" view: category headers + name/sub/price lines.
@@ -887,6 +915,93 @@
   });
 
   renderMilestones();
+
+  /* ---------------- Chat → LINE OA (large orders & catering) ----------------
+     The in-app chat is a thin, honest surface: it records the user's draft on
+     this device only, then hands them to the LINE OA (the channel Naeki answers
+     on). LINE's lin.ee links open the chat but cannot prefill text, so the
+     prompt is kept here as the local thread as the user is handed off. */
+  const CH_THREAD = $("#ch-thread");
+  const CH_TOPICS = $("#ch-topics");
+  const CH_FORM = $("#ch-form");
+  const CH_INPUT = $("#ch-input");
+  const CH_NOTE = $("#ch-note");
+
+  // open the OA in the system browser (same path every external link uses)
+  function openLine() {
+    window.open(D.INFO.lineUrl, "_blank");
+    S.chatConnect();
+  }
+
+  function chatNote(msg) {
+    if (CH_NOTE) CH_NOTE.textContent = msg || "";
+  }
+
+  function renderChatThread() {
+    if (!CH_THREAD) return;
+    const th = S.chatState().thread;
+    CH_THREAD.innerHTML = th.length
+      ? th.map(m => `
+          <div class="ch-bubble ${m.role}">
+            ${m.role === "user" && m.topic ? `<span class="ch-bubble-topic">${m.topic}</span>` : ""}
+            ${escapeHtml(m.text)}
+            <span class="ch-time">${fmtWhen(m.ts)}</span>
+          </div>`).join("")
+      : `<div class="ch-bubble system">Hi — tap a topic or type a message. Large orders and
+         party trays are handled by the Naeki team on LINE, and we'll hand you
+         straight over.</div>`;
+    CH_THREAD.scrollTop = CH_THREAD.scrollHeight;
+  }
+
+  // the demo escape helper (matches how other renders avoid injecting raw text)
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  // topic cards + handoff handler
+  function renderChatTopics() {
+    if (!CH_TOPICS) return;
+    CH_TOPICS.innerHTML = D.chatTopics().map(r => `
+      <button type="button" class="ch-topic" data-topic="${r.topic}" role="button">
+        <span class="ch-topic-icon" aria-hidden="true">
+          ${r.icon === "sushi" ? "🍣" : r.icon === "briefcase" ? "💼"
+           : r.icon === "bag" ? "🛍️" : r.icon === "delivery" ? "🛵"
+           : r.icon === "menu" ? "📋" : "💬"}
+        </span>
+        <h4>${r.topic}</h4>
+        <p>${r.prompt}</p>
+        <span class="btn accent">Chat in LINE</span>
+      </button>`).join("");
+    CH_TOPICS.querySelectorAll(".ch-topic").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const route = D.CHAT_ROUTES.find(x => x.topic === btn.dataset.topic) || {};
+        const prompt = route.prompt || "I have a question for the Naeki team.";
+        S.chatSend(prompt, btn.dataset.topic);         // draft — on-device only
+        S.chatNote("Handing you to the Naeki team on LINE (@naekisushi) — your order and reply continue there.");
+        S.chatConnect();
+        renderChatThread();
+        chatNote("Opening LINE…");
+        openLine();
+      });
+    });
+  }
+
+  // composer: record the draft locally, then hand off to LINE
+  if (CH_FORM) CH_FORM.addEventListener("submit", e => {
+    e.preventDefault();
+    const text = CH_INPUT.value.trim();
+    if (!text) { chatNote("Type a message first, or tap a topic above."); return; }
+    S.chatSend(text);
+    S.chatConnect();
+    CH_INPUT.value = "";
+    renderChatThread();
+    chatNote("Opening LINE to continue…");
+    openLine();
+  });
+
+  renderChatThread();
+  renderChatTopics();
 
   /* sidebar glance: points + wallet balance chips */
   function syncSessionLoyalty() {

@@ -66,8 +66,8 @@ const AUDIT_JS = `(() => {
   };
 
   const isLanding = "__SHELL__" === "landing";
-  const names = isLanding ? ["home", "lmenu", "about", "franchise"]
-                           : ["menu", "cart", "branches", "stamps", "rewards", "wallet", "order", "milestones"];
+  const names = isLanding ? ["home", "lmenu", "about", "franchise", "servicedesk"]
+                          : ["menu", "cart", "branches", "stamps", "rewards", "wallet", "order", "milestones"];
 
   names.forEach(v => {
     const btn = document.querySelector(
@@ -304,7 +304,7 @@ async function main() {
   } else {
     pass("signed out renders the landing shell (body[data-mode=landing])");
     const landing = await auditPass(win, "landing");
-    shellReport(landing, "landing", ["home", "lmenu", "about", "franchise"]);
+    shellReport(landing, "landing", ["home", "lmenu", "about", "franchise", "servicedesk"]);
   }
 
   /* ---- pass 2: app (signed in) ---- */

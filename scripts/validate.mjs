@@ -206,6 +206,29 @@ if (DATA) {
       else pass(`order(): ${cards.length} contact cards compose from INFO + flagship branch`);
     }
   } catch (e) { problem(`data: order() threw — ${e.message.split("\n")[0]}`); }
+  /* loyalty engine: tier thresholds monotonic, points math, offers compose */
+  try {
+    const ths = DATA.TIERS.map(t => t.threshold);
+    const monotonic = ths.every((t, i) => i === 0 || t > ths[i - 1]);
+    if (!monotonic) problem(`loyalty: tier thresholds not strictly increasing: ${ths.join(", ")}`);
+    else pass(`loyalty: ${DATA.TIERS.length} tiers, thresholds ${ths.join(" / ")}`);
+    const pts = DATA.pointsFor(456, 1.25, 2);
+    if (pts !== 114) problem(`loyalty: pointsFor(456, 1.25, 2) = ${pts} (expected 114)`);
+    else pass(`loyalty: pointsFor math ok (456฿ × 1.25 × 2 → ${pts} pts)`);
+    if (DATA.tierFor(0).id !== "kome" || DATA.tierFor(350).id !== "maguro") {
+      problem(`loyalty: tierFor boundaries wrong (0→${DATA.tierFor(0).id}, 350→${DATA.tierFor(350).id})`);
+    } else pass("loyalty: tier boundaries ok (0→kome, 350→maguro)");
+    const off = DATA.offers({ history: [], points: 0 });
+    if (!Array.isArray(off) || off.length < 5) {
+      problem(`loyalty: offers() returned ${off?.length ?? "non-array"} (expected ≥5 weekly)`);
+    } else pass(`loyalty: offers() composes ${off.length} weekly deals with no history`);
+    const withHist = DATA.offers({
+      history: [{ ts: Date.now() - 9 * 86400000, total: 650, count: 4, category: "onigiri" }]
+    });
+    if (!withHist.some(o => o.personal)) {
+      problem("loyalty: offers() ignored history — no personal offer composed");
+    } else pass(`loyalty: offers() personalizes from history (${withHist.filter(o => o.personal).length} match(es))`);
+  } catch (e) { problem(`loyalty: engine threw — ${e.message.split("\n")[0]}`); }
 } else {
   problem("data: window.NaekiData did not initialize — skip data-layer checks");
 }

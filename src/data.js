@@ -368,6 +368,127 @@ window.NaekiData = (() => {
       .filter(Boolean);
   }
 
+  /* ============================================================
+     LOYALTY: points, tiers, offers — the Starbucks/McDonald's loop.
+
+     Earning: 1 point per 10฿ spent (rounded down), doubled on the
+     "points day" below. Tier multipliers stack on top. Offers are
+     the "correspondence about offers and promotions": weekly brand
+     deals + affinity matches computed from THIS DEVICE's purchase
+     history — the honest version of the data brokerage those apps do
+     server-side; receipts never leave this device (UI says so).
+     In production offers() gains a fetch() source the way refresh()
+     does; the shape stays identical. */
+
+  const POINTS_PER_BAHT = 0.1;        // 1 pt / 10฿
+  const TIERS = [
+    { id: "kome",    name: "Kome",     jp: "米",    threshold: 0,
+      blurb: "Rice — everyone starts here.", perk: "Earn 1 pt / 10฿" },
+    { id: "sake",    name: "Sake",     jp: "鮭",    threshold: 100,
+      blurb: "Salmon — a regular at the counter.", perk: "+10% points on every order" },
+    { id: "maguro",  name: "Maguro",   jp: "鮪",    threshold: 300,
+      blurb: "Tuna — trusted with the good cuts.", perk: "+25% points · birthday don" },
+    { id: "ikura",   name: "Ikura",    jp: "イクラ", threshold: 600,
+      blurb: "Roe — the indulgent circle.", perk: "+50% points · early seasonal drops" }
+  ];
+  const POINTS_DAY = 4;               // 0=Sun … 4=Thu: double points
+  const POINTS_DAY_NAME = "Thursdays";
+
+  function pointsFor(total, tierMult = 1, dayMult = 1) {
+    return Math.floor(total * POINTS_PER_BAHT * tierMult * dayMult);
+  }
+
+  function tierMultOf(tier) {
+    return { kome: 1, sake: 1.1, maguro: 1.25, ikura: 1.5 }[tier?.id] || 1;
+  }
+
+  function tierFor(points) {
+    let t = TIERS[0];
+    for (const cand of TIERS) if (points >= cand.threshold) t = cand;
+    return t;
+  }
+
+  function nextTier(points) {
+    return TIERS.find(t => points < t.threshold) || null;
+  }
+
+  /* purchase-history shape (store writes it at checkout):
+     { ts, total, count, category, lines } */
+  function favoriteCategory(history) {
+    if (!history || !history.length) return null;
+    const tally = {};
+    for (const o of history) {
+      const cat = o.category || "other";
+      tally[cat] = (tally[cat] || 0) + (o.count || 1);
+    }
+    return Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+  }
+
+  function daysSince(ts, now = Date.now()) {
+    return Math.floor((now - ts) / 86400000);
+  }
+
+  function bangkokWeekday(ts = Date.now()) {
+    const d = new Date(ts).toLocaleDateString("en-GB", { timeZone: "Asia/Bangkok" });
+    const [dd, mm, yy] = d.split("/").map(Number);
+    return new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay();
+  }
+
+  /* the offers inbox: weekly brand deals + locally-personalized matches */
+  function offers(opts = {}) {
+    const history = opts.history || [];
+    const now = opts.now || Date.now();
+    const weekday = bangkokWeekday(now);
+    const out = [];
+
+    const WEEKLY = [
+      { day: 1, kicker: "Monday set",   title: "Onigiri + Iced Matcha 89฿",
+        text: "Start the week light — any onigiri with an iced matcha.", tag: "deal" },
+      { day: 2, kicker: "Two-for-Tuesday", title: "Second roll half price",
+        text: "Any two sushi rolls — the cheaper one at 50% off.", tag: "deal" },
+      { day: 3, kicker: "Wednesday",     title: "Donburi day — free miso",
+        text: "Free miso soup with any donburi or bento.", tag: "deal" },
+      { day: POINTS_DAY, kicker: "Points day", title: `2× points ${POINTS_DAY_NAME}`,
+        text: "Every order earns double points — tier multipliers stack.", tag: "points" },
+      { day: 5, kicker: "Friday trays",  title: "Party set upgrade",
+        text: "Order the Assorted Sushi Set — we add tamagoyaki for the office.", tag: "deal" }
+    ];
+    for (const w of WEEKLY) {
+      out.push({ ...w, live: w.day === weekday, personal: false });
+    }
+
+    // affinity matches from local history — "because you order it" offers
+    const fav = favoriteCategory(history);
+    if (history.length && fav) {
+      const favGroup = MENU.find(g => g.id === fav);
+      const favName = favGroup ? favGroup.name : "your favorite";
+      out.push({
+        kicker: "Because you order it",
+        title: `2× points on ${favName}`,
+        text: `Your top category on this device is ${favName} — earn double on it this week.`,
+        tag: "personal", personal: true, live: true
+      });
+    }
+    const last = history[0];
+    if (last && daysSince(last.ts, now) >= 7) {
+      out.push({
+        kicker: "We saved you a seat",
+        title: "Welcome back — free Iced Matcha",
+        text: "It's been a week since your last order. First drink's on the demo house.",
+        tag: "personal", personal: true, live: true
+      });
+    }
+    if (history.some(o => o.total >= 500)) {
+      out.push({
+        kicker: "Office hero",
+        title: "5% back on 500฿+ trays",
+        text: "You run big orders — party trays over 500฿ earn bonus points.",
+        tag: "personal", personal: true, live: true
+      });
+    }
+    return out;
+  }
+
   /* ---- the "backend feed": in production this becomes a fetch()/SSE
      poll of the real Naeki backend; here the interval stands in and
      republishes so every frame re-sources itself from this module.
@@ -391,6 +512,10 @@ window.NaekiData = (() => {
     MENU, ALSO, BRANCHES, REVIEWS, INFO, LANDING,
     subscribe, publish,
     bangkokParts, toMins, isOpenNow, shortName, stats, featured, order,
+    // loyalty engine
+    POINTS_PER_BAHT, TIERS, POINTS_DAY, POINTS_DAY_NAME,
+    pointsFor, tierMultOf, tierFor, nextTier, offers,
+    bangkokWeekday, daysSince,
     refresh
   };
   return Data;

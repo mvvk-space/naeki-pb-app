@@ -20,8 +20,27 @@
     },
     // demo order cart — persists across sessions, never leaves the device;
     // lines reference menu items by name (the data-layer key)
-    cart: []                    // [{ name: string, price: number, qty: number, addedAt: epoch-ms }]
+    cart: [],                   // [{ name, price, qty, addedAt }]
+    // loyalty: points earned at demo checkout (1 pt / 10฿, tier + day
+    // multipliers via NaekiData); lifetime totals drive the tier
+    loyalty: {
+      points: 0,                // spendable points
+      lifetime: 0,             // never decreases — sets the tier
+      history: []               // purchase records [{ ts, total, count, category, lines }]
+    },
+    // demo wallet: stored-value balance (TrueMoney-style top-up + gift
+    // codes), all on-device — nothing is transmitted anywhere
+    wallet: {
+      balance: 0,               // remaining stored value (THB)
+      topups: []                // [{ ts, amount, method, ref }]
+    },
+    // demo gift cards the user has "bought" (for themselves / to give away)
+    gifts: []                    // [{ code, amount, ts, spent }]
   };
+
+  /* loyalty store events — app.js subscribes to repaint tier/offers UI */
+  const listeners = [];
+  function emit() { listeners.forEach(fn => { try { fn(); } catch (e) { console.error(e); } }); }
 
   let state = load();
 
@@ -34,7 +53,10 @@
       return {
         ...structuredClone(DEFAULTS), ...saved,
         card: { ...DEFAULTS.card, ...(saved.card || {}) },
-        cart: Array.isArray(saved.cart) ? saved.cart : []
+        cart: Array.isArray(saved.cart) ? saved.cart : [],
+        loyalty: { ...DEFAULTS.loyalty, ...(saved.loyalty || {}) },
+        wallet: { ...DEFAULTS.wallet, ...(saved.wallet || {}) },
+        gifts: Array.isArray(saved.gifts) ? saved.gifts : []
       };
     } catch {
       // private browsing, disabled storage, corrupt JSON → fresh state
@@ -124,22 +146,116 @@
       persist();
       return cartCount();
     },
-    /** demo checkout: totals the cart, clears it, returns the receipt */
-    checkoutCart() {
+    /** demo checkout: totals the cart, clears it, returns the receipt.
+        Loyalty earning lives here: writes a purchase record, awards points
+        (1 pt / 10฿ × tier × points-day multipliers), spends wallet balance
+        before "cash". Nothing is transmitted. */
+    checkoutCart(category) {
       if (!state.cart.length) return null;
       const total = state.cart.reduce((t, l) => t + l.price * l.qty, 0);
       const count = cartCount();
+      const walletSpent = Math.min(state.wallet.balance, total);
+      const paidByWallet = walletSpent > 0;
+      state.wallet.balance -= walletSpent;
+
+      const Data = window.NaekiData;
+      const tier = Data.tierFor(state.loyalty.lifetime);
+      const dayMult = Data.bangkokWeekday(Date.now()) === Data.POINTS_DAY ? 2 : 1;
+      const earned = Data.pointsFor(total, Data.tierMultOf(tier), dayMult);
+
       const receipt = {
         id: "NK-" + Date.now().toString(36).toUpperCase(),
-        total, count, ts: Date.now(), lines: state.cart.slice()
+        total, count, ts: Date.now(), lines: state.cart.slice(),
+        category: category || null,
+        paidByWallet, walletSpent,
+        pointsEarned: earned, tier: tier.name,
+        newLifetime: state.loyalty.lifetime + earned
       };
+      state.loyalty.points += earned;
+      state.loyalty.lifetime += earned;
+      state.loyalty.history.unshift({
+        ts: receipt.ts, total, count, category: category || null,
+        lines: receipt.lines.map(l => ({ name: l.name, qty: l.qty, price: l.price }))
+      });
+      if (state.loyalty.history.length > 50) state.loyalty.history.length = 50;
       state.cart = [];
       persist();
+      emit();
       return receipt;
     },
     clearCart() {
       state.cart = [];
       return persist();
+    },
+
+    /* ---------------- loyalty (points + tiers) ---------------- */
+
+    loyalty: () => state.loyalty,
+
+    /** redeem points for baht at 1 pt = 1฿; returns the redemption or null */
+    redeemPoints(pts, label = "Redeemed at checkout") {
+      pts = Math.floor(Number(pts) || 0);
+      if (pts <= 0 || pts > state.loyalty.points) return null;
+      state.loyalty.points -= pts;
+      state.wallet.balance += pts;    // becomes stored value to spend
+      persist();
+      emit();
+      return { ts: Date.now(), points: pts, baht: pts, label };
+    },
+
+    onLoyalty(fn) {
+      listeners.push(fn);
+      return () => { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); };
+    },
+
+    /* ---------------- wallet (stored value) ---------------- */
+
+    walletState: () => state.wallet,
+    giftsState: () => state.gifts,
+
+    /** demo top-up: TrueMoney-style — adds balance, logs the method */
+    topUp(amount, method = "TrueMoney") {
+      amount = Math.round(Number(amount) || 0);
+      if (amount <= 0) return null;
+      state.wallet.balance += amount;
+      const rec = {
+        ts: Date.now(), amount, method,
+        ref: method.slice(0, 2).toUpperCase() + "-" + Math.random().toString(36).slice(2, 8).toUpperCase()
+      };
+      state.wallet.topups.unshift(rec);
+      persist();
+      emit();
+      return rec;
+    },
+
+    /** buy a gift card: balance is debited (or "paid" fresh) and a code
+        is issued; the code can later be redeemed into the wallet */
+    buyGift(amount, paidFromBalance = true) {
+      amount = Math.round(Number(amount) || 0);
+      if (amount < 50) return null;             // min ฿50 like real cards
+      if (paidFromBalance) {
+        if (state.wallet.balance < amount) return null;
+        state.wallet.balance -= amount;
+      }
+      const gift = {
+        code: "NK-GIFT-" + Math.random().toString(36).slice(2, 10).toUpperCase(),
+        amount, ts: Date.now(), spent: false
+      };
+      state.gifts.unshift(gift);
+      persist();
+      emit();
+      return gift;
+    },
+
+    /** redeem a gift code into the wallet balance; idempotent */
+    redeemGift(code) {
+      const gift = state.gifts.find(g => g.code === String(code || "").trim().toUpperCase() && !g.spent);
+      if (!gift) return null;
+      gift.spent = true;
+      state.wallet.balance += gift.amount;
+      persist();
+      emit();
+      return gift;
     }
   };
 

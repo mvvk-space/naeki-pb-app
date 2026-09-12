@@ -67,7 +67,7 @@ const AUDIT_JS = `(() => {
 
   const isLanding = "__SHELL__" === "landing";
   const names = isLanding ? ["home", "lmenu", "about", "franchise"]
-                           : ["menu", "cart", "branches", "stamps", "order"];
+                           : ["menu", "cart", "branches", "stamps", "rewards", "wallet", "order"];
 
   names.forEach(v => {
     const btn = document.querySelector(
@@ -305,7 +305,7 @@ async function main() {
   } else {
     pass("sign-in swaps to the app shell (body[data-mode=app])");
     const appReport = await auditPass(win, "app");
-    shellReport(appReport, "app", ["menu", "cart", "branches", "stamps", "order"]);
+    shellReport(appReport, "app", ["menu", "cart", "branches", "stamps", "rewards", "wallet", "order"]);
   }
 
   console.log("\nNaeki mobile audit — 390px rendered layout");

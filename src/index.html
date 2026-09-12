@@ -663,13 +663,23 @@
         <button class="side-link" data-view="stamps">
           <span class="n">04</span> Stamp Card
         </button>
+        <button class="side-link" data-view="rewards">
+          <span class="n">05</span> Rewards
+        </button>
+        <button class="side-link" data-view="wallet">
+          <span class="n">06</span> Wallet
+        </button>
         <button class="side-link" data-view="order">
-          <span class="n">05</span> Order &amp; Info
+          <span class="n">07</span> Order &amp; Info
         </button>
       </nav>
 
       <div class="side-session" id="side-session">
         <div class="session-greeting" id="session-greeting"></div>
+        <div class="session-loyalty" id="session-loyalty" hidden>
+          <span class="sl-points" id="sl-points" title="Reward points"></span>
+          <span class="sl-balance" id="sl-balance" title="Wallet balance"></span>
+        </div>
         <button class="side-signout" id="side-signout">Sign out</button>
       </div>
 
@@ -824,7 +834,129 @@
         </div>
       </section>
 
-      <!-- ================= ORDER VIEW ================= -->
+      <!-- ================= REWARDS VIEW (points + tiers + offers) ================= -->
+      <section id="view-rewards" class="view">
+        <header class="view-head">
+          <h2>Rewards <span class="jp-inline" lang="ja">ポイント</span></h2>
+          <p>
+            Earn points on every demo order — 1 pt per 10฿, doubled on
+            Thursdays, multiplied by your tier. The offers inbox pairs the
+            brand's weekly deals with matches computed from this device's
+            order history. Nothing leaves this device — the honest version
+            of the personalization the big apps do server-side.
+          </p>
+        </header>
+
+        <!-- tier + points card -->
+        <div class="rw-hero" id="rw-hero"><!-- rendered by app.js --></div>
+
+        <!-- tier ladder -->
+        <div class="rw-tiers" id="rw-tiers"><!-- rendered by app.js --></div>
+
+        <!-- offers inbox -->
+        <div class="home-featured-head sec-head">
+          <h3>Offers for you</h3>
+          <span class="rule"></span>
+          <span class="n-items" id="rw-offers-note">this week</span>
+        </div>
+        <div class="rw-offers" id="rw-offers"><!-- rendered by app.js --></div>
+
+        <div class="disclaimer">
+          <p>
+            Demo loyalty program — points and offers are computed locally from
+            your demo orders and never verified by Naeki. A real program would
+            need the brand's involvement (verified stamps, real offers feed,
+            push). The engine lives in <code>src/data.js</code> (rules) and
+            <code>src/store.js</code> (balances) — the same shape a backend
+            would serve.
+          </p>
+        </div>
+      </section>
+
+      <!-- ================= WALLET VIEW (stored value) ================= -->
+      <section id="view-wallet" class="view">
+        <header class="view-head">
+          <h2>Wallet <span class="jp-inline" lang="ja">ウォレット</span></h2>
+          <p>
+            Stored value, Starbucks-style: load once, tap to pay at demo
+            checkout. Top up with TrueMoney, redeem gift codes, add the card
+            to Apple Pay — every step is a local demo, nothing is transmitted
+            or charged for real.
+          </p>
+        </header>
+
+        <div class="wl-grid">
+          <!-- balance card -->
+          <div class="wl-card wl-balance">
+            <div class="oc-kicker">Naeki balance</div>
+            <div class="wl-amount" id="wl-amount">฿0</div>
+            <div class="wl-sub" id="wl-sub">Load to pay with one tap at checkout</div>
+            <div class="wl-actions">
+              <div class="wl-quick">
+                <button class="wl-chip" data-topup="100">+฿100</button>
+                <button class="wl-chip" data-topup="300">+฿300</button>
+                <button class="wl-chip" data-topup="500">+฿500</button>
+                <button class="wl-chip" data-topup="1000">+฿1,000</button>
+              </div>
+              <button class="btn accent" id="wl-topup-cta">Top up with TrueMoney</button>
+            </div>
+          </div>
+
+          <!-- apple pay card -->
+          <div class="wl-card wl-pay">
+            <div class="oc-kicker">Express pay</div>
+            <h3>Add to Apple&nbsp;Pay</h3>
+            <p>Put your Naeki balance a double-click away — wallet works in
+               Safari on iPhone and Apple&nbsp;Watch.</p>
+            <div class="wl-pay-row">
+              <button class="btn accent wl-pay-btn" id="wl-applepay" aria-label="Add to Apple Pay">
+                <svg viewBox="0 0 27 20" class="ap-mark" aria-hidden="true"><path d="M4.3 2.1c1.9-.3 3.4.6 4.9.5 1.6 0 3.5-1 5.7-.9 2.4 0 4.1 1 5.1 2.9-3.5 2-4.3 6.1-.3 8.5-.8 1.8-2.2 3.9-3.8 3.9-1.7 0-2.2-1.1-4.2-1.1-2 0-2.6 1.1-4.2 1.1-1.7 0-3.1-2.1-3.9-4C1.6 10.2.9 6 2.2 3.4c.5-.9 1.2-1.2 2.1-1.3zm6.9-1.8c.8-1.4 2.3-2.4 3.6-2.5.2 1.5-.6 3-1.4 3.9-.8.9-2.2 1.6-3.4 1.5-.2-1.3.5-2.5 1.2-2.9z" fill="currentColor"/></svg>
+                Add to Apple Pay
+              </button>
+              <button class="btn ghost" id="wl-gpay" aria-label="Add to Google Wallet">G&nbsp;Pay</button>
+            </div>
+            <p class="wl-note" id="wl-pay-note"></p>
+          </div>
+
+          <!-- gift cards -->
+          <div class="wl-card wl-gift">
+            <div class="oc-kicker">Gift cards</div>
+            <h3>Give sushi</h3>
+            <p>Buy a code from your balance, send it, they redeem it here.</p>
+            <div class="wl-gift-actions">
+              <button class="wl-chip" data-gift="100">฿100</button>
+              <button class="wl-chip" data-gift="300">฿300</button>
+              <button class="wl-chip" data-gift="500">฿500</button>
+            </div>
+            <div class="wl-gifts" id="wl-gifts"><!-- rendered by app.js --></div>
+          </div>
+
+          <!-- redeem code -->
+          <div class="wl-card wl-redeem">
+            <div class="oc-kicker">Redeem</div>
+            <h3>Got a code?</h3>
+            <p>Paste a NK-GIFT-… code to add it to your balance.</p>
+            <form id="wl-redeem-form" class="wl-redeem-form">
+              <input id="wl-redeem-code" type="text" placeholder="NK-GIFT-…"
+                     autocomplete="off" aria-label="Gift code" />
+              <button type="submit" class="btn accent">Redeem</button>
+            </form>
+            <p class="wl-note" id="wl-redeem-note"></p>
+          </div>
+        </div>
+
+        <div class="disclaimer">
+          <p>
+            Demo wallet — balances, top-ups, gift codes and the Apple Pay /
+            Google Wallet buttons are local simulations; no payment rails, no
+            charges, nothing leaves this device. Real stored value and real
+            wallet provisioning require the brand, a payment processor and
+            Apple/Google's merchant programs — the future-path section of the
+            README covers what that takes.
+          </p>
+        </div>
+      </section>
+
       <section id="view-order" class="view">
         <header class="view-head">
           <h2>Order &amp; info</h2>

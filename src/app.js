@@ -545,7 +545,14 @@
     cartRoot.appendChild(wrap);
 
     $("#cart-checkout").addEventListener("click", () => {
-      const receipt = S.checkoutCart();
+      // dominant category of this cart → powers "because you order it" offers
+      const catTally = {};
+      S.cart().forEach(l => {
+        const group = D.MENU.find(g => g.items.some(it => it.name === l.name));
+        if (group) catTally[group.id] = (catTally[group.id] || 0) + l.qty;
+      });
+      const category = Object.entries(catTally).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+      const receipt = S.checkoutCart(category);
       if (receipt) {
         syncCartUI();          // badge + steppers to empty state first…
         renderReceipt(receipt); // …then paint the receipt (renderCart would wipe it)
@@ -564,6 +571,10 @@
     const when = new Date(receipt.ts).toLocaleString(undefined, {
       day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
     });
+    // loyalty line — points earned this order (checkout writes it)
+    const earned = receipt.pointsEarned || 0;
+    const walletLine = receipt.paidByWallet
+      ? `Paid ${fmtBaht(receipt.walletSpent)} from wallet balance.` : "";
     card.innerHTML = `
       <div class="oc-kicker">Demo order placed</div>
       <h3>${receipt.id}</h3>
@@ -571,6 +582,10 @@
       <ul class="receipt-lines">
         ${receipt.lines.map(l => `<li><span>${l.qty}×</span> ${l.name}</li>`).join("")}
       </ul>
+      ${earned ? `<div class="receipt-points">
+        <span class="rp-num">+${earned}</span> points earned · ${receipt.tier} tier
+      </div>` : ""}
+      ${walletLine ? `<p class="cart-note">${walletLine}</p>` : ""}
       <p class="cart-note">
         Nothing was sent anywhere — this is a local demo reference. Take the id
         to the counter or order for real via
@@ -578,17 +593,197 @@
       </p>
       <div class="cart-actions">
         <button class="btn accent" id="receipt-done">Back to the menu</button>
+        ${earned ? `<button class="btn ghost" id="receipt-rewards">See rewards</button>` : ""}
       </div>`;
     cartRoot.appendChild(card);
     $("#receipt-done").addEventListener("click", () => {
       renderCart();
       goToView("menu");
     });
+    const rw = $("#receipt-rewards");
+    if (rw) rw.addEventListener("click", () => {
+      renderCart();
+      goToView("rewards");
+    });
   }
 
   // landing full-menu CTAs
   $("#lmenu-open-app").addEventListener("click", e => openSignin(e));
   $("#lmenu-back").addEventListener("click", () => goToView("home"));
+
+  /* ---------------- Rewards (points + tiers + offers inbox) ----------------
+     Renders from the data-layer rules (TIERS, offers()) + store balances;
+     re-renders on every loyalty change (checkout, redeem) and on data
+     refresh so weekday deals flip live. */
+  const rwHero = $("#rw-hero");
+  const rwTiers = $("#rw-tiers");
+  const rwOffers = $("#rw-offers");
+  const rwNote = $("#rw-offers-note");
+
+  function renderRewards() {
+    const lo = S.loyalty();
+    const tier = D.tierFor(lo.lifetime);
+    const next = D.nextTier(lo.lifetime);
+    const pct = next
+      ? Math.min(100, Math.round((lo.lifetime - tier.threshold) / (next.threshold - tier.threshold) * 100))
+      : 100;
+
+    rwHero.innerHTML = `
+      <div class="rw-hero-tier ${tier.id}">
+        <div class="rw-tier-name">${tier.name} <span lang="ja">${tier.jp}</span></div>
+        <div class="rw-tier-blurb">${tier.blurb}</div>
+      </div>
+      <div class="rw-hero-points">
+        <div class="rw-pts"><strong>${lo.points}</strong><span>points to spend</span></div>
+        <div class="rw-pts"><strong>${lo.lifetime}</strong><span>lifetime points</span></div>
+        <div class="rw-tier-progress">
+          ${next
+            ? `<span class="rw-progress-label">${next.threshold - lo.lifetime} pts to ${next.name}</span>
+               <div class="rw-progress-track"><div class="rw-progress-fill" ></div></div>`
+            : `<span class="rw-progress-label">Top tier — enjoy the perks</span>`}
+        </div>
+        <div class="rw-perk">${tier.perk}</div>
+        ${lo.points >= 10 ? `
+          <div class="rw-redeem-row">
+            <button class="btn accent" id="rw-redeem-50">Redeem 50 pts → ฿50 balance</button>
+          </div>` : `<p class="rw-redeem-hint">Redeem from 50 points (1 pt = ฿1).</p>`}
+      </div>`;
+
+    // tier ladder
+    rwTiers.innerHTML = D.TIERS.map(t => {
+      const state = lo.lifetime >= t.threshold ? "done" : (t === next ? "next" : "todo");
+      return `<div class="rw-tier ${state} ${t.id}">
+        <span class="rw-tier-jp" lang="ja">${t.jp}</span>
+        <strong>${t.name}</strong>
+        <span class="rw-tier-th">${t.threshold} pts</span>
+        <span class="rw-tier-perk">${t.perk}</span>
+      </div>`;
+    }).join("");
+
+    // offers inbox: weekly brand deals + local affinity matches
+    const list = D.offers({ history: lo.history, points: lo.points });
+    const live = list.filter(o => o.live);
+    rwNote.textContent = `${live.length} live now · this week`;
+    rwOffers.innerHTML = list.map(o => `
+      <div class="rw-offer ${o.live ? "live" : ""} ${o.personal ? "personal" : ""}">
+        <div class="rw-offer-kicker">${o.kicker}${o.personal ? " · just for you" : ""}</div>
+        <div class="rw-offer-title">${o.title}</div>
+        <p>${o.text}</p>
+        ${o.live ? `<span class="rw-live-dot"></span>` : ""}
+      </div>`).join("");
+
+    // progress width via CSSOM (CSP blocks inline style attributes)
+    const fill = rwHero.querySelector(".rw-progress-fill");
+    if (fill) fill.style.setProperty("--rw-pct", pct + "%");
+
+    const redeemBtn = $("#rw-redeem-50");
+    if (redeemBtn) redeemBtn.addEventListener("click", () => {
+      if (S.redeemPoints(50, "Rewards → wallet")) flash("50 points → ฿50 added to your wallet");
+    });
+  }
+
+  /* ---------------- Wallet (stored value) ---------------- */
+  const wlAmount = $("#wl-amount");
+  const wlSub = $("#wl-sub");
+  const wlGifts = $("#wl-gifts");
+  const wlPayNote = $("#wl-pay-note");
+  const wlRedeemNote = $("#wl-redeem-note");
+
+  function renderWallet() {
+    const w = S.walletState();
+    wlAmount.textContent = fmtBaht(w.balance);
+    wlSub.textContent = w.balance > 0
+      ? `Pays at checkout before cash · ${S.giftsState().filter(g => !g.spent).length} gift code(s) unredeemed`
+      : "Load to pay with one tap at checkout";
+
+    const gifts = S.giftsState();
+    wlGifts.innerHTML = gifts.length
+      ? gifts.map(g => `
+          <div class="wl-gift-row ${g.spent ? "spent" : ""}">
+            <code>${g.code}</code>
+            <span>${fmtBaht(g.amount)}</span>
+            <span class="wl-gift-state">${g.spent ? "redeemed" : "ready to send"}</span>
+          </div>`).join("")
+      : `<p class="wl-note">No gift cards yet — buy one above.</p>`;
+  }
+
+  // top-up chips + TrueMoney CTA
+  $$("[data-topup]").forEach(btn => btn.addEventListener("click", () => {
+    const rec = S.topUp(Number(btn.dataset.topup), "TrueMoney");
+    if (rec) flash(`TrueMoney top-up ${fmtBaht(rec.amount)} · ref ${rec.ref}`);
+  }));
+  $("#wl-topup-cta").addEventListener("click", () => {
+    const rec = S.topUp(300, "TrueMoney");
+    if (rec) flash(`TrueMoney top-up ${fmtBaht(rec.amount)} · ref ${rec.ref}`);
+  });
+
+  // gift purchase chips
+  $$("[data-gift]").forEach(btn => btn.addEventListener("click", () => {
+    const amount = Number(btn.dataset.gift);
+    if (S.walletState().balance < amount) {
+      wlGifts.innerHTML = `<p class="wl-note wl-warn">Need ${fmtBaht(amount)} balance first — top up, then gift.</p>`;
+      return;
+    }
+    const gift = S.buyGift(amount);
+    if (gift) flash(`Gift card ${gift.code} ready to send`);
+  }));
+
+  // redeem code form
+  $("#wl-redeem-form").addEventListener("submit", e => {
+    e.preventDefault();
+    const code = $("#wl-redeem-code").value;
+    const gift = S.redeemGift(code);
+    wlRedeemNote.textContent = gift
+      ? `Added ${fmtBaht(gift.amount)} from ${gift.code}.`
+      : "Code not found or already redeemed.";
+    if (gift) $("#wl-redeem-code").value = "";
+  });
+
+  // express pay surfaces — honest demo: they mark intent locally
+  $("#wl-applepay").addEventListener("click", () => {
+    const w = S.walletState();
+    wlPayNote.textContent = w.balance > 0
+      ? "Demo: in the real app this opens Apple's Add Card sheet for your Naeki balance."
+      : "Load a balance first — then this would provision an Apple Pay card.";
+  });
+  $("#wl-gpay").addEventListener("click", () => {
+    wlPayNote.textContent = "Demo: the real app would launch Google Wallet's Add to Wallet flow.";
+  });
+
+  // loyalty changes repaint both views + every dish stepper; the offers
+  // inbox also flips when the data layer refreshes (weekday deals)
+  S.onLoyalty(() => { renderRewards(); renderWallet(); syncSessionLoyalty(); });
+  D.subscribe("refresh", renderRewards);
+  renderRewards();
+  renderWallet();
+  syncSessionLoyalty();
+
+  /* sidebar glance: points + wallet balance chips */
+  function syncSessionLoyalty() {
+    const box = $("#session-loyalty");
+    if (!box) return;
+    const lo = S.loyalty();
+    const w = S.walletState();
+    box.hidden = false;
+    $("#sl-points").textContent = lo.points + " pts";
+    $("#sl-balance").textContent = fmtBaht(w.balance);
+  }
+
+  /* small toast — used for top-ups, gifts, redemptions */
+  function flash(msg) {
+    let t = $("#flash");
+    if (!t) {
+      t = document.createElement("div");
+      t.id = "flash";
+      t.className = "flash";
+      t.setAttribute("role", "status");
+      document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    t.classList.add("on");
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove("on"), 2600);
+  }
 
   syncCartUI();
 

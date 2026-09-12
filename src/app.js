@@ -5,6 +5,15 @@
   const $ = (sel, el = document) => el.querySelector(sel);
   const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
 
+  /* indicative-price formatter (see data.js: prices are demo THB) */
+  const fmtBaht = (n) => "฿" + Math.round(Number(n) || 0);
+
+  /* registry of live dish-card qty syncs, keyed by menu-item name —
+     lets the cart view / checkout resync every visible stepper at once.
+     Declared here (not near dishCard) because F.mount() builds featured
+     cards at load time, before the later const declarations run. */
+  const orderables = new Map();
+
   /* ---------------- Bangkok clock ---------------- */
   function tickClock() {
     const t = new Date().toLocaleTimeString("en-GB", {
@@ -141,7 +150,9 @@
     topics: ["refresh"],
     render(el, D) {
       el.innerHTML = "";
-      D.featured().forEach(({ item, group }) => el.appendChild(dishCard(item, group)));
+      // landing display-only: no ordering chrome on the marketing surface
+      D.featured().forEach(({ item, group }) =>
+        el.appendChild(dishCard(item, group, { orderable: false })));
     }
   });
 
@@ -190,10 +201,59 @@
     }
   });
 
+  /* ---------------- Landing full menu (display only) ----------------
+     The landing page surfaces the app's menu data without ordering —
+     the "stripped down" view: category headers + name/sub/price lines.
+     Live frame: menu edits in data.js repaint it on the next refresh. */
+  F.define("full-menu", {
+    topics: ["refresh"],
+    render(el, D) {
+      el.innerHTML = "";
+      D.MENU.forEach(group => {
+        const sec = document.createElement("section");
+        sec.className = "lmenu-group";
+        sec.innerHTML = `
+          <div class="sec-head sec-head--sub">
+            <h3>${group.name}</h3>
+            <span class="jp">${group.jp}</span>
+            <span class="rule"></span>
+            <span class="n-items">${group.items.length} items</span>
+          </div>
+          <p class="group-desc">${group.desc}</p>`;
+        const list = document.createElement("ul");
+        list.className = "lmenu-list";
+        group.items.forEach(it => {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <span class="lm-name">${it.name}<em>${it.sub || ""}</em></span>
+            <span class="lm-price">${fmtBaht(it.price)}</span>`;
+          list.appendChild(li);
+        });
+        sec.appendChild(list);
+        el.appendChild(sec);
+      });
+      // the rest of the daily line-up (NAEKI.ALSO) — names only
+      const also = document.createElement("section");
+      also.className = "lmenu-group";
+      also.innerHTML = `
+        <div class="sec-head sec-head--sub">
+          <h3>Also rotating daily</h3>
+          <span class="jp">日替わり</span>
+          <span class="rule"></span>
+          <span class="n-items">${D.ALSO.length} more</span>
+        </div>
+        <p class="group-desc">The rest of the daily line-up — ask at the counter.</p>`;
+      const strip = document.createElement("p");
+      strip.className = "lmenu-also";
+      strip.innerHTML = D.ALSO.map(n => `<span>${n}</span>`).join("");
+      also.appendChild(strip);
+      el.appendChild(also);
+    }
+  });
   F.mount();
 
-  $("#home-browse-menu").addEventListener("click", () => goToView("menu"));
-  $("#home-full-menu").addEventListener("click", () => goToView("menu"));
+  $("#home-browse-menu").addEventListener("click", () => goToView("lmenu"));
+  $("#home-full-menu").addEventListener("click", () => goToView("lmenu"));
   // "All branches in the app →" — gates into the app (wired to openSignin via
   // the CTA list above); its data-goto hands sign-in off to the branches view
 
@@ -225,7 +285,7 @@
     });
   }
 
-  function dishCard(item, group) {
+  function dishCard(item, group, { orderable = true } = {}) {
     const card = document.createElement("article");
     card.className = "dish";
     card.tabIndex = 0;
@@ -236,11 +296,51 @@
       <div class="dish-body">
         <h4>${item.name}</h4>
         <div class="dish-sub">${item.sub || ""}</div>
+        ${orderable ? `
+        <div class="dish-foot">
+          <span class="dish-price">${fmtBaht(item.price)}</span>
+          <div class="dish-order" data-name="${item.name}">
+            <button class="d-step d-minus" aria-label="Remove one ${item.name}">−</button>
+            <span class="d-qty" aria-live="polite">0</span>
+            <button class="d-step d-plus" aria-label="Add one ${item.name}">+</button>
+          </div>
+        </div>` : `<div class="dish-foot"><span class="dish-price">${fmtBaht(item.price)}</span></div>`}
       </div>`;
+    // ordering: stepper writes to the store, badge + steppers sync.
+    // Non-orderable cards (landing display-only) skip the wiring entirely.
+    const name = item.name;
+    const qtyEl = card.querySelector(".d-qty");
+    const sync = orderable ? () => {
+      const line = S.cart().find(l => l.name === name);
+      const q = line ? line.qty : 0;
+      qtyEl.textContent = q;
+      card.querySelector(".dish-order").classList.toggle("has-qty", q > 0);
+    } : null;
+    if (orderable) {
+      card.querySelector(".d-plus").addEventListener("click", e => {
+        e.stopPropagation();                       // don't open the modal
+        S.addToCart(name, item.price);
+        syncCartUI();
+        sync();
+      });
+      card.querySelector(".d-minus").addEventListener("click", e => {
+        e.stopPropagation();
+        const line = S.cart().find(l => l.name === name);
+        if (line) { S.setCartQty(name, line.qty - 1); syncCartUI(); sync(); }
+      });
+      orderables.set(name, sync);                   // global resync point
+      sync();
+    }
     const open = () => openModal(item, group);
-    card.addEventListener("click", open);
+    card.addEventListener("click", e => {
+      if (e.target.closest(".dish-order")) return; // stepper owns clicks
+      open();
+    });
     card.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+      if (e.key === "Enter" || e.key === " ") {
+        if (e.target.closest(".dish-order")) return;
+        e.preventDefault(); open();
+      }
     });
     return card;
   }
@@ -343,6 +443,130 @@
   renderBranches();
   D.subscribe("tick", renderBranches);
 
+  /* ---------------- Order cart (app shell) ----------------
+     Steppers on dish cards write to NaekiStore; the badge, the cart view,
+     and every mounted stepper stay in sync through syncCartUI(). */
+  const cartBadge = $("#cart-badge");
+  const cartRoot = $("#cart-root");
+
+  function cartTotals() {
+    const lines = S.cart();
+    const count = lines.reduce((n, l) => n + l.qty, 0);
+    const total = lines.reduce((t, l) => t + l.price * l.qty, 0);
+    return { count, total };
+  }
+
+  function syncCartUI() {
+    const { count, total } = cartTotals();
+    cartBadge.textContent = count;
+    cartBadge.hidden = count === 0;
+    renderCart();
+    orderables.forEach(sync => sync());
+    // dish modal shows the add-to-cart affordance too
+    const modalAdd = $("#modal-add");
+    if (modalAdd && !$("#modal").hidden) syncModalAdd();
+  }
+
+  function renderCart() {
+    const lines = S.cart();
+    if (!cartRoot) return;
+    cartRoot.innerHTML = "";
+    if (!lines.length) {
+      const empty = document.createElement("div");
+      empty.className = "cart-empty";
+      empty.innerHTML = `
+        <p>Nothing in the cart yet.</p>
+        <p class="cart-empty-sub">Add dishes from the menu — your lines wait here.</p>
+        <button class="btn accent" id="cart-browse">Browse the menu</button>`;
+      cartRoot.appendChild(empty);
+      $("#cart-browse").addEventListener("click", () => goToView("menu"));
+      return;
+    }
+    const wrap = document.createElement("div");
+    wrap.className = "cart-wrap";
+    const list = document.createElement("ul");
+    list.className = "cart-list";
+    lines.forEach(l => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span class="c-name">${l.name}</span>
+        <span class="c-stepper" data-name="${l.name}">
+          <button class="d-step c-minus" aria-label="Remove one ${l.name}">−</button>
+          <span class="c-qty">${l.qty}</span>
+          <button class="d-step c-plus" aria-label="Add one ${l.name}">+</button>
+        </span>
+        <span class="c-line">${fmtBaht(l.price * l.qty)}</span>`;
+      li.querySelector(".c-plus").addEventListener("click", () => {
+        S.setCartQty(l.name, l.qty + 1); syncCartUI();
+      });
+      li.querySelector(".c-minus").addEventListener("click", () => {
+        S.setCartQty(l.name, l.qty - 1); syncCartUI();
+      });
+      list.appendChild(li);
+    });
+    wrap.appendChild(list);
+
+    const { count, total } = cartTotals();
+    const foot = document.createElement("div");
+    foot.className = "cart-foot";
+    foot.innerHTML = `
+      <div class="cart-total"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${fmtBaht(total)}</strong></div>
+      <p class="cart-note">Indicative prices — demo checkout, nothing is sent anywhere.</p>
+      <div class="cart-actions">
+        <button class="btn accent" id="cart-checkout">Checkout</button>
+        <button class="btn ghost" id="cart-clear">Clear cart</button>
+      </div>`;
+    wrap.appendChild(foot);
+    cartRoot.appendChild(wrap);
+
+    $("#cart-checkout").addEventListener("click", () => {
+      const receipt = S.checkoutCart();
+      if (receipt) {
+        syncCartUI();          // badge + steppers to empty state first…
+        renderReceipt(receipt); // …then paint the receipt (renderCart would wipe it)
+      }
+    });
+    $("#cart-clear").addEventListener("click", () => {
+      S.clearCart();
+      syncCartUI();
+    });
+  }
+
+  function renderReceipt(receipt) {
+    cartRoot.innerHTML = "";
+    const card = document.createElement("div");
+    card.className = "cart-receipt";
+    const when = new Date(receipt.ts).toLocaleString(undefined, {
+      day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+    });
+    card.innerHTML = `
+      <div class="oc-kicker">Demo order placed</div>
+      <h3>${receipt.id}</h3>
+      <p class="receipt-when">${when} · ${receipt.count} items · ${fmtBaht(receipt.total)}</p>
+      <ul class="receipt-lines">
+        ${receipt.lines.map(l => `<li><span>${l.qty}×</span> ${l.name}</li>`).join("")}
+      </ul>
+      <p class="cart-note">
+        Nothing was sent anywhere — this is a local demo reference. Take the id
+        to the counter or order for real via
+        <a href="https://lin.ee/DqJnedo" data-external>LINE OA (@naekisushi)</a>.
+      </p>
+      <div class="cart-actions">
+        <button class="btn accent" id="receipt-done">Back to the menu</button>
+      </div>`;
+    cartRoot.appendChild(card);
+    $("#receipt-done").addEventListener("click", () => {
+      renderCart();
+      goToView("menu");
+    });
+  }
+
+  // landing full-menu CTAs
+  $("#lmenu-open-app").addEventListener("click", e => openSignin(e));
+  $("#lmenu-back").addEventListener("click", () => goToView("home"));
+
+  syncCartUI();
+
   /* ---------------- Stamp card (local demo, via NaekiStore) ---------------- */
   const stampGrid = $("#stamp-grid");
   const stampCount = $("#stamp-count");
@@ -424,7 +648,9 @@
 
   /* ---------------- Modal ---------------- */
   const modal = $("#modal");
+  let modalItem = null, modalGroup = null;
   function openModal(item, group) {
+    modalItem = item; modalGroup = group;
     $("#modal-img").src = item.img;
     $("#modal-img").alt = item.name;
     $("#modal-cat").textContent = group.name + " · " + group.jp;
@@ -435,12 +661,31 @@
     const q = $("#modal-quote");
     if (item.quote) { q.hidden = false; q.textContent = "“" + item.quote + "”"; }
     else q.hidden = true;
+    // order affordance: app shell only. The landing's display-only cards
+    // open this modal too, but ordering lives behind sign-in — hide it there.
+    const priceEl = $("#modal-price");
+    const addEl = $("#modal-add");
+    const inApp = document.body.dataset.mode === "app";
+    if (priceEl) priceEl.textContent = fmtBaht(item.price);
+    if (addEl) { addEl.hidden = !inApp; if (inApp) syncModalAdd(); }
     $("#modal-find").href =
       "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent("Naeki Sushi BTS Siam Bangkok");
     modal.hidden = false;
     $(".modal-x").focus();
   }
-  function closeModal() { modal.hidden = true; }
+  function syncModalAdd() {
+    const addEl = $("#modal-add");
+    if (!addEl || !modalItem) return;
+    const line = S.cart().find(l => l.name === modalItem.name);
+    addEl.textContent = line ? `In cart · ${line.qty} — add one` : `Add to cart · ${fmtBaht(modalItem.price)}`;
+  }
+  const modalAddBtn = $("#modal-add");
+  if (modalAddBtn) modalAddBtn.addEventListener("click", () => {
+    if (!modalItem) return;
+    S.addToCart(modalItem.name, modalItem.price);
+    syncCartUI();          // also re-syncs the modal label
+  });
+  function closeModal() { modal.hidden = true; modalItem = null; }
   $$("[data-close]", modal).forEach(el => el.addEventListener("click", closeModal));
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {

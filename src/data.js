@@ -5,6 +5,10 @@
    (frames.js), so editing an hour, a branch or a quote here updates the
    landing page (and every other view) on the next refresh.
 
+   Prices: INDICATIVE THB, set for the showcase's demo ordering flow —
+   naeki.co does not publish prices. Every price surface in the UI carries
+   the same caveat; replace with real data here when the brand supplies it.
+
    Research: naeki.co, Google Maps listings (Sept 2026). Photos are local
    in assets/.
 
@@ -25,16 +29,16 @@ window.NaekiData = (() => {
       jp: "おにぎり",
       desc: "The signature. Hand-shaped to order, one-handed convenience, the rice seasoned to sit just right against the filling.",
       items: [
-        { name: "Roasted Salmon", sub: "Aburi, torched to order", img: "assets/onigiri_roasted_salmon.jpg",
+        { name: "Roasted Salmon", price: 45, sub: "Aburi, torched to order", img: "assets/onigiri_roasted_salmon.jpg",
           story: "The blowtorch is Naeki's party trick — reviewers single out the torched salmon onigiri for the smell alone." },
-        { name: "Salmon Mayo", sub: "Classic filling", img: "assets/onigiri_salmon_mayo.jpg" },
-        { name: "Salmon Ikura Mayo", sub: "With salmon roe", img: "assets/onigiri_salmon_ikura_mayo.jpg",
+        { name: "Salmon Mayo", price: 39, sub: "Classic filling", img: "assets/onigiri_salmon_mayo.jpg" },
+        { name: "Salmon Ikura Mayo", price: 55, sub: "With salmon roe", img: "assets/onigiri_salmon_ikura_mayo.jpg",
           story: "Briny ikura against sweet mayo and salmon — the richer sibling of the classic salmon mayo." },
-        { name: "Tuna Mayo", sub: "The everyday standard", img: "assets/onigiri_tuna_mayo.jpg" },
-        { name: "Unagi", sub: "Grilled eel, tare glaze", img: "assets/onigiri_unagi.jpg" },
-        { name: "Mentaiko", sub: "Spiced cod roe", img: "assets/onigiri_mentaiko.jpg" },
-        { name: "Ebiko Salad", sub: "Shrimp roe salad", img: "assets/onigiri_ebiko_salad.jpg" },
-        { name: "Katsuobushi", sub: "Bonito flakes", img: "assets/onigiri_katsuobushi.jpg" }
+        { name: "Tuna Mayo", price: 35, sub: "The everyday standard", img: "assets/onigiri_tuna_mayo.jpg" },
+        { name: "Unagi", price: 49, sub: "Grilled eel, tare glaze", img: "assets/onigiri_unagi.jpg" },
+        { name: "Mentaiko", price: 42, sub: "Spiced cod roe", img: "assets/onigiri_mentaiko.jpg" },
+        { name: "Ebiko Salad", price: 42, sub: "Shrimp roe salad", img: "assets/onigiri_ebiko_salad.jpg" },
+        { name: "Katsuobushi", price: 39, sub: "Bonito flakes", img: "assets/onigiri_katsuobushi.jpg" }
       ]
     },
     {
@@ -43,16 +47,16 @@ window.NaekiData = (() => {
       jp: "にぎり",
       desc: "Pressed fresh at the counter — reviewers say the fish \"melts in your mouth\". Two cuts of salmon lead the list.",
       items: [
-        { name: "Salmon Nigiri", sub: "Fresh, the benchmark", img: "assets/salmon_nigiri.jpg",
+        { name: "Salmon Nigiri", price: 45, sub: "Fresh, the benchmark", img: "assets/salmon_nigiri.jpg",
           story: "Their best-reviewed piece: thick-cut fresh salmon over properly seasoned Japanese rice." },
-        { name: "Fatty Salmon Nigiri", sub: "O-toro salmon", img: "assets/fatty_salmon_nigiri.jpg" },
-        { name: "Salmon Aburi Nigiri", sub: "Seared salmon", img: "assets/salmon_aburi_nigiri.jpg" },
-        { name: "Maguro Nigiri", sub: "Tuna", img: "assets/maguro_nigiri.jpg" },
-        { name: "Unagi Nigiri", sub: "Grilled eel", img: "assets/unagi_nigiri.jpg" },
-        { name: "Hotate Nigiri", sub: "Scallop", img: "assets/hotate_nigiri.jpg" },
-        { name: "Foie Gras Nigiri", sub: "The indulgent one", img: "assets/foie_gras_nigiri.jpg",
+        { name: "Fatty Salmon Nigiri", price: 55, sub: "O-toro salmon", img: "assets/fatty_salmon_nigiri.jpg" },
+        { name: "Salmon Aburi Nigiri", price: 49, sub: "Seared salmon", img: "assets/salmon_aburi_nigiri.jpg" },
+        { name: "Maguro Nigiri", price: 49, sub: "Tuna", img: "assets/maguro_nigiri.jpg" },
+        { name: "Unagi Nigiri", price: 59, sub: "Grilled eel", img: "assets/unagi_nigiri.jpg" },
+        { name: "Hotate Nigiri", price: 59, sub: "Scallop", img: "assets/hotate_nigiri.jpg" },
+        { name: "Foie Gras Nigiri", price: 89, sub: "The indulgent one", img: "assets/foie_gras_nigiri.jpg",
           story: "Proof the counter isn't only classics — foie gras over rice, a Bangkok office-lunch luxury." },
-        { name: "Ikura Nigiri", sub: "Salmon roe gunkan", img: "assets/ikura_nigiri.jpg" }
+        { name: "Ikura Nigiri", price: 65, sub: "Salmon roe gunkan", img: "assets/ikura_nigiri.jpg" }
       ]
     },
     {
@@ -61,11 +65,11 @@ window.NaekiData = (() => {
       jp: "巻物",
       desc: "Uramaki, hosomaki and futomaki cut to order — plated on bamboo leaf with tobiko and tamagoyaki.",
       items: [
-        { name: "Salmon & Crab Uramaki", sub: "5 pcs, tobiko, tamagoyaki", img: "assets/roll_salmon_uramaki.jpg" },
-        { name: "California Maki", sub: "6 pcs, tobiko mayo", img: "assets/roll_california.jpg" },
-        { name: "Aburi Salmon Roll", sub: "6 pcs, torched salmon", img: "assets/roll_aburi_salmon.jpg" },
-        { name: "Unagi Maki", sub: "7 pcs, avocado, sesame", img: "assets/roll_unagi_maki.jpg" },
-        { name: "Futomaki", sub: "5 pcs, the thick roll", img: "assets/roll_futomaki.jpg" }
+        { name: "Salmon & Crab Uramaki", price: 89, sub: "5 pcs, tobiko, tamagoyaki", img: "assets/roll_salmon_uramaki.jpg" },
+        { name: "California Maki", price: 69, sub: "6 pcs, tobiko mayo", img: "assets/roll_california.jpg" },
+        { name: "Aburi Salmon Roll", price: 79, sub: "6 pcs, torched salmon", img: "assets/roll_aburi_salmon.jpg" },
+        { name: "Unagi Maki", price: 75, sub: "7 pcs, avocado, sesame", img: "assets/roll_unagi_maki.jpg" },
+        { name: "Futomaki", price: 65, sub: "5 pcs, the thick roll", img: "assets/roll_futomaki.jpg" }
       ]
     },
     {
@@ -74,12 +78,12 @@ window.NaekiData = (() => {
       jp: "さしみ",
       desc: "Thick-cut plates for eating now, and nigiri/aburi sets for sharing at the desk.",
       items: [
-        { name: "Salmon Sashimi", sub: "With shiso & daikon", img: "assets/sashimi_salmon.jpg" },
-        { name: "Aburi Salmon Sashimi", sub: "Seared plate", img: "assets/sashimi_aburi.jpg" },
-        { name: "Maguro Sashimi", sub: "Tuna plate", img: "assets/sashimi_maguro.jpg" },
-        { name: "Salmon Nigiri Set", sub: "4 or 6 pcs", img: "assets/set_nigiri_4.jpg" },
-        { name: "Aburi Salmon Set", sub: "4 or 6 pcs, seared", img: "assets/set_aburi_4.jpg" },
-        { name: "Assorted Sushi Set", sub: "Chef's mixed platter", img: "assets/set_assorted.jpg",
+        { name: "Salmon Sashimi", price: 129, sub: "With shiso & daikon", img: "assets/sashimi_salmon.jpg" },
+        { name: "Aburi Salmon Sashimi", price: 149, sub: "Seared plate", img: "assets/sashimi_aburi.jpg" },
+        { name: "Maguro Sashimi", price: 139, sub: "Tuna plate", img: "assets/sashimi_maguro.jpg" },
+        { name: "Salmon Nigiri Set", price: 149, sub: "4 or 6 pcs", img: "assets/set_nigiri_4.jpg" },
+        { name: "Aburi Salmon Set", price: 159, sub: "4 or 6 pcs, seared", img: "assets/set_aburi_4.jpg" },
+        { name: "Assorted Sushi Set", price: 259, sub: "Chef's mixed platter", img: "assets/set_assorted.jpg",
           story: "The party platter: rows of salmon, tuna, eel and white-fish nigiri with maki — the one that gets ordered for Friday team lunches." }
       ]
     },
@@ -89,12 +93,12 @@ window.NaekiData = (() => {
       jp: "丼・弁当",
       desc: "Rice bowls and boxed sets — the full meal when one onigiri won't cut it.",
       items: [
-        { name: "Ultimate Chirashi Don", sub: "Nine toppings", img: "assets/don_chirashi_ultimate.jpg",
+        { name: "Ultimate Chirashi Don", price: 259, sub: "Nine toppings", img: "assets/don_chirashi_ultimate.jpg",
           story: "Tuna, salmon, white fish, octopus, ark shell, shrimp, mackerel, tamagoyaki and ikura on one bowl." },
-        { name: "Salmon & Ikura Don", sub: "The house favourite", img: "assets/don_salmon_ikura.jpg" },
-        { name: "Unagi Don", sub: "Grilled eel bowl", img: "assets/don_unagi.jpg" },
-        { name: "Seared Scallop Don", sub: "Hotate aburi", img: "assets/don_hotate.jpg" },
-        { name: "Sashimi Bento Set", sub: "With miso soup", img: "assets/bento_1.jpg",
+        { name: "Salmon & Ikura Don", price: 189, sub: "The house favourite", img: "assets/don_salmon_ikura.jpg" },
+        { name: "Unagi Don", price: 199, sub: "Grilled eel bowl", img: "assets/don_unagi.jpg" },
+        { name: "Seared Scallop Don", price: 189, sub: "Hotate aburi", img: "assets/don_hotate.jpg" },
+        { name: "Sashimi Bento Set", price: 219, sub: "With miso soup", img: "assets/bento_1.jpg",
           story: "A black bento with salmon sashimi, tamago, salmon maki, California roll, seaweed salad and miso on the side." }
       ]
     },
@@ -104,12 +108,12 @@ window.NaekiData = (() => {
       jp: "飲み物・甘味",
       desc: "Cold matcha and coffee in winter and summer alike, plus Japanese-style puddings.",
       items: [
-        { name: "Iced Matcha", sub: "Naeki's matcha", img: "assets/drink_matcha_cold.jpg" },
-        { name: "Matcha Latte", sub: "Iced", img: "assets/drink_matcha_latte.jpg" },
-        { name: "Iced Americano", sub: "For the deadline run", img: "assets/drink_americano.jpg" },
-        { name: "Matcha Pudding", sub: "Japanese-style, light", img: "assets/dessert_matcha_pudding.jpg" },
-        { name: "Banana Choco Pudding", sub: "With chocolate", img: "assets/dessert_banana_choco.jpg" },
-        { name: "Honey Lemon Pudding", sub: "Bright finish", img: "assets/dessert_honey_lemon.jpg" }
+        { name: "Iced Matcha", price: 55, sub: "Naeki's matcha", img: "assets/drink_matcha_cold.jpg" },
+        { name: "Matcha Latte", price: 59, sub: "Iced", img: "assets/drink_matcha_latte.jpg" },
+        { name: "Iced Americano", price: 49, sub: "For the deadline run", img: "assets/drink_americano.jpg" },
+        { name: "Matcha Pudding", price: 59, sub: "Japanese-style, light", img: "assets/dessert_matcha_pudding.jpg" },
+        { name: "Banana Choco Pudding", price: 55, sub: "With chocolate", img: "assets/dessert_banana_choco.jpg" },
+        { name: "Honey Lemon Pudding", price: 52, sub: "Bright finish", img: "assets/dessert_honey_lemon.jpg" }
       ]
     }
   ];

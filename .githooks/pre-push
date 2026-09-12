@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Naeki CI: never push broken code.
+# Bypass only in a pinch with: NAEKI_SKIP=1 git push
+set -u
+if [ -n "${NAEKI_SKIP:-}" ]; then exit 0; fi
+
+node "$(dirname "$0")/../scripts/validate.mjs"
+status=$?
+if [ $status -ne 0 ]; then
+  echo "NAEKI-CHECK: push blocked by failing validation (see above)." >&2
+  echo "NAEKI-CHECK: fix the problems, or run: NAEKI_SKIP=1 git push --no-verify" >&2
+fi
+exit $status

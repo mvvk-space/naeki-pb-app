@@ -66,8 +66,8 @@ const AUDIT_JS = `(() => {
   };
 
   const isLanding = "__SHELL__" === "landing";
-  const names = isLanding ? ["home", "franchise", "about"]
-                           : ["menu", "branches", "stamps", "order"];
+  const names = isLanding ? ["home", "lmenu", "about", "franchise"]
+                           : ["menu", "cart", "branches", "stamps", "order"];
 
   names.forEach(v => {
     const btn = document.querySelector(
@@ -81,17 +81,23 @@ const AUDIT_JS = `(() => {
     /* phone invariants for this view, measured WHILE ACTIVE — computed
        grid values on display:none elements are unreliable, so grids are
        read here, per view, not after the loop */
-    if (isLanding && v === "home") {
+    if (isLanding && (v === "home" || v === "lmenu")) {
       const oneCol = (sel, label) => {
         const el = view.querySelector(sel);
         if (!el) { out.grids[label] = "missing"; return; }
         const cols = getComputedStyle(el).gridTemplateColumns.split(" ").length;
         out.grids[label] = cols;
       };
-      oneCol(".home-hero", "hero");
-      oneCol(".home-hours", "hours");
-      oneCol(".home-featured", "featured");
-      oneCol(".home-teasers", "teasers");
+      if (v === "home") {
+        oneCol(".home-hero", "hero");
+        oneCol(".home-hours", "hours");
+        oneCol(".home-featured", "featured");
+        oneCol(".home-teasers", "teasers");
+      }
+      // landing menu list: rows are stacked, nothing off-viewport
+      if (v === "lmenu") {
+        out.lmenuRows = view.querySelectorAll(".lmenu-list li").length;
+      }
     }
   });
 
@@ -141,6 +147,32 @@ const AUDIT_JS = `(() => {
         };
       }
     }
+  }
+
+  /* populated-cart layout (app shell): seed lines THROUGH THE UI (the plus
+     button), so the cart view renders via the real sync path, then verify
+     the row geometry at phone width */
+  if (!isLanding) {
+    try {
+      const firstDish = document.querySelector('#view-menu .dish .d-plus');
+      if (firstDish) {
+        firstDish.click(); firstDish.click();
+        const cartBtn = document.querySelector('.side-link[data-view="cart"]');
+        if (cartBtn) cartBtn.click();
+        const li = document.querySelector(".cart-list li");
+        if (li) {
+          const r = li.getBoundingClientRect();
+          out.cartRow = {
+            fits: r.right <= vw + 1,
+            stepperH: Math.round(li.querySelector(".c-stepper").getBoundingClientRect().height),
+            total: document.querySelector(".cart-total strong")?.textContent || null
+          };
+        }
+      }
+      // leave the store clean for the next run
+      NaekiStore.clearCart();
+      document.querySelector('.side-link[data-view="menu"]')?.click();
+    } catch (e) { out.cartRow = { error: String(e).slice(0, 60) }; }
   }
 
   return JSON.stringify(out);
@@ -207,6 +239,16 @@ function shellReport(report, shellName, expectedViews) {
         fail("sign-in input pokes outside the modal card");
       }
     } else fail("sign-in modal did not open for audit");
+    if (typeof report.lmenuRows === "number") {
+      if (report.lmenuRows >= 38) pass(`landing menu renders ${report.lmenuRows} rows`);
+      else fail(`landing menu rows missing (got ${report.lmenuRows})`);
+    }
+  }
+  if (shellName === "app" && report.cartRow) {
+    if (report.cartRow.error) fail(`cart row audit error: ${report.cartRow.error}`);
+    else if (report.cartRow.fits && report.cartRow.stepperH >= 30) {
+      pass(`cart row fits, stepper ${report.cartRow.stepperH}px tall`);
+    } else fail(`cart row problem: fits=${report.cartRow.fits} stepperH=${report.cartRow.stepperH}`);
   }
 }
 
@@ -245,7 +287,7 @@ async function main() {
   } else {
     pass("signed out renders the landing shell (body[data-mode=landing])");
     const landing = await auditPass(win, "landing");
-    shellReport(landing, "landing", ["home", "franchise", "about"]);
+    shellReport(landing, "landing", ["home", "lmenu", "about", "franchise"]);
   }
 
   /* ---- pass 2: app (signed in) ---- */
@@ -262,7 +304,7 @@ async function main() {
   } else {
     pass("sign-in swaps to the app shell (body[data-mode=app])");
     const appReport = await auditPass(win, "app");
-    shellReport(appReport, "app", ["menu", "branches", "stamps", "order"]);
+    shellReport(appReport, "app", ["menu", "cart", "branches", "stamps", "order"]);
   }
 
   console.log("\nNaeki mobile audit — 390px rendered layout");

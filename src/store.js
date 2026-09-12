@@ -51,6 +51,11 @@
       thread: [],                 // [{ role:'user'|'system', text, ts }] — local transcript
       connected: false            // demo flag: user has reached the OA once
     },
+    // the user's own branches — picked in the Branches pane as the source of
+    // notifications & offers. Local like everything else: these are the
+    // branch(es) this device wants to hear from, and the offers engine
+    // derives one of its personal offers from exactly this selection.
+    subscribedBranches: [],        // branch names (the data-layer key)
     // offer acknowledgements — the bell's memory. A live offer "arrives"
     // (bell dot + popup) until the user acknowledges it (✕ on the popup or
     // ✓ in the inbox); the ack key pins that exact composition, so the same
@@ -91,6 +96,12 @@
           thread: Array.isArray(saved.chat && saved.chat.thread) ? saved.chat.thread : [],
           connected: !!(saved.chat && saved.chat.connected)
         },
+        // branch subscriptions: only names that still exist in the data layer
+        // survive a round-trip (stale picks are dropped on load)
+        subscribedBranches: Array.isArray(saved.subscribedBranches)
+          ? saved.subscribedBranches.filter(n =>
+              typeof n === "string" && window.NaekiData?.BRANCHES?.some(b => b.name === n))
+          : [],
         // ack ledger: only string keys with { ts, via } survive a round-trip
         offerAcks: (saved.offerAcks && typeof saved.offerAcks === "object" &&
           !Array.isArray(saved.offerAcks))
@@ -405,6 +416,28 @@
       state.chat.connected = false;
       persist();
       return state.chat;
+    },
+
+    /* ---------------- branch subscriptions ("your branches") ---------------- */
+    /** live copy of the branch names this device wants notifications/offers from */
+    subscribedBranchesState: () => state.subscribedBranches,
+
+    /** true if a branch (by name) is subscribed */
+    isSubscribed(branchName) {
+      return state.subscribedBranches.includes(branchName);
+    },
+
+    /** toggle a branch on/off "your branches"; returns the new subscribed list.
+        Names are validated against the data layer so a removed branch can't
+        linger as a subscription (same guard the loader uses). */
+    toggleBranchSubscription(branchName) {
+      const valid = window.NaekiData?.BRANCHES?.some(b => b.name === branchName);
+      if (!valid) return state.subscribedBranches.slice();
+      const i = state.subscribedBranches.indexOf(branchName);
+      if (i >= 0) state.subscribedBranches.splice(i, 1);
+      else state.subscribedBranches.push(branchName);
+      persist();
+      return state.subscribedBranches.slice();
     },
 
     /* ---------------- offer acknowledgements (bell) ---------------- */

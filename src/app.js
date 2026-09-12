@@ -521,12 +521,30 @@
   const branchList = $("#branch-list");
   const branchSearch = $("#branch-search");
   const branchCount = $("#branch-count");
+  const branchYour = $("#branch-your");   // "your branches" summary banner
 
   function renderBranches() {
     const q = branchSearch.value.trim().toLowerCase();
     const now = D.bangkokParts();
     branchList.innerHTML = "";
     let shown = 0;
+
+    // summary banner: how many of these branches the user wants to hear from
+    const subs = S.subscribedBranchesState();
+    if (branchYour) {
+      branchYour.hidden = !S.get().profile;   // sign-in-gated like the rest of app
+      if (!branchYour.hidden) {
+        const names = subs
+          .map(n => D.BRANCHES.find(b => b.name === n))
+          .filter(Boolean)
+          .slice(0, 3)
+          .map(b => D.shortName(b.name));
+        branchYour.innerHTML = subs.length
+          ? `Your branches — <strong>${subs.length}</strong> picked&nbsp;(${names.join(", ")}${subs.length > 3 ? "…" : ""}). Offers &amp; notifications from these arrive in the <strong>Rewards bell</strong>.`
+          : `Choose the branches you visit — tap the <strong>notify</strong> toggle on a card and offers from them arrive in the <strong>Rewards bell</strong>. Nothing leaves this device.`;
+      }
+    }
+
     D.BRANCHES
       .filter(b => !q ||
         b.name.toLowerCase().includes(q) ||
@@ -535,8 +553,9 @@
       .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "flagship" ? -1 : 1))
       .forEach(b => {
         const open = D.isOpenNow(b, now);
+        const on = subs.includes(b.name);
         const el = document.createElement("article");
-        el.className = "branch";
+        el.className = "branch" + (on ? " subscribed" : "");
         el.tabIndex = 0;
         el.setAttribute("role", "link");
         el.setAttribute("aria-label", `${b.name} — open on Google Maps`);
@@ -553,12 +572,33 @@
             ${b.close ? `<span class="b-close">until ${b.close}</span>` : ""}
             ${b.phone ? `<span class="b-close">${b.phone}</span>` : ""}
           </div>
-          ${b.note ? `<div class="b-where b-note">${b.note}</div>` : ""}`;
+          ${b.note ? `<div class="b-where b-note">${b.note}</div>` : ""}
+          <div class="b-sub">
+            <button class="b-sub-toggle ${on ? "on" : ""}" data-sub="${b.name}" aria-pressed="${on}">
+              <span class="b-sub-bell" aria-hidden="true">${on ? "🔔" : "🔕"}</span>
+              <span class="b-sub-label">${on ? "Notifying me" : "Notify me"}</span>
+            </button>
+            <span class="b-sub-hint">${on ? "Receives offers & notifications here" : "Tap to get offers & notifications from this branch"}</span>
+          </div>`;
+        // the toggle stops propagation so tapping it doesn't open Maps
+        const toggle = el.querySelector(".b-sub-toggle");
+        toggle.addEventListener("click", e => {
+          e.stopPropagation();
+          S.toggleBranchSubscription(b.name);
+          renderBranches();
+          syncBellAndPop();
+        });
         const go = () =>
           window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + " Bangkok")}`, "_blank");
-        el.addEventListener("click", go);
+        el.addEventListener("click", e => {
+          if (e.target.closest(".b-sub-toggle")) return;
+          go();
+        });
         el.addEventListener("keydown", e => {
-          if (e.key === "Enter") go();
+          if (e.key === "Enter") {
+            if (e.target.closest(".b-sub-toggle")) return;
+            go();
+          }
         });
         branchList.appendChild(el);
         shown++;
@@ -748,7 +788,10 @@
     const lo = S.loyalty();
     const weekday = D.bangkokWeekday();
     const acks = S.offerAcksState();
-    const list = D.offers({ history: lo.history, points: lo.points })
+    const list = D.offers({
+      history: lo.history, points: lo.points,
+      subscribedBranches: S.subscribedBranchesState()
+    })
       .filter(o => o.live)
       .map(o => ({ ...o, key: offerKey(o, weekday) }))
       .filter(o => !acks[o.key]);
@@ -833,7 +876,10 @@
     const lo = S.loyalty();
     const weekday = D.bangkokWeekday();
     const acks = S.offerAcksState();
-    const list = D.offers({ history: lo.history, points: lo.points });
+    const list = D.offers({
+      history: lo.history, points: lo.points,
+      subscribedBranches: S.subscribedBranchesState()
+    });
     const live = list.filter(o => o.live && !acks[offerKey(o, weekday)]);
     rwNote.textContent = acks && Object.keys(acks).length
       ? `${live.length} waiting · ${Object.keys(acks).length} acknowledged`

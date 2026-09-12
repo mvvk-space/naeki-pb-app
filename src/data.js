@@ -516,6 +516,20 @@ window.NaekiData = (() => {
         tag: "personal", personal: true, live: true
       });
     }
+    // "your branches" offer — derived from the branch subscriptions the user
+    // picked in the Branches pane. Same honest stance: this offer exists only
+    // because THEY chose to hear from these branches, and the notification
+    // stays on-device (the bell) rather than a push channel.
+    const subs = opts.subscribedBranches || [];
+    if (subs.length) {
+      out.push({
+        kicker: "Your branches",
+        title: `${subs.length} branch${subs.length === 1 ? "" : "es"} picked — new offers first`,
+        text: `You'll hear about new offers from ${subs.length === 1
+          ? "your branch" : "these branches"} before anywhere else on this device.`,
+        tag: "personal", personal: true, live: true
+      });
+    }
     const last = history[0];
     if (last && daysSince(last.ts, now) >= 7) {
       out.push({

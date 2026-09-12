@@ -962,6 +962,7 @@
           <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="stamps">Stamps <span class="jp">スタンプ</span></button>
           <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="wallet">Wallet <span class="jp">ウォレット</span></button>
           <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="milestones">Milestones <span class="jp">達成</span></button>
+          <button class="chip rw-tab" role="tab" aria-selected="false" data-rwtab="offers">Offers <span class="jp">オファー</span></button>
         </div>
 
         <!-- pane: points (tiers + offers) -->
@@ -972,14 +973,6 @@
 
         <!-- tier ladder -->
         <div class="rw-tiers" id="rw-tiers"><!-- rendered by app.js --></div>
-
-        <!-- offers inbox -->
-        <div class="home-featured-head sec-head">
-          <h3>Offers for you</h3>
-          <span class="rule"></span>
-          <span class="n-items" id="rw-offers-note">this week</span>
-        </div>
-        <div class="rw-offers" id="rw-offers"><!-- rendered by app.js --></div>
 
         <div class="disclaimer">
           <p>
@@ -1153,6 +1146,27 @@
           </p>
         </div>
         </div><!-- /rw-pane milestones -->
+
+        <!-- pane: offers — the full live feed of what's coming to you, grouped
+             by source and sorted newest-first. Reached directly from the Reward
+             bell's popup and the nav; the bell is the "incoming" queue, this
+             pane is the readable ledger (active vs seen). -->
+        <div class="rw-pane" data-rwpane="offers">
+        <div class="home-featured-head sec-head">
+          <h3>Incoming offers</h3>
+          <span class="rule"></span>
+          <span class="n-items" id="rw-offers-note">this week</span>
+        </div>
+        <div class="rw-offers" id="rw-offers"><!-- rendered by app.js (grouped feed) --></div>
+        <div class="disclaimer">
+          <p>
+            Offers land here from the branches you picked in the Branches tab,
+            the weekly rotation, and your own order history. Each one pops the
+            bell once until you acknowledge it; nothing is pushed and nothing
+            leaves this device. The bell's count is the number still new.
+          </p>
+        </div>
+        </div><!-- /rw-pane offers -->
       </section>
 
       <!-- ================= CHAT → LINE OA (large orders & catering) =================

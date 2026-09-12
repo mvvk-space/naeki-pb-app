@@ -15,6 +15,20 @@
     });
   }
 
+  /* compact relative time: "now", "12m", "3h", "2d" — for the offers feed's
+     recency line. Old/unknown falls back to an absolute stamp. */
+  function fmtAgo(ts) {
+    if (!ts) return "";
+    const s = Math.max(0, (Date.now() - ts) / 1000);
+    if (s < 60) return "now";
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + "m";
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + "h";
+    const d = Math.floor(h / 24);
+    return d < 14 ? d + "d" : fmtWhen(ts);
+  }
+
   /* registry of live dish-card qty syncs, keyed by menu-item name —
      lets the cart view / checkout resync every visible stepper at once.
      Declared here (not near dishCard) because F.mount() builds featured
@@ -39,8 +53,16 @@
      which shell is visible (see styles.css). */
   const S = window.NaekiStore;
   const D = window.NaekiData;      // the data layer ("backend") — single source of truth
+
   let mode = S.get().profile ? "app" : "landing";
-  const DEFAULT_VIEW = { landing: "home", app: "menu" };
+  function isStaff() { return S.isStaff(); }
+
+  /* signed-in routing: staff logins (admin/franchisee/marketing) land on the
+     partner portal; everyone else lands on the customer menu. */
+  function defaultView() {
+    return isStaff() ? "partners" : "menu";
+  }
+  const DEFAULT_VIEW = { landing: "home", app: defaultView() };
 
   function goToView(name) {
     // "rewards/wallet" form deep-links a rewards sub-tab from anywhere;
@@ -71,12 +93,26 @@
     if (name === "menu" && !parent && !sub) showOdTab(activeOdTab);
   }
 
+  function applyMode(activateDefault = true) {
+    mode = S.get().profile ? "app" : "landing";
+    // CSS owns shell visibility from here (body[data-mode])
+    document.body.dataset.mode = mode;
+
+    const profile = S.get().profile;
+    if (profile) $("#session-greeting").textContent = "Hi, " + profile.name;
+    // staff logins keep the portal reachable via a "Portal" nav link (CSS shows
+    // it only for body[data-staff] and hides the consumer tabs/links)
+    document.body.dataset.staff = profile ? (isStaff() ? "true" : "false") : "";
+
+    if (activateDefault) goToView(profile ? defaultView() : "home");
+  }
+
   /* ---------------- Rewards tabs (Points · Wallet · Milestones) ----------------
      One section, three panes. State lives here so goToView can deep-link
      ("rewards/wallet") and the pane keeps its tab across revisits. Panes
      are plain class swaps — no re-render needed; every renderer paints its
      mounts regardless of which pane is visible. */
-  const RW_TABS = ["points", "stamps", "wallet", "milestones"];
+  const RW_TABS = ["points", "stamps", "wallet", "milestones", "offers"];
   let activeRwTab = "points";
 
   function showRwTab(tab) {
@@ -89,6 +125,10 @@
     });
     $$(".rw-pane").forEach(p =>
       p.classList.toggle("active", p.dataset.rwpane === tab));
+    // the offers pane is a live feed (bell acks, branch subs, published offers
+    // all mutate its contents) — repaint it whenever it's selected so it
+    // reflects the current device state, not the last global re-render
+    if (tab === "offers") renderOffersInbox();
   }
 
   $$(".rw-tab").forEach(btn =>
@@ -123,17 +163,6 @@
   // goToView("branches") lands on its segment — the phone's IA without
   // extra top-level destinations
   const SEGMENT_PARENT = { menu: null, cart: "menu", branches: "menu" };
-
-  function applyMode(activateDefault = true) {
-    mode = S.get().profile ? "app" : "landing";
-    // CSS owns shell visibility from here (body[data-mode])
-    document.body.dataset.mode = mode;
-
-    const profile = S.get().profile;
-    if (profile) $("#session-greeting").textContent = "Hi, " + profile.name;
-
-    if (activateDefault) goToView(DEFAULT_VIEW[mode]);
-  }
 
   /* sign-in handoff: flip to app mode, then land on the CTA's target (if any)
      instead of the default view — "All branches in the app →" reaches branches */
@@ -903,8 +932,12 @@
   ];
   let shownOfferKey = null;              // key currently in the popup, or null
 
-  // the composition key: weekday for weekly deals, "any" for personal matches
+  // the composition key: weekday for weekly deals, "any" for personal matches,
+  // and the published offer's uid for branch-sent offers (they fire once with
+  // a fixed identity, so acking stays stable across days — unlike the weekly
+  // set which returns fresh each matching weekday)
   function offerKey(o, weekday) {
+    if (o.branchOffer && o.uid) return `pub|${o.uid}`;
     return `${o.personal ? "any" : weekday}|${o.kicker}|${o.title}`;
   }
 
@@ -967,7 +1000,7 @@
       S.ackOffer(o.key, "cta");
       renderRewards();
       hideOfferPop();
-      goToView("rewards/points");
+      goToView("rewards/offers");
       syncBellAndPop();
     });
     offerPop.hidden = false;
@@ -995,9 +1028,11 @@
     showOfferPop(pending[0]);
   }
 
-  // offer inbox: the bell's ledger. Unacked live offers carry a one-tap
-  // "Got it" right here; acknowledged ones go quiet ("Seen ✓") instead of
-  // disappearing — the inbox stays the full menu of what the brand composed.
+  // offer inbox: a grouped feed instead of one flat stack. Offers are
+  // split into Active (still ringing the bell) and Seen (already acked),
+  // grouped by source — From your branches · This week · Just for you —
+  // and sorted newest-first within each group so what just landed reads
+  // first. Published branch offers carry their branch + recency line.
   function renderOffersInbox() {
     const lo = S.loyalty();
     const weekday = D.bangkokWeekday();
@@ -1006,26 +1041,63 @@
       history: lo.history, points: lo.points,
       subscribedBranches: S.subscribedBranchesState(),
       publishedOffers: S.publishedOffersState()
-    });
-    const live = list.filter(o => o.live && !acks[offerKey(o, weekday)]);
-    rwNote.textContent = acks && Object.keys(acks).length
-      ? `${live.length} waiting · ${Object.keys(acks).length} acknowledged`
-      : `${live.length} live now · this week`;
-    rwOffers.innerHTML = list.map(o => {
-      const key = offerKey(o, weekday);
-      const acked = !!acks[key];
-      const state = acked ? "acked" : (o.live ? "live" : "");
-      return `
-      <div class="rw-offer ${o.live ? "live" : ""} ${o.personal ? "personal" : ""} ${state}">
-        <div class="rw-offer-kicker">${o.kicker}${o.personal ? " · just for you" : ""}</div>
-        <div class="rw-offer-title">${o.title}</div>
-        <p>${o.text}</p>
-        ${acked ? `<span class="rw-offer-seen">Seen ✓</span>`
-          : o.live ? `<button class="rw-offer-ack" data-ackkey="${key}">✓ Got it</button>`
-          : ""}
-        ${o.live && !acked ? `<span class="rw-live-dot"></span>` : ""}
-      </div>`;
-    }).join("");
+    })
+      .map(o => ({ ...o, key: offerKey(o, weekday) }));
+    const live = list.filter(o => o.live && !acks[o.key]);
+    const total = list.length;
+    const seen = total - live.length;
+    rwNote.textContent = live.length
+      ? `${live.length} new · ${total} total this week`
+      : total ? `${total} this week — all seen` : "nothing yet";
+    rwOffers.innerHTML = "";
+
+    if (!total) {
+      rwOffers.innerHTML = `<p class="rw-offers-empty">Nothing here yet. Pick a branch in the
+        Branches tab to start hearing from it — offers land here as they come in.</p>`;
+      return;
+    }
+
+    // group label + offers, newest first by published sentAt (branch offers)
+    // then the composed set
+    const group = (label, items) => {
+      if (!items.length) return "";
+      const cards = items.map(o => {
+        const acked = !!acks[o.key];
+        const state = acked ? "acked" : (o.live ? "live" : "");
+        const recency = o.branchOffer && o.sentAt
+          ? `<span class="rw-offer-when">${fmtAgo(o.sentAt)} ago</span>` : "";
+        const sourceNote = o.branchOffer && o.branchId
+          ? `<span class="rw-offer-branch">${D.branchKicker(o.branchId)}</span>` : "";
+        return `
+          <div class="rw-offer ${o.live ? "live" : ""} ${o.personal ? "personal" : ""}
+               ${o.branchOffer ? "branch" : ""} ${state}">
+            <div class="rw-offer-top">
+              <div class="rw-offer-kicker">${sourceNote || o.kicker}${o.personal ? " · just for you" : ""}</div>
+              ${recency}
+            </div>
+            <div class="rw-offer-title">${o.title}</div>
+            <p>${o.text}</p>
+            ${acked ? `<span class="rw-offer-seen">Seen ✓</span>`
+              : o.live ? `<button class="rw-offer-ack" data-ackkey="${o.key}">✓ Got it</button>`
+              : ""}
+            ${o.live && !acked ? `<span class="rw-live-dot"></span>` : ""}
+          </div>`;
+      }).join("");
+      return `<h4 class="rw-offers-group"><span class="rg-label">${label}</span><span class="rg-count">${items.length}</span></h4>
+        ${cards}`;
+    };
+
+    const active = list.filter(o => o.live && !acks[o.key]);
+    const seenOffers = list.filter(o => !(o.live && !acks[o.key]));
+
+    // active: branch offers first (the newest incoming), then weekly, then personal
+    const actBranch = active.filter(o => o.branchOffer)
+      .sort((a, b) => (b.sentAt || 0) - (a.sentAt || 0));
+    rwOffers.insertAdjacentHTML("beforeend",
+      group(`Active ${actBranch.length ? "· from your branches" : ""}`, actBranch) +
+      group("This week", active.filter(o => !o.branchOffer && !o.personal)) +
+      group("Just for you", active.filter(o => o.personal)) +
+      group("Seen", seenOffers));
     rwOffers.querySelectorAll("[data-ackkey]").forEach(btn => {
       btn.addEventListener("click", () => {
         S.ackOffer(btn.dataset.ackkey, "inbox");

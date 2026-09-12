@@ -519,9 +519,13 @@ window.NaekiData = (() => {
     for (const po of (opts.publishedOffers || [])) {
       if (!subSet.includes(po.branchId)) continue;   // not subscribed → not shown
       out.push({
-        kicker: po.kicker || "From your branch",
+        kicker: po.kicker || "From your branch",     // e.g. "From BTS Asok"
         title: po.title, text: po.text,
-        tag: po.tag || "deal", personal: false, branchOffer: true, live: true
+        tag: po.tag || "deal", personal: false, branchOffer: true, live: true,
+        // identity + recency kept through to the UI so the feed can show
+        // which branch sent it and how recent it is, and acking is stable
+        branchId: po.branchId, sentAt: po.sentAt, sendCount: po.sendCount,
+        uid: po.uid
       });
     }
 

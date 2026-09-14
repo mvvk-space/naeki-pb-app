@@ -271,7 +271,7 @@
      Two local personas, one store. Franchisee drafts for their branch, submits;
      marketing admin approves → published (to a seeded subscriber count) and merged
      into the offers feed. Everything stays on-device — see the portal disclaimer. */
-  /** @returns {(HTMLElement & Partial<HTMLInputElement> & Partial<HTMLSelectElement>) | null} — pragmatic: id lookups are mostly form controls; DOM-only usages still check. */
+  /** @returns {(HTMLElement & Partial<HTMLInputElement>) | null} — pragmatic: id lookups are mostly form controls; DOM-only usages still check. */
   const $id = (x) => document.getElementById(x);
   /** current value of a form control by id ("" when absent) */
   const $val = (x) => (/** @type {HTMLInputElement} */ (document.getElementById(x) || {})).value || "";
@@ -722,7 +722,7 @@
       if (!chip) return;
       brandSwitch.querySelectorAll(".brand-chip").forEach(c => c.classList.remove("active"));
       chip.classList.add("active");
-      const bid = /** @type {BrandId} */ ((/** @type {HTMLElement} */ (chip)).dataset.brand);
+      const bid = /** @type {BrandId} */ ((/** @type {HTMLElement & { dataset: Record<string, string | undefined> }} */ (chip)).dataset.brand);
       D.setBrand(bid);
     });
     // keep chips in sync when setBrand is called elsewhere
@@ -1919,7 +1919,7 @@
       slot.innerHTML = STAMP_SVG;
       stampGrid.appendChild(slot);
     }
-    stampCount.textContent = n;
+    stampCount.textContent = String(n);
     stampTotal.textContent = "/ " + card.size;
     stampFill.style.width = (n / card.size) * 100 + "%";
     stampRedeem.disabled = n < card.size;
@@ -1987,7 +1987,7 @@
     const inApp = document.body.dataset.mode === "app";
     if (priceEl) priceEl.textContent = fmtBaht(item.price);
     if (addEl) { addEl.hidden = !inApp; if (inApp) syncModalAdd(); }
-    $("#modal-find").href =
+    (/** @type {HTMLAnchorElement} */ (/** @type {unknown} */ ($("#modal-find")))).href =
       "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent("Naeki Sushi BTS Siam Bangkok");
     modal.hidden = false;
     $(".modal-x").focus();
@@ -2017,7 +2017,7 @@
      Delegated at document level: live frames (order cards, hours, menu)
      re-render on every refresh and would shed per-anchor listeners. */
   document.addEventListener("click", e => {
-    const a = e.target.closest("a[data-external]");
+    const a = /** @type {HTMLAnchorElement} */ ((/** @type {HTMLElement} */ (e.target)).closest("a[data-external]"));
     if (!a) return;
     e.preventDefault();
     window.open(a.href, "_blank");

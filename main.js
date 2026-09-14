@@ -46,7 +46,7 @@ function createWindow() {
     },
   });
 
-  win.loadFile(path.join(__dirname, 'src', 'index.html'), { query: { v: '2.11.0-pb' } });
+  win.loadFile(path.join(__dirname, 'src', 'index.html'), { query: { v: '2.11.1-pb' } });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http')) shell.openExternal(url);

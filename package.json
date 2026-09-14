@@ -1,20 +1,32 @@
 {
   "name": "naeki-pb-app",
   "productName": "Naeki Sushi Showcase · PocketBase",
-  "version": "2.11.0-pb",
+  "version": "2.11.1-pb",
   "description": "Naeki showcase backed by a local PocketBase (real auth + seeded menu/branches)",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "pb": "pocketbase serve --http=127.0.0.1:8090 --dir=pb_data",
     "seed": "node scripts/seed.mjs",
-    "pb:init": "pocketbase superuser upsert 'admin@naeki.dev' 'Naeki$Dev123' && pocketbase serve --http=127.0.0.1:8090 --dir=pb_data"
+    "pb:init": "pocketbase superuser upsert 'admin@naeki.dev' 'Naeki$Dev123' && pocketbase serve --http=127.0.0.1:8090 --dir=pb_data",
+    "check": "node scripts/validate.mjs",
+    "check:mobile": "electron scripts/audit-mobile.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:electron": "playwright test --project=electron",
+    "test:e2e:web": "playwright test --project=web",
+    "dist": "electron-builder",
+    "dist:dir": "electron-builder --dir"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^26.5.1",
     "electron": "^33.0.0",
+    "electron-builder": "^26.15.3",
     "typescript": "^7.0.2",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "vitest": "^5.0.0"
   },
   "dependencies": {
     "pocketbase": "^0.28.1",

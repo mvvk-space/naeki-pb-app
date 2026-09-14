@@ -563,7 +563,7 @@ window.NaekiData = (() => {
     for (const nr of (opts.approvedRequests || [])) {
       if (!subSet.includes(nr.branch)) continue;
       out.push({
-        kicker: nr.branch ? D.shortName({ name: nr.branch }) : "From your branch",
+        kicker: nr.branch ? shortName({ name: nr.branch }) : "From your branch",
         title: nr.title, text: nr.body,
         tag: nr.type || "deal", personal: false, branchOffer: true, live: true,
         branchId: nr.branch, sentAt: nr.created || Date.now(), sendCount: 1,
@@ -824,7 +824,7 @@ window.NaekiData = (() => {
   // first refresh at load: hydrate from the DB then publish the first refresh
   setTimeout(() => { pbHydrate().finally(refresh); }, 400);
 
-  const Data = {
+  const Data = /** @type {NaekiDataAPI} */ ({
     MENU, ALSO, BRANCHES, REVIEWS, INFO, LANDING, BRANDS, brandGroups,
     setBrand, getBrand,
     // branch kinds: kind == "flagship" = Naeki Sushi counter, "go" = GO kiosk.
@@ -844,7 +844,7 @@ window.NaekiData = (() => {
     MILESTONES, TRUST,
     streakOf, categoriesSeen, ordersThisWeek, achievements, weeklyMission,
     refresh
-  };
+  });
   return Data;
 })();
 

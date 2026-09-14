@@ -34,8 +34,9 @@ window.NaekiFrames = (() => {
   function mount(root = document) {
     const D = window.NaekiData;
     root.querySelectorAll("[data-frame]").forEach(el => {
-      renderEl(el, D);
-      const frame = registry.get(el.dataset.frame);
+      const elH = /** @type {HTMLElement} */ (el);
+      renderEl(elH, D);
+      const frame = registry.get(elH.dataset.frame);
       if (!frame) return;
       (frame.topics || ["refresh"]).forEach(topic => {
         D.subscribe(topic, () => renderEl(el, D));

@@ -656,7 +656,7 @@
       text  = String(text  || "").trim().slice(0, 160);
       if (!valid || !title || !text) return null;
       const draft = { id: "id" + Date.now(), branchId, title, text,
-        tag: tag || "deal", status: "draft", submittedAt: 0 };
+        tag: tag || "deal", status: /** @type {"draft"} */ ("draft"), submittedAt: 0 };
       state.franchiseDrafts.push(draft);
       persist();
       return draft;

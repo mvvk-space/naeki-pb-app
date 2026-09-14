@@ -20,5 +20,5 @@
     "src/**/*.d.ts",
     "main.js"
   ],
-  "exclude": ["node_modules", "pb_migrations", "pb_data", "scripts", "scripts/**"]
+  "exclude": ["node_modules", "pb_migrations", "pb_data", "scripts", "scripts/**", "src/sw.js"]
 }

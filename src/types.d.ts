@@ -532,8 +532,7 @@ type NaekiStoreAPI = {
   deleteDraft: (id: string) => FranchiseDraft[];
 };
 
-declare global {
-  interface Window {
+interface Window {
     NaekiData: NaekiDataAPI;
     NaekiStore: NaekiStoreAPI;
     NaekiPB: NaekiPBAPI;
@@ -542,7 +541,4 @@ declare global {
     NAEKI: NaekiDataAPI;   // compat alias in data.js
     /** app.js pollApproved() stash of approved/sent promotions (bell feed) */
     __approvedRequests?: PromotionRecord[];
-  }
 }
-
-export {};

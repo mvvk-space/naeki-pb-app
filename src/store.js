@@ -1,3 +1,4 @@
+/// <reference path="./types.d.ts" />
 /* NAEKI SHOWCASE — local persistence layer.
    Everything the user creates lives in their own browser storage; nothing
    here ever leaves the device. The shape is deliberately flat and typed so
@@ -21,6 +22,9 @@
     // demo order cart — persists across sessions, never leaves the device;
     // lines reference menu items by name (the data-layer key)
     cart: [],                   // [{ name, price, qty, addedAt }]
+    // coupon validated against the PocketBase coupon collection (public read)
+    // and applied at checkout. One per order; cleared once used.
+    coupon: null,               // { code, title, type, value, freeItem, minSpend, brand, branchId }
     // loyalty: points earned at demo checkout (1 pt / 10฿, tier + day
     // multipliers via NaekiData); lifetime totals drive the tier
     loyalty: {
@@ -33,7 +37,8 @@
     wallet: {
       balance: 0,               // remaining stored value (THB)
       topups: [],               // [{ ts, amount, method, ref }]
-      expressPay: null          // "apple" | "google" once provisioned (one-time, honest demo)
+      expressPay: null,         // "apple" | "google" once provisioned (one-time, honest demo)
+      useWallet: true           // opt-in to pay the wallet balance before cash (per-checkout)
     },
     // demo gift cards the user has "bought" (for themselves / to give away)
     gifts: [],                    // [{ code, amount, ts, spent }]
@@ -108,6 +113,12 @@
         referralsRedeemed: Number(saved.referralsRedeemed) || 0,
         referralCodes: Array.isArray(saved.referralCodes) ? saved.referralCodes : [],
         redeemedRefs: Array.isArray(saved.redeemedRefs) ? saved.redeemedRefs : [],
+        // applied coupon: only a well-shaped record survives a round-trip
+        coupon: (saved.coupon && typeof saved.coupon === "object" &&
+                 typeof saved.coupon.code === "string" &&
+                 ["percent", "fixed_baht", "free_item"].includes(saved.coupon.type))
+          ? saved.coupon
+          : null,
         chat: {
           thread: Array.isArray(saved.chat && saved.chat.thread) ? saved.chat.thread : [],
           connected: !!(saved.chat && saved.chat.connected)
@@ -145,32 +156,99 @@
   function persist() {
     try {
       localStorage.setItem(KEY, JSON.stringify(state));
+      // best-effort push of the whole user-owned state to PocketBase,
+      // so stamps/wallet/gifts/referrals/drafts all live in the backend.
+      // The profile record itself stays in pb (the account), so we strip the
+      // locally-derived profile out of the pushed blob.
+      const PB = window.NaekiPB;
+      if (PB && state.profile?.email) {
+        const { profile, ...owned } = state;
+        schedulePush(owned);
+      }
       return true;
     } catch {
       return false; // quota / blocked storage — keep working in-memory
     }
   }
 
+  let pushTimer = null;
+  function schedulePush(owned) {
+    if (pushTimer) clearTimeout(pushTimer);
+    pushTimer = setTimeout(() => {
+      window.NaekiPB?.userStateUpsert(owned).then(ok => {
+        if (!ok) console.warn("[naeki-pb] user_state upsert failed");
+      }).catch(() => {});
+    }, 120);  // coalesce bursts (checkout, stamp taps)
+  }
+
   window.NaekiStore = {
     /** full state (read-only use) */
     get: () => state,
 
-    /** profile: local display name that switches landing/app modes */
-    setProfile(name) {
-      const trimmed = (name || "").trim().slice(0, 24);
-      if (!trimmed) return false;
-      // fake staff login: certain names route to the partner portal
-      const staff = ["admin", "franchisee", "marketing"].includes(trimmed.toLowerCase());
-      state.profile = { name: trimmed, since: Date.now(), role: staff ? "staff" : null };
+    /** real PocketBase auth. Async: returns { ok, user?, error? }.
+        Sets the local profile from the authenticated record; staff/portal
+        access is driven by the seeded `role` field (franchise_owner /
+        admin / superadmin), not the display name. Loyalty is loaded from the
+        owner-scoped pb collection when present. */
+    async signIn(email, password) {
+      const PB = window.NaekiPB;
+      if (!PB) return { ok: false, error: "PocketBase not available" };
+      const res = await PB.signIn(email, password);
+      if (!res.ok) return res;
+      const staff = res.isStaff;
+      state.profile = {
+        name: res.user.name || res.user.email,
+        email: res.user.email,
+        since: Date.now(),
+        role: staff ? "staff" : null,
+        roleUser: (res.role || "").toLowerCase(),   // real pb role: franchise_owner/admin/superadmin/customer
+        branchId: res.user.branch_id || ""
+      };
+      // pull the user's ENTIRE server-side store back (stamps, wallet, gifts,
+      // referrals, drafts, loyalty…) — subsumes the old loyalty-only read.
+      const us = await PB.userStateGet();
+      if (us && us.data && typeof us.data === "object") {
+        const saved = us.data;
+        state = {
+          ...structuredClone(DEFAULTS),
+          ...saved,
+          profile: state.profile,                 // keep the fresh auth profile
+          card: { ...DEFAULTS.card, ...(saved.card || {}) },
+          loyalty: { ...DEFAULTS.loyalty, ...(saved.loyalty || {}) },
+          wallet: { ...DEFAULTS.wallet, ...(saved.wallet || {}) },
+          chat: { ...DEFAULTS.chat, ...(saved.chat || {}) }
+        };
+      }
+      const ok = persist();
+      if (ok) emit();
+      return { ok: true, user: res.user, isStaff: staff };
+    },
+
+    async signOut() {
+      // flush any pending server-side state before dropping the session
+      const PB = window.NaekiPB;
+      if (PB && state.profile?.email) {
+        const { profile, ...owned } = state;
+        try { await PB.userStateUpsert(owned); } catch {}
+      }
+      window.NaekiPB?.signOut();
+      state.profile = null; // stamps/history survive sign-out
       return persist();
     },
     /** is this session a staff (partner-portal) demo login? */
     isStaff() {
       return !!(state.profile && state.profile.role === "staff");
     },
-    signOut() {
-      state.profile = null; // stamps/history survive sign-out
-      return persist();
+
+    /** push loyalty to pb (points/history) after earning/spending */
+    async persistLoyalty() {
+      const PB = window.NaekiPB;
+      if (!PB || !state.profile?.email) return;
+      await PB.upsertLoyalty({
+        points: state.loyalty.points,
+        lifetime: state.loyalty.lifetime,
+        history: state.loyalty.history
+      });
     },
 
     /** stamp card accessors */
@@ -236,9 +314,16 @@
         before "cash". Nothing is transmitted. */
     checkoutCart(category) {
       if (!state.cart.length) return null;
-      const total = state.cart.reduce((t, l) => t + l.price * l.qty, 0);
+      const subtotal = state.cart.reduce((t, l) => t + l.price * l.qty, 0);
+      // coupon re-validated against the live cart at the moment of checkout —
+      // a coupon applied earlier may no longer fit (cart changed, code expired)
+      const coupon = state.coupon;
+      const discount = this.couponDiscount(state.cart);
+      const total = subtotal - discount;
+      const couponDropped = coupon && !discount ? coupon.code : null;
       const count = cartCount();
-      const walletSpent = Math.min(state.wallet.balance, total);
+      const walletSpent = (state.wallet.useWallet !== false)   // opt-in (default true)
+        ? Math.min(state.wallet.balance, total) : 0;
       const paidByWallet = walletSpent > 0;
       state.wallet.balance -= walletSpent;
 
@@ -249,8 +334,10 @@
 
       const receipt = {
         id: "NK-" + Date.now().toString(36).toUpperCase(),
-        total, count, ts: Date.now(), lines: state.cart.slice(),
+        total, subtotal, discount, count, ts: Date.now(), lines: state.cart.slice(),
         category: category || null,
+        couponCode: discount > 0 ? coupon.code : null,
+        couponDropped,
         paidByWallet, walletSpent,
         pointsEarned: earned, tier: tier.name,
         newLifetime: state.loyalty.lifetime + earned
@@ -259,17 +346,67 @@
       state.loyalty.lifetime += earned;
       state.loyalty.history.unshift({
         ts: receipt.ts, total, count, category: category || null,
+        couponCode: receipt.couponCode,
         lines: receipt.lines.map(l => ({ name: l.name, qty: l.qty, price: l.price }))
       });
+      if (discount > 0) state.coupon = null;   // single-use per order, like real codes
       if (state.loyalty.history.length > 50) state.loyalty.history.length = 50;
       state.cart = [];
       persist();
       emit();
+      // push the updated loyalty to the local PocketBase (best-effort)
+      if (window.NaekiStore.persistLoyalty) window.NaekiStore.persistLoyalty();
       return receipt;
     },
     clearCart() {
       state.cart = [];
       return persist();
+    },
+
+    /* ---------------- coupon (validated against the pb collection) ----------------
+       The record was already fetched + validated when applied (app.js); this
+       re-checks the shape against THIS cart at checkout, because the cart may
+       have changed since (dipped under minSpend, brand switched, free item
+       removed). usedCount/active stay the brand's ledger — read-only. */
+    couponState: () => state.coupon,
+
+    /** remember a validated coupon for the next checkout (one at a time) */
+    setCoupon(coupon) {
+      if (!coupon || typeof coupon !== "object" || !coupon.code) return null;
+      state.coupon = coupon;
+      persist();
+      return state.coupon;
+    },
+
+    clearCoupon() {
+      state.coupon = null;
+      persist();
+      return null;
+    },
+
+    /** discount this coupon gives THIS cart (0 when not applicable). Pure —
+        safe to call from renderers for the live cart preview. */
+    couponDiscount(lines) {
+      const c = state.coupon;
+      if (!c) return 0;
+      const subtotal = lines.reduce((t, l) => t + l.price * l.qty, 0);
+      const usable = couponUsable(c, subtotal, lines);
+      if (!usable.ok) return 0;
+      if (c.type === "percent")    return Math.round(subtotal * (Number(c.value) || 0) / 100);
+      if (c.type === "fixed_baht") return Math.min(Number(c.value) || 0, subtotal);
+      if (c.type === "free_item") {
+        const free = lines.find(l => l.name === c.freeItem);
+        return free ? Number(free.price) || 0 : 0;
+      }
+      return 0;
+    },
+
+    /** why this coupon can't be used right now (null when it can) */
+    couponProblem(lines) {
+      const c = state.coupon;
+      if (!c) return null;
+      const subtotal = lines.reduce((t, l) => t + l.price * l.qty, 0);
+      return couponUsable(c, subtotal, lines).why || null;
     },
 
     /* ---------------- loyalty (points + tiers) ---------------- */
@@ -353,6 +490,13 @@
 
     walletState: () => state.wallet,
     giftsState: () => state.gifts,
+
+    /** opt-in/out of paying the wallet balance before cash at checkout */
+    setUseWallet(on) {
+      state.wallet.useWallet = on !== false;
+      persist();
+      return state.wallet.useWallet;
+    },
 
     /** provision an express-pay wallet once ("apple" | "google"); repeat
         calls are no-ops — after provisioning the card lives in the
@@ -579,5 +723,37 @@
 
   function cartCount() {
     return state.cart.reduce((n, l) => n + l.qty, 0);
+  }
+
+  /* coupon applicability against a concrete cart — the single rule set both
+     the apply-time check (app.js, against pb records) and checkout re-check
+     share. `why` is customer-readable so the cart can explain itself. */
+  function couponUsable(c, subtotal, lines) {
+    const now = Date.now();
+    const why = (msg) => ({ ok: false, why: msg });
+    if (!c || !c.code) return why("Coupon missing.");
+    if (c.active === false) return why(`Coupon ${c.code} is no longer active.`);
+    if (c.startsAt && now < c.startsAt) return why(`Coupon ${c.code} hasn't started yet.`);
+    if (c.expiresAt && now > c.expiresAt) return why(`Coupon ${c.code} has expired.`);
+    if (Number(c.usageLimit) > 0 && Number(c.usedCount) >= Number(c.usageLimit))
+      return why(`Coupon ${c.code} has been fully claimed.`);
+    const min = Number(c.minSpend) || 0;
+    if (subtotal < min)
+      return why(`Add ${"฿" + (min - subtotal)} more — coupon ${c.code} needs a ฿${min} minimum.`);
+    if (c.type === "free_item") {
+      const has = lines.some(l => l.name === c.freeItem);
+      if (!has) return why(`Add the ${c.freeItem || "free item"} to use coupon ${c.code}.`);
+    }
+    if (c.brand) {
+      // the cart must actually contain something from the coupon's brand
+      const Data = window.NaekiData;
+      const hasBrand = (lines || []).some(l => {
+        const g = Data?.MENU?.find(gr => gr.items.some(it => it.name === l.name));
+        return g ? g.brand === c.brand : true;   // unknown line → don't block
+      });
+      if (!hasBrand)
+        return why(`Coupon ${c.code} is only for ${c.brand === "go" ? "Naeki Go!" : "Naeki Sushi"} items.`);
+    }
+    return { ok: true, why: null };
   }
 })();

@@ -1433,6 +1433,25 @@ body:not([data-staff="true"]) .staff-only { display: none; }
 .dish-order.has-qty .d-qty { color: var(--salmon); font-weight: 700; }
 /* display-only cards (landing): stepper hidden, price stands alone */
 .dish:not(:has(.dish-order)) .dish-foot { justify-content: flex-start; }
+/* landing menu cards: CTA to order in the app instead of a stepper */
+.dish .dish-cta { flex-shrink: 0; padding: 8px 12px; font-size: 12px; }
+.dish .dish-cta:hover { transform: none; }
+
+/* =============== BRAND SWITCHER (Sushi / GO!) =============== */
+.brand-switch {
+  display: inline-flex; gap: 4px; padding: 4px;
+  background: var(--ink-1); border: 1px solid var(--line); border-radius: 999px;
+}
+.brand-chip {
+  border: 0; cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600;
+  color: var(--paper-dim); background: transparent; padding: 7px 14px; border-radius: 999px;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+.brand-chip em { font-style: normal; font-weight: 800; }
+.brand-chip:hover { color: var(--paper); }
+.brand-chip.active { background: var(--salmon); color: var(--ink-0); }
+.brand-chip.active em { color: var(--ink-0); }
+.home-hero-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 
 /* ---------------- OFFERS BELL + POPUP (ack-once delivery) ----------------
    The bell rides the Rewards nav row (same slot the cart badge uses);
@@ -1692,8 +1711,13 @@ body:not([data-staff="true"]) .staff-only { display: none; }
   gap: 10px;
 }
 .cart-total { display: flex; align-items: baseline; justify-content: space-between; font-size: 14px; color: var(--paper-dim); }
-.cart-total strong { font-family: var(--font-display); font-size: 24px; color: var(--paper); }
-.cart-note { font-size: 12px; color: var(--paper-faint); }
+.cart-total strong { font-family: var(--font-display); font-size: 16px; color: var(--paper); }
+/* wallet opt-in — pay the stored balance before cash, per-checkout control */
+.wallet-opt {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12.5px; color: var(--paper-dim); margin: 2px 0 10px;
+}
+.wallet-opt input { accent-color: var(--salmon); width: 16px; height: 16px; }
 .cart-actions { display: flex; gap: 10px; }
 .cart-actions .btn { margin-top: 0; }
 
@@ -2479,3 +2503,110 @@ body:not([data-staff="true"]) .staff-only { display: none; }
   .ab-pair { grid-template-columns: 1fr; }
   .modal-card { width: calc(100vw - 24px); max-height: calc(100dvh - 40px); }
 }
+
+/* =============== NOTIFICATION CARDS (end-user) =============== */
+/* One card language across the composer preview, the Rewards inbox, and the
+   popup — so what a partner composes is exactly what a diner sees. */
+.notif-card {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--salmon);
+  border-radius: var(--radius-sm);
+  padding: 13px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.notif-card[data-type="event"] { border-left-color: var(--go); }
+.notif-card[data-type="update"] { border-left-color: var(--wasabi); }
+.notif-meta { display: flex; align-items: center; gap: 8px; }
+.notif-type {
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-0);
+  background: var(--salmon); padding: 2px 7px; border-radius: 999px;
+}
+.notif-card[data-type="event"] .notif-type { background: var(--go); color: #0b1a24; }
+.notif-card[data-type="update"] .notif-type { background: var(--wasabi); color: #1c2e22; }
+.notif-branch { color: var(--paper-dim); font-size: 11px; margin-left: auto; }
+.notif-title { font-family: var(--font-display); font-size: 15px; line-height: 1.3; }
+.notif-body { color: var(--paper-dim); font-size: 13px; margin: 0; }
+.notif-when { color: var(--paper-faint); font-size: 11.5px; }
+.notif-actions { display: flex; gap: 8px; margin-top: 2px; }
+
+/* =============== PARTNER COMPOSER =============== */
+.pt-composer .pt-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pt-preview {
+  background: var(--ink-0); border: 1px dashed var(--line-hover);
+  border-radius: var(--radius); padding: 12px; margin: 4px 0 12px;
+}
+.pt-preview-label {
+  display: block; color: var(--paper-faint); font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 8px;
+}
+.pt-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+@media (max-width: 640px) {
+  .pt-composer .pt-two-col { grid-template-columns: 1fr; }
+}
+
+/* ---------------- Coupon row (cart) + sign-in helpers ----------------
+   Added by the pb pass: coupon entry/applied chip in the cart foot, and the
+   injected quick-fill chips + inline error in the sign-in modal. Uses only
+   the existing tokens; wraps at phone width. */
+
+.cpn-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+.cpn-row input {
+  flex: 1 1 150px;
+  min-width: 0;
+  background: var(--ink-1);
+  border: 1px solid var(--line);
+  color: var(--paper);
+  border-radius: 999px;
+  padding: 9px 16px;
+  font-size: 13.5px;
+}
+.cpn-row input:focus { border-color: var(--salmon); outline: none; }
+.cpn-row input::placeholder { color: var(--paper-faint); }
+
+.cpn-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--ink-2);
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--paper-dim);
+  flex-wrap: wrap;
+}
+.cpn-chip .cpn-code { font-family: var(--font-mono); font-size: 12.5px; color: var(--salmon); letter-spacing: 0.06em; }
+.cpn-chip .cpn-title { color: var(--paper-dim); }
+.cpn-x {
+  background: none;
+  border: 0;
+  color: var(--paper-faint);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  align-self: center;
+}
+.cpn-x:hover { color: var(--paper); }
+
+.cpn-note { font-size: 12px; color: var(--paper-faint); margin: 6px 0 0; flex-basis: 100%; }
+.cpn-total { font-size: 13px; }
+.cpn-total s { color: var(--paper-faint); font-family: var(--font-display); font-size: 15px; }
+.cpn-minus { color: var(--wasabi); font-family: var(--font-display); font-size: 16px; }
+.cpn-receipt-ok { color: var(--wasabi); }
+
+.signin-demos { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+.signin-demos-label { font-size: 11px; color: var(--paper-faint); letter-spacing: 0.08em; text-transform: uppercase; }
+.signin-demo-chip {
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  color: var(--paper-dim);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.signin-demo-chip:hover { border-color: var(--line-hover); color: var(--paper); }
+.signin-error { color: var(--salmon); font-size: 12.5px; margin: 10px 0 0; }

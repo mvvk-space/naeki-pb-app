@@ -1,15 +1,23 @@
 {
-  "name": "naeki-sushi-showcase",
-  "productName": "Naeki Sushi Showcase",
-  "version": "2.10.0",
-  "description": "Showcase app for Naeki Sushi — premium onigiri & sushi grab-and-go, Bangkok",
+  "name": "naeki-pb-app",
+  "productName": "Naeki Sushi Showcase · PocketBase",
+  "version": "2.11.0-pb",
+  "description": "Naeki showcase backed by a local PocketBase (real auth + seeded menu/branches)",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "check": "node scripts/validate.mjs",
-    "postinstall": "git config core.hooksPath .githooks || true"
+    "pb": "pocketbase serve --http=127.0.0.1:8090 --dir=pb_data",
+    "seed": "node scripts/seed.mjs",
+    "pb:init": "pocketbase superuser upsert 'admin@naeki.dev' 'Naeki$Dev123' && pocketbase serve --http=127.0.0.1:8090 --dir=pb_data"
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "@types/node": "^26.5.1",
+    "electron": "^33.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
+  },
+  "dependencies": {
+    "pocketbase": "^0.28.1",
+    "zod": "^4.6.5"
   }
 }

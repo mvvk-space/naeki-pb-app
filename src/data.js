@@ -1,3 +1,4 @@
+/// <reference path="./types.d.ts" />
 /* NAEKI SUSHI — data layer: the single source of truth ("backend").
    Everything the UI shows about the business lives here: menu, branches,
    hours, reviews, brand facts, landing config. Views never hardcode these
@@ -21,10 +22,41 @@ window.NaekiData = (() => {
   "use strict";
 
   /* ---------------- MENU ---------------- */
+  /* Two product lines, two menus.
+     Naeki Sushi — the original 2013 counter: the full range (onigiri, nigiri,
+     rolls, sashimi, donburi/bento, party sets for offices/meetings). Premium
+     tier sits here. Naeki GO! — the onigiri-first kiosk brand: hand-held rice
+     balls built for "buy now, store it" (2h ambient / 5h AC / 10h fridge),
+     aimed at commuters + deadline office workers; sold at kiosks and via
+     delivery apps (FoodPanda, Grab, Line Man). Group `.brand` maps to the
+     brand selector, and the seed rows carry the same field. */
+
+  function brandGroups(id) {
+    return MENU.filter(g => g.brand === id ? true : (g.brand == null));
+  }
+
+  /* brand identity for the segmented menu + landing switcher */
+  const BRANDS = [
+    { id: "sushi", name: "Naeki Sushi", short: "Sushi",
+      tag: "the original counter", jp: "寿司",
+      desc: "Premium counter sushi since 2013 — onigiri, nigiri, rolls, sashimi, donburi and party sets for offices & meetings." },
+    { id: "go", name: "Naeki GO!", short: "GO!",
+      tag: "onigiri on the go", jp: "おにぎり",
+      desc: "Hand-held rice balls built for the commute — grab, store, enjoy anytime. Avg 45+ baht, kiosks + delivery apps." }
+  ];
+
+  // live brand selection — frames + menu re-source from it
+  let activeBrand = "go";   // GO! leads: it's the flagship kiosk format
+  function setBrand(id) {
+    activeBrand = BRANDS.some(b => b.id === id) ? id : "go";
+    publish("refresh", { brand: activeBrand });
+  }
+  function getBrand() { return BRANDS.find(b => b.id === activeBrand); }
 
   const MENU = [
     {
       id: "onigiri",
+      brand: "go",
       name: "Onigiri",
       jp: "おにぎり",
       desc: "The signature. Hand-shaped to order, one-handed convenience, the rice seasoned to sit just right against the filling.",
@@ -43,6 +75,7 @@ window.NaekiData = (() => {
     },
     {
       id: "nigiri",
+      brand: "sushi",
       name: "Nigiri Sushi",
       jp: "にぎり",
       desc: "Pressed fresh at the counter — reviewers say the fish \"melts in your mouth\". Two cuts of salmon lead the list.",
@@ -61,6 +94,7 @@ window.NaekiData = (() => {
     },
     {
       id: "rolls",
+      brand: "sushi",
       name: "Sushi Rolls",
       jp: "巻物",
       desc: "Uramaki, hosomaki and futomaki cut to order — plated on bamboo leaf with tobiko and tamagoyaki.",
@@ -74,6 +108,7 @@ window.NaekiData = (() => {
     },
     {
       id: "sashimi",
+      brand: "sushi",
       name: "Sashimi & Sets",
       jp: "さしみ",
       desc: "Thick-cut plates for eating now, and nigiri/aburi sets for sharing at the desk.",
@@ -89,6 +124,7 @@ window.NaekiData = (() => {
     },
     {
       id: "don",
+      brand: "sushi",
       name: "Donburi & Bento",
       jp: "丼・弁当",
       desc: "Rice bowls and boxed sets — the full meal when one onigiri won't cut it.",
@@ -419,22 +455,29 @@ window.NaekiData = (() => {
   }
 
   /* ---- featured rotation: `featuredCount` consecutive pool items,
-         window start walks 2 forward each refresh (wraps around) ---- */
+        window start walks 2 forward each refresh (wraps around).
+        Brand-aware: only items from groups of the active brand surface. ---- */
   function featured(now = refreshCount) {
     const { featuredPool: pool, featuredCount: count } = LANDING;
+    const active = activeBrand;
+    const inBrand = (name) => {
+      for (const group of MENU) {
+        if (active !== "sushi" && group.brand === "sushi") continue;   // hide counter-only on GO
+        if (active === "sushi" && group.brand === "go") continue;       // hide kiosk-hero on Sushi
+        const item = group.items.find(it => it.name === name);
+        if (item) return { item, group };
+      }
+      return null;
+    };
     const start = (now * 2) % pool.length;
-    const names = [];
-    for (let i = 0; i < count; i++) names.push(pool[(start + i) % pool.length]);
-    return names
-      .map(name => {
-        for (const group of MENU) {
-          const item = group.items.find(it => it.name === name);
-          if (item) return { item, group };
-        }
-        console.warn("featured dish not in menu:", name);
-        return null;
-      })
-      .filter(Boolean);
+    // build the visible pool first so rotation stays seamless
+    const visible = [];
+    for (let i = 0; i < pool.length; i++) {
+      const n = pool[(start + i) % pool.length];
+      if (inBrand(n)) visible.push(n);
+      if (visible.length === count) break;
+    }
+    return visible.map(n => inBrand(n)).filter(Boolean);
   }
 
   /* ============================================================
@@ -512,12 +555,31 @@ window.NaekiData = (() => {
     const weekday = bangkokWeekday(now);
     const out = [];
 
+    // approved partner requests from the pba backend (submitted via the
+    // franchise composer, approved by marketing) — delivered through the bell
+    // like published offers; surfaced only to subscribed branches + their type
+    // and CTA carried through so the card renders as the partner composed it.
+    const subSet = opts.subscribedBranches || [];
+    for (const nr of (opts.approvedRequests || [])) {
+      if (!subSet.includes(nr.branch)) continue;
+      out.push({
+        kicker: nr.branch ? D.shortName({ name: nr.branch }) : "From your branch",
+        title: nr.title, text: nr.body,
+        tag: nr.type || "deal", personal: false, branchOffer: true, live: true,
+        branchId: nr.branch, sentAt: nr.created || Date.now(), sendCount: 1,
+        notifType: nr.type || "offer",
+        ctaLabel: nr.ctaLabel || "", ctaUrl: nr.ctaUrl || "",
+        when: nr.when || "",
+        uid: nr.id
+      });
+    }
+
     // published offers from the brand portal: delivered through the bell,
     // but only surfaced when THIS device has subscribed to the sending branch
     // (opts.publishedOffers comes from the store each call).
-    const subSet = opts.subscribedBranches || [];
+    const subSet2 = opts.subscribedBranches || [];
     for (const po of (opts.publishedOffers || [])) {
-      if (!subSet.includes(po.branchId)) continue;   // not subscribed → not shown
+      if (!subSet2.includes(po.branchId)) continue;   // not subscribed → not shown
       out.push({
         kicker: po.kicker || "From your branch",     // e.g. "From BTS Asok"
         title: po.title, text: po.text,
@@ -716,22 +778,59 @@ window.NaekiData = (() => {
      republishes so every frame re-sources itself from this module.
      The rotation makes the refresh visible; hours edits propagate the
      same way. ---- */
+  async function pbHydrate() {
+    try {
+      const r = await fetch("http://127.0.0.1:8090/api/collections/menu_item/records?perPage=200");
+      const m = await r.json();
+      if (m.items && m.items.length) {
+        const byGroup = {};
+        for (const it of m.items) {
+          const k = it.group_id || "other";
+          (byGroup[k] = byGroup[k] || []).push({ name: it.name, price: it.price, sub: it.sub || "", img: it.img || "", story: it.story || "" });
+        }
+        const newMenu = MENU.map(g => ({ ...g, items: byGroup[g.id] || g.items }));
+        MENU.length = 0; MENU.push(...newMenu);
+      }
+      const rb = await fetch("http://127.0.0.1:8090/api/collections/branch/records?perPage=50");
+      const b = await rb.json();
+      if (b.items && b.items.length) {
+        BRANCHES.length = 0;
+        BRANCHES.push(...b.items.map(x => ({ name: x.name, kind: x.kind, area: x.area, where: x.where, close: x.close, phone: x.phone, note: x.note })));
+      }
+      // milestones: hydrate the seven achievements from the DB (overrides the
+      // hard-coded default when rows exist; order by the seeded `order`)
+      const mr = await fetch("http://127.0.0.1:8090/api/collections/milestone/records?perPage=50&sort=order");
+      const ms = await mr.json();
+      if (ms.items && ms.items.length) {
+        const mapped = ms.items
+          .map(x => ({ id: x.id, kicker: x.kicker, title: x.title, text: x.text, pts: x.pts, jp: x.jp, order: x.order }))
+          .sort((a, b) => (a.order ?? 9) - (b.order ?? 9));
+        if (mapped.length) { MILESTONES.length = 0; MILESTONES.push(...mapped); }
+      }
+    } catch {}
+  }
+
   function refresh() {
     refreshCount++;
     lastRefreshAt = bangkokParts();
     publish("refresh", { count: refreshCount, at: lastRefreshAt });
+    pbHydrate();
   }
 
   // minute tick: status-only topic (open/closed flips at closing time)
   setInterval(() => publish("tick", bangkokParts()), 60 * 1000);
   // data refresh cycle
   setInterval(refresh, 30 * 1000);
-  // first refresh at load: stamps lastRefreshAt so the landing band shows a
-  // real timestamp and the featured rotation starts from a settled window
-  setTimeout(refresh, 1200);
+  // first refresh at load: hydrate from the DB then publish the first refresh
+  setTimeout(() => { pbHydrate().finally(refresh); }, 400);
 
   const Data = {
-    MENU, ALSO, BRANCHES, REVIEWS, INFO, LANDING,
+    MENU, ALSO, BRANCHES, REVIEWS, INFO, LANDING, BRANDS, brandGroups,
+    setBrand, getBrand,
+    // branch kinds: kind == "flagship" = Naeki Sushi counter, "go" = GO kiosk.
+    // Brand filter: Sushi shows counters, GO! shows kiosks.
+    kindsForBrand: (id) => id === "go" ? ["go"] : ["flagship"],
+    branchInBrand: (b, id) => id === "go" ? b.kind === "go" : b.kind === "flagship",
     subscribe, publish,
     bangkokParts, toMins, isOpenNow, shortName, stats, featured, order,
     branchKicker, subscriberCountOf,

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://www.google.com https://www.gstatic.com; style-src 'self'; script-src 'self'; connect-src 'none'; frame-src https://www.google.com; object-src 'none'" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://www.google.com https://www.gstatic.com; style-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:8090; frame-src https://www.google.com; object-src 'none'" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#101012" />
   <title>Naeki Sushi — Bangkok Showcase</title>
@@ -122,6 +122,10 @@
             along the BTS &amp; MRT lines, one perfect bite at a time.
           </p>
           <div class="home-hero-actions">
+            <div class="brand-switch" id="landing-brand" role="tablist" aria-label="Choose brand">
+              <button class="brand-chip active" data-brand="go">Naeki <em>GO!</em></button>
+              <button class="brand-chip" data-brand="sushi">Naeki <em>Sushi</em></button>
+            </div>
             <button class="btn accent" id="home-open-app">Open the app</button>
             <button class="btn ghost" id="home-browse-menu">Browse the menu</button>
           </div>
@@ -1173,29 +1177,74 @@
 
         <!-- franchisee portal -->
         <div id="pt-franchisee" hidden>
-          <div class="pt-panel">
+          <div class="pt-panel pt-composer">
             <div class="pt-panel-head">
-              <h3>Draft an offer for your branch</h3>
-              <span class="pt-hint">Sign in as a franchise partner</span>
+              <h3>Compose a notification</h3>
+              <span class="pt-hint">franchise partner</span>
             </div>
             <form id="pt-draft-form">
-              <label>Your branch
-                <select id="pt-branch" required></select>
-              </label>
-              <label>Offer title
-                <input id="pt-title" type="text" maxlength="60" placeholder="e.g. Free iced matcha with any onigiri" required />
+              <div class="pt-two-col">
+                <label>Your branch
+                  <select id="pt-branch" required></select>
+                </label>
+                <label>Type
+                  <select id="pt-type">
+                    <option value="offer">Offer / promo</option>
+                    <option value="event">Event</option>
+                    <option value="update">News update</option>
+                  </select>
+                </label>
+                <label>Audience
+                  <select id="pt-audience">
+                    <option value="everyone">Everyone</option>
+                    <option value="members">Members only</option>
+                  </select>
+                </label>
+                <label>Runs when (optional)
+                  <input id="pt-when" type="text" maxlength="40" placeholder="e.g. Fri 11:30–14:00" />
+                </label>
+              </div>
+              <label>Headline
+                <input id="pt-title" type="text" maxlength="50" placeholder="e.g. Free iced matcha with any onigiri" required />
               </label>
               <label>Details
-                <textarea id="pt-text" maxlength="160" rows="3" placeholder="What's the promotion, and for when?" required></textarea>
+                <textarea id="pt-text" maxlength="160" rows="2" placeholder="What's the promo, and the fine print?" required></textarea>
               </label>
-              <button class="btn accent" type="submit">Save draft</button>
+              <div class="pt-two-col">
+                <label>Button label (optional)
+                  <input id="pt-cta-label" type="text" maxlength="20" placeholder="e.g. Order on LINE" />
+                </label>
+                <label>Button target
+                  <input id="pt-cta-url" type="text" placeholder="https://lin.ee/…" />
+                </label>
+              </div>
+
+              <!-- live preview: exactly what the end-user card will look like -->
+              <div class="pt-preview">
+                <span class="pt-preview-label">Live preview — end user</span>
+                <div id="pt-preview-card" class="notif-card preview">
+                  <div class="notif-meta">
+                    <span class="notif-type offer">Offer</span>
+                    <span class="notif-branch">Naeki @ BTS Siam</span>
+                  </div>
+                  <div class="notif-title">Your headline</div>
+                  <p class="notif-body">A short, friendly description of the promotion goes here.</p>
+                  <div class="notif-actions">
+                    <button class="btn accent sm" type="button">See offer</button>
+                  </div>
+                </div>
+              </div>
+              <div class="pt-form-actions">
+                <button class="btn ghost sm" type="button" id="pt-preview-toggle">Preview ↑</button>
+                <button class="btn accent" type="submit">Submit for approval</button>
+              </div>
             </form>
           </div>
 
           <div class="pt-panel">
             <div class="pt-panel-head">
-              <h3>Your drafts</h3>
-              <span class="pt-hint">draft → pending</span>
+              <h3>Your requests</h3>
+              <span class="pt-hint">draft → pending → sent</span>
             </div>
             <div class="pt-list" id="pt-my-drafts"></div>
           </div>
@@ -1262,15 +1311,21 @@
     <div class="modal-card signin-card" role="dialog" aria-modal="true" aria-labelledby="signin-title">
       <button class="modal-x" data-close aria-label="Close">×</button>
       <div class="modal-body">
-        <div class="modal-cat">Local sign-in</div>
-        <h3 id="signin-title">Who's collecting?</h3>
-        <p>Pick a display name for your stamp card. This stays on this device only —
-           there are no accounts and nothing is sent anywhere.</p>
+        <div class="modal-cat">PocketBase sign-in</div>
+        <h3 id="signin-title">Welcome back</h3>
+        <p>Real account, backed by the local PocketBase. Demo logins —
+           <code>kate@naeki.dev</code> / <code>Kate$12345</code> (customer);
+           <code>somchai@naeki.dev</code> / <code>Somchai$12345</code>
+           (franchise owner · partner portal);
+           <code>super@naeki.dev</code> / <code>Super$12345</code>
+           (superadmin · approves notifications).</p>
         <form id="signin-form">
-          <input id="signin-name" type="text" maxlength="24" placeholder="Your name…"
-                 autocomplete="off" aria-label="Display name" required />
+          <input id="signin-name" type="email" placeholder="you@naeki.dev"
+                 autocomplete="email" aria-label="Email" required />
+          <input id="signin-pass" type="password" placeholder="Password"
+                 autocomplete="current-password" aria-label="Password" required />
           <div class="signin-actions">
-            <button type="submit" class="btn accent">Continue to the app</button>
+            <button type="submit" class="btn accent">Sign in</button>
             <button type="button" class="btn ghost" data-close>Not now</button>
           </div>
         </form>
@@ -1280,6 +1335,7 @@
 
   <script src="data.js"></script>
   <script src="frames.js"></script>
+  <script src="pb.js"></script>
   <script src="store.js"></script>
   <script src="app.js"></script>
 </body>

@@ -1,3 +1,4 @@
+/// <reference path="./types.d.ts" />
 /* NAEKI SHOWCASE — frame engine (turbo-frames-style live includes).
 
    Landing-page regions are declared in HTML as mounts:

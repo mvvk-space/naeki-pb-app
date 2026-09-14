@@ -1,8 +1,11 @@
+/// <reference path="./types.d.ts" />
 /* NAEKI SHOWCASE — app logic: tabs, live search, open/closed clock, modal */
 (() => {
   "use strict";
 
+  /** @param {string} sel @param {ParentNode} [el] @returns {HTMLInputElement | null} — pragmatic: most $() targets are form controls; shared Element props (text/classList/dataset) still check. */
   const $ = (sel, el = document) => el.querySelector(sel);
+  /** @param {string} sel @param {ParentNode} [el] @returns {HTMLElement[]} */
   const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
 
   /* indicative-price formatter (see data.js: prices are demo THB) */
@@ -63,8 +66,7 @@
     return isStaff() ? "partners" : "menu";
   }
   function goToView(name) {
-    // "rewards/wallet" form deep-links a rewards sub-tab from anywhere;
-    // "menu/cart" does the same for the Order tab's segments
+    if (!name) return;                          // guard: button without data-view
     let sub = null;
     if (name.includes("/")) [name, sub] = name.split("/");
     // cart + branches are segments of the Order tab now
@@ -191,6 +193,8 @@
   function openSignin(e) {
     pendingView = (e && e.currentTarget && e.currentTarget.dataset.goto) || null;
     $("#signin-name").value = "";
+    const err = $("#signin-error");
+    if (err) err.textContent = "";
     signin.hidden = false;
     $("#signin-name").focus();
   }
@@ -199,16 +203,67 @@
     $(sel).addEventListener("click", openSignin);
   });
   $$("#signin [data-close]").forEach(el => el.addEventListener("click", closeSignin));
-  $("#signin-form").addEventListener("submit", e => {
+
+  /* one-tap demo accounts + inline failure note — injected so index.html stays
+     untouched by the pb pass. Passwords are the seeded demo convention
+     (scripts/seed.mjs: name + "$12345"); the modal's hint text owns the source
+     of truth, these chips just save the typing. */
+  (function injectSigninHelpers() {
+    const form = $("#signin-form");
+    if (!form || $("#signin-demos")) return;
+    const demos = document.createElement("div");
+    demos.id = "signin-demos";
+    demos.innerHTML = `
+      <span class="signin-demos-label">Quick-fill:</span>
+      <button type="button" class="signin-demo-chip" data-email="kate@naeki.dev" data-pass="Kate$12345">kate · customer</button>
+      <button type="button" class="signin-demo-chip" data-email="somchai@naeki.dev" data-pass="Somchai$12345">somchai · franchise</button>
+      <button type="button" class="signin-demo-chip" data-email="admin@naeki.dev" data-pass="Admin$12345">admin · superuser</button>`;
+    const err = document.createElement("p");
+    err.id = "signin-error";
+    err.className = "signin-error";
+    err.setAttribute("role", "alert");
+    err.setAttribute("aria-live", "polite");
+    form.insertBefore(demos, form.querySelector(".signin-actions"));
+    form.insertBefore(err, form.querySelector(".signin-actions"));
+    demos.querySelectorAll(".signin-demo-chip").forEach(chip =>
+      chip.addEventListener("click", () => {
+        $("#signin-name").value = (/** @type {HTMLElement} */ (chip)).dataset.email;
+        $("#signin-pass").value = (/** @type {HTMLElement} */ (chip)).dataset.pass;
+        err.textContent = "";
+        $("#signin-pass").focus();
+      }));
+  })();
+
+  $("#signin-form").addEventListener("submit", async e => {
     e.preventDefault();
-    if (S.setProfile($("#signin-name").value)) {
+    const email = $("#signin-name").value.trim();
+    const pass = $("#signin-pass").value;
+    const err = $("#signin-error");
+    const btn = $("#signin-form button[type=submit]");
+    if (btn) { btn.disabled = true; btn.textContent = "Signing in…"; }
+    const res = await S.signIn(email, pass);
+    if (btn) { btn.disabled = false; btn.textContent = "Sign in"; }
+    if (res && res.ok) {
+      if (err) err.textContent = "";
       closeSignin();
       enterApp(pendingView);
       pendingView = null;
+      // (re)render the partner portal against this user's real role — the
+      // initial async render at load carries the pre-login "admins only" state
+      // and the view-active observer can miss the first staff entry.
+      if (isStaff() && typeof renderPt === "function") renderPt();
+    } else {
+      // inline, in-place, no alert() — the modal keeps focus and the typed email
+      const why = !window.NaekiPB ? "PocketBase isn't running — start it with: npm run pb"
+        : (res && res.error) || "Sign in failed";
+      if (err) err.textContent = why;
+      else alert(why);
+      $("#signin-pass").value = "";
+      $("#signin-pass").focus();
     }
   });
-  $("#side-signout").addEventListener("click", () => {
-    S.signOut();
+  $("#side-signout").addEventListener("click", async () => {
+    await S.signOut();     // flush store to PB first, THEN re-render (async now)
     applyMode();
   });
 
@@ -216,7 +271,10 @@
      Two local personas, one store. Franchisee drafts for their branch, submits;
      marketing admin approves → published (to a seeded subscriber count) and merged
      into the offers feed. Everything stays on-device — see the portal disclaimer. */
+  /** @returns {(HTMLElement & Partial<HTMLInputElement> & Partial<HTMLSelectElement>) | null} — pragmatic: id lookups are mostly form controls; DOM-only usages still check. */
   const $id = (x) => document.getElementById(x);
+  /** current value of a form control by id ("" when absent) */
+  const $val = (x) => (/** @type {HTMLInputElement} */ (document.getElementById(x) || {})).value || "";
   const personaBox = $id("pt-persona");
   const frPane = $id("pt-franchisee");
   const adPane = $id("pt-admin");
@@ -232,66 +290,169 @@
   }
   fillBranchSel();
 
-  const PT_STATUS = { draft: "Draft", pending: "Awaiting approval", approved: "Approved" };
+  const PT_STATUS = { draft: "Draft", pending: "Awaiting approval", approved: "Approved · sent", rejected: "Rejected", sent: "Sent" };
+  const PT_TYPE = { offer: "Offer", event: "Event", update: "News" };
 
-  function ptPublishedCard(po) {
+  function notifCardHTML(r) {
+    const type = r.type || "offer";
+    const branch = r.branch ? D.shortName({ name: r.branch }) : "Naeki";
     return `\
-      <div class="pt-item pt-sent">
-        <div class="pt-item-top">
-          <span class="pt-tag">${po.kicker || "From your branch"}</span>
-          <span class="pt-when">${fmtWhen(po.sentAt)}</span>
+      <div class="notif-card" data-type="${type}">
+        <div class="notif-meta">
+          <span class="notif-type">${PT_TYPE[type] || type}</span>
+          <span class="notif-when">${r.when ? r.when : ""}</span>
+          <span class="notif-branch">${branch}</span>
         </div>
-        <div class="pt-item-title">${po.title}</div>
-        <p>${po.text}</p>
-        <span class="pt-sub">Sent to ${po.sendCount} subscriber${po.sendCount === 1 ? "" : "s"}</span>
+        <div class="notif-title">${r.title}</div>
+        <p class="notif-body">${r.body}</p>
+        ${r.ctaLabel ? `<div class="notif-actions"><button class="btn accent sm" type="button">${r.ctaLabel}</button></div>` : ""}
       </div>`;
+  }
+
+  // current signed-in staff persona: role + owned branch (drives the portal UI)
+  function portalPersona() {
+    const p = S.get().profile;
+    return {
+      role: p?.roleUser || "",
+      branchId: p?.branchId || "",
+      isAdmin: ["admin", "superadmin"].includes(p?.roleUser || "")
+    };
   }
 
   function renderPt() {
     if (!myDraftsEl) return;
-    const drafts = S.franchiseDraftsState();
+    const PB = window.NaekiPB;
+    if (!PB) return;
+    const me = PB.me && PB.me();
+    const persona = portalPersona();
 
-    const mine = drafts.filter(d => d.status !== "approved");
-    myDraftsEl.innerHTML = mine.length
-      ? mine.map(d => {
-          const canSubmit = d.status === "draft";
-          const canDel = d.status === "draft";
-          return `\
+    // branch lock: franchise owners compose for their OWN seeded branch
+    const lockBranch = persona.role === "franchise_owner" && persona.branchId;
+    if (branchSel) {
+      if (lockBranch) branchSel.value = persona.branchId;   // set (and it's not user-changeable below)
+      else branchSel.innerHTML = D.BRANCHES.map(b =>
+        `<option value="${b.name}">${D.shortName({ name: b.name })}</option>`).join("");
+    }
+    if (branchSel) {
+      branchSel.disabled = !!lockBranch;    // franchise owner can't shop branches
+      if (lockBranch) branchSel.title = "Locked to your branch";
+    }
+
+    // admin pane visibility: only admin/superadmin see the review queue
+    if (adPane) adPane.hidden = !persona.isAdmin;
+    // franchisee compose pane: owners + admins see it; admins can also compose
+    if (frPane) frPane.hidden = !(persona.role === "franchise_owner" || persona.isAdmin);
+
+    const mine = [];
+    const mineRender = () => {
+      myDraftsEl.innerHTML = mine.length
+        ? mine.map(d => `\
             <div class="pt-item">
               <div class="pt-item-top">
-                <span class="pt-tag">${PT_STATUS[d.status]}</span>
-                <span class="pt-branch">${D.shortName({ name: d.branchId })}</span>
+                <span class="pt-tag">${PT_STATUS[d.status] || d.status}</span>
+                <span class="pt-branch">${D.shortName({ name: d.branch }) || ""}</span>
               </div>
               <div class="pt-item-title">${d.title}</div>
-              <p>${d.text}</p>
+              <p>${d.body}</p>
               <div class="pt-item-actions">
-                ${canSubmit ? `<button class="btn ghost sm" data-ptsubmit="${d.id}">Submit for approval</button>` : ""}
-                ${canDel ? `<button class="btn ghost sm" data-ptdel="${d.id}">Discard</button>` : ""}
+                ${d.status === "pending" && !persona.isAdmin
+                  ? `<button class="btn ghost sm" data-ptdel="${d.id}">Withdraw</button>` : ""}
               </div>
-            </div>`;
-        }).join("")
-      : `<div class="pt-empty">No drafts yet — draft an offer above.</div>`;
+            </div>`).join("")
+        : `<div class="pt-empty">No promotions yet — compose one above and submit for approval${persona.isAdmin ? " (or review below)" : ""}.</div>`;
+      myDraftsEl.querySelectorAll("[data-ptdel]").forEach(btn =>
+        btn.addEventListener("click", async () => {
+          await PB.promoUpdate((/** @type {HTMLElement} */ (btn)).dataset.ptdel, { status: "draft" });
+          refreshPt();
+        }));
+    };
+    const renderReview = (rows) => {
+      if (!reviewEl) return;
+      const pending = rows.filter(r => r.status === "pending");
+      reviewEl.innerHTML = persona.isAdmin
+        ? (pending.length
+          ? pending.map(d => `\
+              <div class="pt-item">
+                <div class="pt-item-top">
+                  <span class="pt-tag">${PT_STATUS.pending}</span>
+                  <span class="pt-branch">${D.shortName({ name: d.branch }) || ""}</span>
+                </div>
+                <div class="pt-item-title">${d.title}</div>
+                <p>${d.body}</p>
+                <div class="pt-item-actions">
+                  <button class="btn accent sm" data-ptapprove="${d.id}">Approve & send</button>
+                  <button class="btn ghost sm" data-ptreturn="${d.id}">Reject / return</button>
+                </div>
+              </div>`).join("")
+          : `<div class="pt-empty">Nothing awaiting approval right now.</div>`)
+        : `<div class="pt-empty">Approval queue is for admins only.</div>`;
+      reviewEl.querySelectorAll("[data-ptapprove]").forEach(btn =>
+        btn.addEventListener("click", async () => {
+          await PB.promoUpdate((/** @type {HTMLElement} */ (btn)).dataset.ptapprove, { status: "approved", reviewedAt: Date.now() });
+          refreshPt(); syncBellAndPop();
+        }));
+      reviewEl.querySelectorAll("[data-ptreturn]").forEach(btn =>
+        btn.addEventListener("click", async () => {
+          await PB.promoUpdate((/** @type {HTMLElement} */ (btn)).dataset.ptreturn, { status: "rejected" });
+          refreshPt();
+        }));
+    };
+    const renderSent = (rows) => {
+      if (!sentEl) return;
+      const sent = rows.filter(r => r.status === "approved" || r.status === "sent")
+        .sort((a, b) => (b.created || 0) - (a.created || 0));
+      sentEl.innerHTML = sent.length
+        ? sent.map(notifCardHTML).join("")
+        : `<div class="pt-empty">Nothing sent yet — approved promotions land here.</div>`;
+    };
+    const refreshPt = async () => {
+      const rows = await PB.promoList();
+      const owned = me ? rows.filter(r => {
+        // owners see their own; admins see all
+        if (persona.isAdmin) return true;
+        return r.author === me.id;
+      }) : [];
+      mine.length = 0;
+      mine.push(...owned.filter(r => !persona.isAdmin || r.author === me.id)
+        .sort((a, b) => (b.created || 0) - (a.created || 0)));
+      renderReview(rows);
+      renderSent(rows);
+      mineRender();
+    };
+    refreshPt();
+  }
 
-    const pending = drafts.filter(d => d.status === "pending");
-    reviewEl.innerHTML = pending.length
-      ? pending.map(d => `\
-          <div class="pt-item">
-            <div class="pt-item-top">
-              <span class="pt-tag">${d.title}</span>
-              <span class="pt-branch">${D.shortName({ name: d.branchId })}</span>
-            </div>
-            <p>${d.text}</p>
-            <div class="pt-item-actions">
-              <button class="btn accent sm" data-ptapprove="${d.id}">Approve & send</button>
-              <button class="btn ghost sm" data-ptreturn="${d.id}">Return for edits</button>
-            </div>
-          </div>`).join("")
-      : `<div class="pt-empty">Nothing awaiting approval right now.</div>`;
-
-    const sent = S.publishedOffersState();
-    sentEl.innerHTML = sent.length
-      ? sent.map(ptPublishedCard).join("")
-      : `<div class="pt-empty">Nothing sent yet — published offers land here.</div>`;
+  // live preview: keep the composer card in step with the form
+  function wirePreview() {
+    const card = $id("pt-preview-card");
+    const pull = () => ({
+      type: $val("pt-type") || "offer",
+      branch: branchSel ? branchSel.value : "Naeki",
+      when: $val("pt-when"),
+      title: $val("pt-title") || "Your headline",
+      body: $val("pt-text") || "A short, friendly description of the promotion goes here.",
+      ctaLabel: $val("pt-cta-label"),
+    });
+    const paint = () => {
+      if (!card) return;
+      const p = pull();
+      card.outerHTML = notifCardHTML({
+        ...p,
+        branch: p.branch || "Naeki",
+        body: p.body || "A short, friendly description of the promotion goes here.",
+      });
+      wirePreview(); // re-grab the replaced card, rebind
+    };
+    ["pt-type", "pt-when", "pt-title", "pt-text", "pt-cta-label"].forEach(id => {
+      const el = $id(id);
+      if (el) el.addEventListener("input", paint);
+    });
+    if (branchSel) branchSel.addEventListener("change", paint);
+    const toggle = $id("pt-preview-toggle");
+    if (toggle) toggle.addEventListener("click", () => {
+      const pre = document.querySelector(".pt-preview");
+      if (pre) { const pEl = /** @type {HTMLElement} */ (pre); pEl.hidden = !pEl.hidden; toggle.textContent = pEl.hidden ? "Preview ↓" : "Preview ↑"; }
+    });
   }
 
   if (personaBox) {
@@ -305,25 +466,39 @@
     });
   }
 
-  const draftForm = $id("pt-draft-form");
-  draftForm && draftForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const made = S.createDraft({
-      branchId: branchSel.value,
-      title: $id("pt-title").value,
-      text: $id("pt-text").value
-    });
-    if (made) { $id("pt-title").value = ""; $id("pt-text").value = ""; renderPt(); }
-  });
+  // fill branch select once
+  if (branchSel) {
+    branchSel.innerHTML = D.BRANCHES.map(b =>
+      `<option value="${b.name}">${D.shortName({ name: b.name })}</option>`).join("");
+  }
+  wirePreview();
 
-  [myDraftsEl, reviewEl].forEach(root => root && root.addEventListener("click",
-    (e) => {
-      const t = e.target;
-      if (t.matches("[data-ptsubmit]")) { S.submitDraft(t.dataset.ptsubmit); renderPt(); }
-      else if (t.matches("[data-ptdel]")) { S.deleteDraft(t.dataset.ptdel); renderPt(); }
-      else if (t.matches("[data-ptapprove]")) { S.reviewDraft(t.dataset.ptapprove, "approve"); renderPt(); syncBellAndPop(); }
-      else if (t.matches("[data-ptreturn]")) { S.reviewDraft(t.dataset.ptreturn, "return"); renderPt(); }
-    }));
+  const draftForm = $id("pt-draft-form");
+  draftForm && draftForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const PB = window.NaekiPB;
+    if (!PB) return alert("PocketBase not available");
+    const persona = portalPersona();
+    // franchise owners can only compose for their own branch (locked in renderPt)
+    const branch = (branchSel && branchSel.value) || persona.branchId;
+    const payload = {
+      branch,
+      type: (/** @type {"offer"|"event"|"update"} */ ($val("pt-type") || "offer")),
+      audience: (/** @type {"everyone"|"members"} */ ($val("pt-audience") || "everyone")),
+      when: $val("pt-when"),
+      title: $val("pt-title"),
+      body: $val("pt-text"),
+      ctaLabel: $val("pt-cta-label"),
+      ctaUrl: $val("pt-cta-url"),
+      status: /** @type {"pending"} */ ("pending"),
+      created: Date.now(),
+    };
+    const made = await PB.promoCreate(payload);
+    if (made) {
+      ["pt-title", "pt-text", "pt-when", "pt-cta-label", "pt-cta-url"].forEach(id => { const el = $id(id); if (el) (/** @type {HTMLInputElement} */ (el)).value = ""; });
+      renderPt();
+    } else alert("Failed to submit promotion");
+  });
 
   D.subscribe("refresh", () => renderPt());
   const partnersView = $id("view-partners");
@@ -472,7 +647,7 @@
         </button>`).join("");
       el.querySelectorAll(".ch-topic").forEach(btn => {
         btn.addEventListener("click", () => {
-          const route = D.CHAT_ROUTES.find(x => x.topic === btn.dataset.topic) || {};
+          const route = D.CHAT_ROUTES.find(x => x.topic === (/** @type {HTMLElement} */ (btn)).dataset.topic) || { prompt: "" };
           const prompt = route.prompt || "I have a question for the Naeki team.";
           window.open(D.INFO.lineUrl, "_blank");
         });
@@ -488,7 +663,9 @@
     topics: ["refresh"],
     render(el, D) {
       el.innerHTML = "";
-      D.MENU.forEach(group => {
+      // brand-aware: surface only the active brand's groups
+      const groups = D.brandGroups(D.getBrand().id);
+      groups.forEach(group => {
         const sec = document.createElement("section");
         sec.className = "lmenu-group";
         sec.innerHTML = `
@@ -499,16 +676,15 @@
             <span class="n-items">${group.items.length} items</span>
           </div>
           <p class="group-desc">${group.desc}</p>`;
-        const list = document.createElement("ul");
-        list.className = "lmenu-list";
+        const grid = document.createElement("div");
+        grid.className = "dish-grid landing";
         group.items.forEach(it => {
-          const li = document.createElement("li");
-          li.innerHTML = `
-            <span class="lm-name">${it.name}<em>${it.sub || ""}</em></span>
-            <span class="lm-price">${fmtBaht(it.price)}</span>`;
-          list.appendChild(li);
+          grid.appendChild(dishCard(it, group, {
+            orderable: false,
+            cta: { label: "Order in app" }      // no cart here — a CTA into the app
+          }));
         });
-        sec.appendChild(list);
+        sec.appendChild(grid);
         el.appendChild(sec);
       });
       // the rest of the daily line-up (NAEKI.ALSO) — names only
@@ -538,6 +714,28 @@
 
   applyMode();
 
+  // ---------- brand switcher (landing) → re-renders menu + hero frames ----------
+  const brandSwitch = document.getElementById("landing-brand");
+  if (brandSwitch) {
+    brandSwitch.addEventListener("click", (e) => {
+      const chip = (/** @type {HTMLElement} */ (e.target)).closest(".brand-chip");
+      if (!chip) return;
+      brandSwitch.querySelectorAll(".brand-chip").forEach(c => c.classList.remove("active"));
+      chip.classList.add("active");
+      const bid = /** @type {BrandId} */ ((/** @type {HTMLElement} */ (chip)).dataset.brand);
+      D.setBrand(bid);
+    });
+    // keep chips in sync when setBrand is called elsewhere
+    D.subscribe("refresh", () => {
+      const id = D.getBrand().id;
+      if (brandSwitch) brandSwitch.querySelectorAll(".brand-chip").forEach(c =>
+        (/** @type {HTMLElement} */ (c)).classList.toggle("active", (/** @type {HTMLElement} */ (c)).dataset.brand === id));
+      // repaint brand-scoped surfaces: ordering menu + branches
+      if (typeof renderChips === "function") { activeCat = "all"; renderChips(); renderMenu(); }
+      if (typeof renderBranches === "function") renderBranches();
+    });
+  }
+
   /* ---------------- Menu render ---------------- */
   const chipRoot = $("#chips");
   const menuRoot = $("#menu-root");
@@ -547,8 +745,10 @@
   let activeCat = "all";
 
   function renderChips() {
+    // chips only span the active brand's groups (+ "All")
+    const activeGroups = D.brandGroups(D.getBrand().id);
     const cats = [{ id: "all", name: "All", jp: "全て" }]
-      .concat(D.MENU.map(g => ({ id: g.id, name: g.name, jp: g.jp })));
+      .concat(activeGroups.map(g => ({ id: g.id, name: g.name, jp: g.jp })));
     chipRoot.innerHTML = "";
     cats.forEach(c => {
       const b = document.createElement("button");
@@ -564,38 +764,47 @@
     });
   }
 
-  function dishCard(item, group, { orderable = true } = {}) {
+  function dishCard(item, group, { orderable = true, cta = null } = {}) {
     const card = document.createElement("article");
     card.className = "dish";
     card.tabIndex = 0;
     card.setAttribute("role", "button");
     card.setAttribute("aria-label", item.name);
+    // landing cards: no stepper; instead a CTA to order in the app
+    const foot = () => {
+      if (cta) return `<div class="dish-foot landing">
+        <span class="dish-price">${fmtBaht(item.price)}</span>
+        <button class="btn accent sm dish-cta" type="button">${cta.label}</button>
+      </div>`;
+      if (orderable) return `<div class="dish-foot">
+        <span class="dish-price">${fmtBaht(item.price)}</span>
+        <div class="dish-order" data-name="${item.name}">
+          <button class="d-step d-minus" aria-label="Remove one ${item.name}">−</button>
+          <span class="d-qty" aria-live="polite">0</span>
+          <button class="d-step d-plus" aria-label="Add one ${item.name}">+</button>
+        </div>
+      </div>`;
+      return `<div class="dish-foot"><span class="dish-price">${fmtBaht(item.price)}</span></div>`;
+    };
     card.innerHTML = `
       <div class="dish-wrap"><img loading="lazy" src="${item.img}" alt="${item.name}"></div>
       <div class="dish-body">
         <h4>${item.name}</h4>
         <div class="dish-sub">${item.sub || ""}</div>
-        ${orderable ? `
-        <div class="dish-foot">
-          <span class="dish-price">${fmtBaht(item.price)}</span>
-          <div class="dish-order" data-name="${item.name}">
-            <button class="d-step d-minus" aria-label="Remove one ${item.name}">−</button>
-            <span class="d-qty" aria-live="polite">0</span>
-            <button class="d-step d-plus" aria-label="Add one ${item.name}">+</button>
-          </div>
-        </div>` : `<div class="dish-foot"><span class="dish-price">${fmtBaht(item.price)}</span></div>`}
+        ${foot()}
       </div>`;
     // ordering: stepper writes to the store, badge + steppers sync.
     // Non-orderable cards (landing display-only) skip the wiring entirely.
     const name = item.name;
     const qtyEl = card.querySelector(".d-qty");
-    const sync = orderable ? () => {
+    const hasStepper = !!card.querySelector(".dish-order");
+    const sync = hasStepper ? () => {
       const line = S.cart().find(l => l.name === name);
       const q = line ? line.qty : 0;
-      qtyEl.textContent = q;
+      qtyEl.textContent = String(q);
       card.querySelector(".dish-order").classList.toggle("has-qty", q > 0);
     } : null;
-    if (orderable) {
+    if (hasStepper) {
       card.querySelector(".d-plus").addEventListener("click", e => {
         e.stopPropagation();                       // don't open the modal
         S.addToCart(name, item.price);
@@ -610,14 +819,24 @@
       orderables.set(name, sync);                   // global resync point
       sync();
     }
+    // landing CTA: route the diner into the app's orderable menu
+    const ctaBtn = card.querySelector(".dish-cta");
+    if (cta) {
+      ctaBtn.addEventListener("click", e => {
+        e.stopPropagation();
+        openSignin ? openSignin({ currentTarget: { dataset: { goto: "menu" } } }) : goToView("menu");
+      });
+    }
     const open = () => openModal(item, group);
     card.addEventListener("click", e => {
-      if (e.target.closest(".dish-order")) return; // stepper owns clicks
+      const tgt = /** @type {HTMLElement} */ (e.target);
+      if (tgt.closest(".dish-order") || tgt.closest(".dish-cta")) return; // stepper / CTA own clicks
       open();
     });
     card.addEventListener("keydown", e => {
       if (e.key === "Enter" || e.key === " ") {
-        if (e.target.closest(".dish-order")) return;
+        const ktgt = /** @type {HTMLElement} */ (e.target);
+        if (ktgt.closest(".dish-order") || ktgt.closest(".dish-cta")) return;
         e.preventDefault(); open();
       }
     });
@@ -629,7 +848,8 @@
     let shown = 0;
     menuRoot.innerHTML = "";
 
-    const groups = D.MENU.filter(g => activeCat === "all" || g.id === activeCat);
+    const groups = D.brandGroups(D.getBrand().id)
+      .filter(g => activeCat === "all" || g.id === activeCat);
 
     groups.forEach(group => {
       const items = group.items.filter(it =>
@@ -703,6 +923,7 @@
         b.name.toLowerCase().includes(q) ||
         b.area.toLowerCase().includes(q) ||
         (b.where || "").toLowerCase().includes(q))
+      .filter(b => D.branchInBrand(b, D.getBrand().id))
       .sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "flagship" ? -1 : 1))
       .forEach(b => {
         const open = D.isOpenNow(b, now);
@@ -744,12 +965,12 @@
         const go = () =>
           window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + " Bangkok")}`, "_blank");
         el.addEventListener("click", e => {
-          if (e.target.closest(".b-sub-toggle")) return;
+          if ((/** @type {HTMLElement} */ (e.target)).closest(".b-sub-toggle")) return;
           go();
         });
         el.addEventListener("keydown", e => {
           if (e.key === "Enter") {
-            if (e.target.closest(".b-sub-toggle")) return;
+            if ((/** @type {HTMLElement} */ (e.target)).closest(".b-sub-toggle")) return;
             go();
           }
         });
@@ -778,12 +999,12 @@
   function syncCartUI() {
     const { count } = cartTotals();
     // both cart badges: the sidebar Cart row (desktop) + the Order tab chip (phone)
-    cartBadge.textContent = count;
+    cartBadge.textContent = String(count);
     cartBadge.hidden = count === 0;
     const odBadge = $("#od-cart-badge");
-    if (odBadge) { odBadge.textContent = count; odBadge.hidden = count === 0; }
+    if (odBadge) { odBadge.textContent = String(count); odBadge.hidden = count === 0; }
     const tabBadge = $("#tab-cart-badge");
-    if (tabBadge) { tabBadge.textContent = count; tabBadge.hidden = count === 0; }
+    if (tabBadge) { tabBadge.textContent = String(count); tabBadge.hidden = count === 0; }
     renderCart();
     orderables.forEach(sync => sync());
     // dish modal shows the add-to-cart affordance too
@@ -830,17 +1051,98 @@
     });
     wrap.appendChild(list);
 
-    const { count, total } = cartTotals();
+    const { count } = cartTotals();
+    const subtotal = cartTotals().total;
+    const applied = S.couponState();
+    const discount = S.couponDiscount(S.cart());
+    const problem = applied ? S.couponProblem(S.cart()) : null;
+    const total = subtotal - discount;
     const foot = document.createElement("div");
     foot.className = "cart-foot";
+
+    /* coupon row — one state per shape: applied chip (with remove + a plain-
+       language why-not when the current cart doesn't fit it yet), or the
+       code entry field. Codes validate against the pb coupon collection. */
+    const cpnRow = applied
+      ? `<div class="cpn-row applied">
+          <div class="cpn-chip">
+            <span class="cpn-code">${applied.code}</span>
+            <span class="cpn-title">${applied.title || applied.type}</span>
+            <button class="cpn-x" id="cpn-remove" aria-label="Remove coupon ${applied.code}">×</button>
+          </div>
+          ${problem ? `<p class="cpn-note">${escapeHtml(problem)}</p>` : ""}
+        </div>`
+      : `<form class="cpn-row" id="cpn-form">
+          <input id="cpn-code" type="text" placeholder="Coupon code (e.g. NAEKI10)"
+                 aria-label="Coupon code" autocomplete="off" />
+          <button class="btn ghost sm" type="submit" id="cpn-apply">Apply</button>
+        </form>
+        <p class="cpn-note" id="cpn-note" aria-live="polite"></p>`;
+    const totals = discount > 0
+      ? `<div class="cart-total cpn-total"><span>Subtotal</span><s>${fmtBaht(subtotal)}</s></div>
+         <div class="cart-total cpn-total"><span>Coupon ${applied ? applied.code : ""}</span><span class="cpn-minus">−${fmtBaht(discount)}</span></div>
+         <div class="cart-total"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${fmtBaht(total)}</strong></div>`
+      : `<div class="cart-total"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${fmtBaht(total)}</strong></div>`;
+
     foot.innerHTML = `
-      <div class="cart-total"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${fmtBaht(total)}</strong></div>
+      ${cpnRow}
+      ${totals}
+      ${S.walletState().balance > 0 ? `
+        <label class="wallet-opt">
+          <input type="checkbox" id="use-wallet" ${S.walletState().useWallet !== false ? "checked" : ""} />
+          <span>Pay ${fmtBaht(S.walletState().balance)} from wallet first</span>
+        </label>` : ""}
       <p class="cart-note">Indicative prices — demo checkout, nothing is sent anywhere.</p>
       <div class="cart-actions">
         <button class="btn accent" id="cart-checkout">Checkout</button>
         <button class="btn ghost" id="cart-clear">Clear cart</button>
-      </div>`;
+      </div>`; 
+    // wallet opt-in persists + reflects on the receipt
+    const useWallet = $id && document.getElementById("use-wallet");
+    if (useWallet) {
+      useWallet.addEventListener("change", () => {
+        S.setUseWallet((/** @type {HTMLInputElement} */ (useWallet)).checked);
+        syncCartUI();
+      });
+    }
     wrap.appendChild(foot);
+
+    /* coupon wiring — entry validates against pb, the applied chip just removes */
+    const cpnForm = foot.querySelector("#cpn-form");
+    if (cpnForm) cpnForm.addEventListener("submit", async e => {
+      e.preventDefault();
+      const input = (/** @type {HTMLInputElement} */ (foot.querySelector("#cpn-code")));
+      const note = foot.querySelector("#cpn-note");
+      const code = input.value.trim().toUpperCase();
+      if (!code) { note.textContent = "Type a code first."; return; }
+      const PB = window.NaekiPB;
+      if (!PB || !PB.couponByCode) { note.textContent = "Coupons need the local PocketBase running."; return; }
+      note.textContent = "Checking " + code + "…";
+      const rec = await PB.couponByCode(code);
+      if (!rec) {
+        note.textContent = `“${code}” isn't a Naeki coupon. Try NAEKI10 or WELCOME.`;
+        return;
+      }
+      // store the validated record; the cart row then explains any
+      // cart-side gap (minSpend, missing free item) in plain language
+      S.setCoupon({
+        code: rec.code, title: rec.title || "",
+        type: /** @type {"percent"|"fixed_baht"|"free_item"} */ (rec.type),
+        value: Number(rec.value) || 0, freeItem: rec.freeItem || "",
+        minSpend: Number(rec.minSpend) || 0, brand: rec.brand || "",
+        branchId: rec.branchId || "", active: rec.active !== false,
+        startsAt: Number(rec.startsAt) || 0, expiresAt: Number(rec.expiresAt) || 0,
+        usageLimit: Number(rec.usageLimit) || 0, usedCount: Number(rec.usedCount) || 0
+      });
+      syncCartUI();
+      const problem2 = S.couponProblem(S.cart());
+      flash(problem2 ? `${code} applied — ${problem2}` : `Coupon ${code} applied`);
+    });
+    const cpnRemove = foot.querySelector("#cpn-remove");
+    if (cpnRemove) cpnRemove.addEventListener("click", () => {
+      S.clearCoupon();
+      syncCartUI();
+    });
     cartRoot.appendChild(wrap);
 
     $("#cart-checkout").addEventListener("click", () => {
@@ -874,10 +1176,16 @@
     const earned = receipt.pointsEarned || 0;
     const walletLine = receipt.paidByWallet
       ? `Paid ${fmtBaht(receipt.walletSpent)} from wallet balance.` : "";
+    const couponLines = receipt.discount > 0
+      ? `<p class="cart-note cpn-receipt-ok">Coupon ${receipt.couponCode} applied — ${fmtBaht(receipt.discount)} off (subtotal ${fmtBaht(receipt.subtotal)}).</p>`
+      : receipt.couponDropped
+        ? `<p class="cart-note">Coupon ${receipt.couponDropped} didn't fit this order, so it wasn't used — it's still applied to your cart.</p>`
+        : "";
     card.innerHTML = `
       <div class="oc-kicker">Demo order placed</div>
       <h3>${receipt.id}</h3>
       <p class="receipt-when">${when} · ${receipt.count} items · ${fmtBaht(receipt.total)}</p>
+      ${couponLines}
       <ul class="receipt-lines">
         ${receipt.lines.map(l => `<li><span>${l.qty}×</span> ${l.name}</li>`).join("")}
       </ul>
@@ -930,6 +1238,8 @@
     { root: $("#tab-offer-bell"), dot: $("#tab-offer-bell-dot") }
   ];
   let shownOfferKey = null;              // key currently in the popup, or null
+  const snoozedKeys = new Map();         // key -> epoch ms until this offer re-rings (per-session)
+  const SNOOZE_MS = 30 * 60 * 1000;      // auto-hidden offer stays quiet for 30 min
 
   // the composition key: weekday for weekly deals, "any" for personal matches,
   // and the published offer's uid for branch-sent offers (they fire once with
@@ -946,13 +1256,18 @@
     const weekday = D.bangkokWeekday();
     const acks = S.offerAcksState();
     const list = D.offers({
-      history: lo.history, points: lo.points,
+      history: lo.history,
       subscribedBranches: S.subscribedBranchesState(),
-      publishedOffers: S.publishedOffersState()
+      publishedOffers: S.publishedOffersState(),
+      approvedRequests: window.__approvedRequests || []
     })
       .filter(o => o.live)
       .map(o => ({ ...o, key: offerKey(o, weekday) }))
-      .filter(o => !acks[o.key]);
+      .filter(o => !acks[o.key])
+      .filter(o => {
+        const till = snoozedKeys.get(o.key);
+        return till ? Date.now() > till : true;   // snoozed? hold until cooldown ends
+      });
     // personal matches are the hook — they lead the queue
     return list.sort((a, b) => (b.personal ? 1 : 0) - (a.personal ? 1 : 0));
   }
@@ -966,9 +1281,16 @@
     });
   }
 
-  function hideOfferPop() {
+  function hideOfferPop(autoHide = false) {
     if (offerPop) {
+      const wasShowing = !!shownOfferKey;
       offerPop.classList.remove("on");           // slide-out first…
+      // Only the TIMED shelf-life auto-hide (14s, unacknowledged) snoozes the
+      // re-ring. Manual ack paths (Got it / ✕ / See rewards) record the ack in
+      // the store first, so the offer is gone for good — no snooze needed.
+      if (autoHide && wasShowing && shownOfferKey && !snoozedKeys.has(shownOfferKey)) {
+        snoozedKeys.set(shownOfferKey, Date.now() + SNOOZE_MS);
+      }
       shownOfferKey = null;
       setTimeout(() => { if (!shownOfferKey) offerPop.hidden = true; }, 220);
     }
@@ -1008,10 +1330,11 @@
     offerPop.classList.remove("on");
     void offerPop.offsetWidth;                    // style flush
     offerPop.classList.add("on");
-    // Marc-Lou shelf-life: it tucks itself away, unacknowledged; the next
-    // refresh cycle (≤30s) re-rings it until it's acknowledged
-    clearTimeout(offerPop._t);
-    offerPop._t = setTimeout(hideOfferPop, 14000);
+    // Marc-Lou shelf-life: it tucks itself away, unacknowledged; the snooze
+    // suppresses the re-ring for a while so it stops nagging every refresh.
+    const popT = /** @type {HTMLElement & { _t?: ReturnType<typeof setTimeout> }} */ (offerPop);
+    clearTimeout(popT._t);
+    popT._t = setTimeout(() => hideOfferPop(true), 14000);
   }
 
   // one pass: recompute the queue, sync the bell, present the head offer
@@ -1037,9 +1360,10 @@
     const weekday = D.bangkokWeekday();
     const acks = S.offerAcksState();
     const list = D.offers({
-      history: lo.history, points: lo.points,
+      history: lo.history,
       subscribedBranches: S.subscribedBranchesState(),
-      publishedOffers: S.publishedOffersState()
+      publishedOffers: S.publishedOffersState(),
+      approvedRequests: window.__approvedRequests || []
     })
       .map(o => ({ ...o, key: offerKey(o, weekday) }));
     const live = list.filter(o => o.live && !acks[o.key]);
@@ -1067,6 +1391,28 @@
           ? `<span class="rw-offer-when">${fmtAgo(o.sentAt)} ago</span>` : "";
         const sourceNote = o.branchOffer && o.branchId
           ? `<span class="rw-offer-branch">${D.branchKicker(o.branchId)}</span>` : "";
+        // approved partner requests render as the typed notif-card so a diner
+        // sees exactly what the franchisee composed (type accent, branch, CTA)
+        if (o.branchOffer && o.notifType) {
+          const t = o.notifType || "offer";
+          const label = { offer: "Offer", event: "Event", update: "News" }[t] || "Update";
+          return `
+            <div class="rw-offer branch ${acked ? "acked" : "live"}">
+              <div class="notif-card" data-type="${t}">
+                <div class="notif-meta">
+                  <span class="notif-type">${label}</span>
+                  <span class="notif-when">${o.when || recency.replace(/<[^>]+>/g, "")}</span>
+                  <span class="notif-branch">${(o.branchId ? D.shortName({ name: o.branchId }) : "")}</span>
+                </div>
+                <div class="notif-title">${o.title}</div>
+                <p class="notif-body">${o.text}</p>
+                ${o.ctaLabel ? `<div class="notif-actions"><button class="btn accent sm" type="button">${o.ctaLabel}</button>
+                  ${acked ? "" : `<button class="rw-offer-ack" data-ackkey="${o.key}">Got it</button>`}</div>` : ""}
+                ${!o.ctaLabel && !acked && o.live ? `<div class="notif-actions"><button class="btn ghost sm" data-ackkey="${o.key}">Got it</button></div>` : ""}
+                ${acked ? `<span class="rw-offer-seen">Seen ✓</span>` : ""}
+              </div>
+            </div>`;
+        }
         return `
           <div class="rw-offer ${o.live ? "live" : ""} ${o.personal ? "personal" : ""}
                ${o.branchOffer ? "branch" : ""} ${state}">
@@ -1099,7 +1445,7 @@
       group("Seen", seenOffers));
     rwOffers.querySelectorAll("[data-ackkey]").forEach(btn => {
       btn.addEventListener("click", () => {
-        S.ackOffer(btn.dataset.ackkey, "inbox");
+        S.ackOffer((/** @type {HTMLElement} */ (btn)).dataset.ackkey, "inbox");
         syncBellAndPop();
         renderRewards();
       });
@@ -1161,7 +1507,7 @@
     renderOffersInbox();
 
     // progress width via CSSOM (CSP blocks inline style attributes)
-    const fill = rwHero.querySelector(".rw-progress-fill");
+    const fill = /** @type {HTMLElement | null} */ (rwHero.querySelector(".rw-progress-fill"));
     if (fill) fill.style.setProperty("--rw-pct", pct + "%");
 
     const redeemBtn = $("#rw-redeem-50");
@@ -1291,6 +1637,26 @@
   syncSessionLoyalty();
   syncBellAndPop();            // bell + first pending offer on boot
 
+  // Poll approved partner requests from the pba backend and ring the bell if
+  // a new one lands for a subscribed branch (the "notify me" end of the
+  // franchise composer → approval → delivery loop).
+  (function pollApproved() {
+    window.__approvedRequests = window.__approvedRequests || [];
+    const PB = window.NaekiPB;
+    if (!PB || !PB.me || !PB.me()) { setTimeout(pollApproved, 30000); return; }
+    PB.promoList("status='approved' || status='sent'").then(rows => {
+      const prev = (window.__approvedRequests || []).length;
+      window.__approvedRequests = rows;
+      const fresh = rows.length > prev;
+      renderRewards();
+      syncBellAndPop();
+      // ring again every 30s so a freshly-approved request in a subscribed
+      // branch pops even if the user is elsewhere
+      if (fresh) renderOffersInbox && renderOffersInbox();
+      setTimeout(pollApproved, 30000);
+    }).catch(() => setTimeout(pollApproved, 30000));
+  })();
+
   /* ---------------- Milestones & Trust (seven achievements) ----------------
      Renders the mission-of-the-week card, the seven achievement tiles, the
      referral give+get loop, and the seven-point trust pane. Repaints on every
@@ -1322,7 +1688,7 @@
           <span class="rw-progress-label">${mission.have} / ${mission.need} orders this week</span>
           <div class="rw-progress-track"><div class="rw-progress-fill mm-fill" data-pct="${pct}"></div></div>
         </div>`;
-      const fill = MM_MISSION.querySelector(".mm-fill");
+      const fill = /** @type {HTMLElement | null} */ (MM_MISSION.querySelector(".mm-fill"));
       if (fill) fill.style.setProperty("--rw-pct", pct + "%");
     }
 
@@ -1360,7 +1726,7 @@
 
     // claim buttons
     D.MILESTONES.forEach(m => {
-      const btn = MM_LIST.querySelector("#mm-claim-" + m.id);
+      const btn = /** @type {HTMLButtonElement | null} */ (MM_LIST.querySelector("#mm-claim-" + m.id));
       if (!btn || btn.disabled) return;
       btn.addEventListener("click", () => {
         const res = S.claimMilestone(m.id);
@@ -1467,9 +1833,9 @@
       </button>`).join("");
     CH_TOPICS.querySelectorAll(".ch-topic").forEach(btn => {
       btn.addEventListener("click", () => {
-        const route = D.CHAT_ROUTES.find(x => x.topic === btn.dataset.topic) || {};
+        const route = D.CHAT_ROUTES.find(x => x.topic === (/** @type {HTMLElement} */ (btn)).dataset.topic) || { prompt: "" };
         const prompt = route.prompt || "I have a question for the Naeki team.";
-        S.chatSend(prompt, btn.dataset.topic);         // draft — on-device only
+        S.chatSend(prompt, (/** @type {HTMLElement} */ (btn)).dataset.topic || "");  // draft — on-device only
         S.chatNote("Handing you to the Naeki team on LINE (@naekisushi) — your order and reply continue there.");
         S.chatConnect();
         renderChatThread();
@@ -1508,9 +1874,9 @@
 
   /* small toast — used for top-ups, gifts, redemptions */
   function flash(msg) {
-    let t = $("#flash");
+    let t = /** @type {(HTMLElement & { _timer?: ReturnType<typeof setTimeout> }) | null} */ ($("#flash"));
     if (!t) {
-      t = document.createElement("div");
+      t = /** @type {HTMLElement & { _timer?: ReturnType<typeof setTimeout> }} */ (document.createElement("div"));
       t.id = "flash";
       t.className = "flash";
       t.setAttribute("role", "status");

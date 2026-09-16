@@ -75,7 +75,7 @@ h1 .accent { color: var(--salmon); }
 
 /* ---------- board ---------- */
 .board-wrap { overflow-x: auto; padding: 16px 22px 26px; }
-.board { display: grid; grid-template-columns: repeat(7, minmax(268px, 1fr)); gap: 12px; min-width: 1980px; }
+.board { display: grid; grid-template-columns: repeat(8, minmax(268px, 1fr)); gap: 12px; min-width: 2248px; }
 .col { background: var(--ink-1); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; min-height: 130px; }
 .col.hot { border-color: #3a2c22; }
 .col-head { padding: 12px 13px 10px; border-bottom: 1px solid var(--line); }
@@ -109,6 +109,7 @@ h1 .accent { color: var(--salmon); }
 .tag { font-family: var(--font-mono); font-size: 10px; color: var(--paper-faint); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
 .tag.probed { color: var(--wasabi); border-color: #38401f; }
 .tag.reported { color: var(--go); border-color: #2b3a45; }
+.tag.audited { color: var(--teal); border-color: #24423a; }
 .tag.est { color: var(--paper-dim); }
 
 /* ---------- drawer ---------- */
@@ -158,7 +159,7 @@ footer .mono { font-family: var(--font-mono); font-size: 10.5px; }
   <div class="head-row">
     <div>
       <h1>From verified exploits to <span class="accent">franchise rails</span></h1>
-      <p class="sub">Seven findings, seven epics, 42 cards. Drag cards between columns — positions persist locally.
+      <p class="sub">Seven findings, eight epics, 54 cards. Drag cards between columns — positions persist locally.
         <span class="n">probe-verified fixes land in <b>In review</b> when the exploit re-run fails.</span></p>
     </div>
     <div class="controls">
@@ -193,7 +194,7 @@ footer .mono { font-family: var(--font-mono); font-size: 10.5px; }
   Review B = second agent's review (create-time bypass, ledger, referrals, platform gaps).
   Priority: <span class="mono">P0</span> security/blocker · <span class="mono">P1</span> production-path · <span class="mono">P2/P3</span> business stages.
   Estimates: <span class="mono">S</span> ≤ a day · <span class="mono">M</span> days · <span class="mono">L</span> a week+.
-  <span class="mono">probed</span> = exploit reproduced against the live DB · <span class="mono">reported</span> = from Review B, re-verify when you start the card.
+  <span class="mono">probed</span> = exploit reproduced against the live DB · <span class="mono">reported</span> = from Review B, re-verify when you start the card · <span class="mono">audited</span> = interface gap confirmed in source (no live probe needed).
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -211,10 +212,12 @@ const EPICS = {
   e4: { n: "E4", name: "Delivery fabric",    color: "#d9a441", desc: "The offer buzzes the pocket" },
   e5: { n: "E5", name: "Franchise portal v2", color: "#b48ec9", desc: "Receipts, not reach" },
   e6: { n: "E6", name: "Network effects",     color: "#6fbfa8", desc: "The beneficial spiral" },
-  e7: { n: "E7", name: "Compliance & pilot",  color: "#d98a8a", desc: "Real money, real obligations" }
+  e7: { n: "E7", name: "Compliance & pilot",  color: "#d98a8a", desc: "Real money, real obligations" },
+  e8: { n: "E8", name: "Interface & access", color: "#e05a9b", desc: "Usable, readable, honest UI — one app for customers and staff" }
 };
 const COLS = [
-  { id: "icebox",  n: "00", name: "Icebox",       hint: "post-MVP stages (portal v2, network effects, pilot)" },
+  { id:"triage",  n:"!!", name:"Triage",      hint:"important, out of current scope — needs an owner" },
+  { id:"icebox",  n:"00", name:"Icebox",       hint:"post-MVP stages (portal v2, network effects, pilot)" },
   { id: "backlog", n: "01", name: "Backlog",      hint: "queued behind the security core" },
   { id: "ready",   n: "02", name: "Ready",        hint: "next up — the hardening sprint" },
   { id: "prog",    n: "03", name: "In progress",  hint: "being built now", hot: true },
@@ -225,6 +228,92 @@ const COLS = [
 
 /* card data — col is the initial position; moves persist in localStorage */
 const CARDS = [
+/* ============ TRIAGE — important, out of scope, needs an owner ============ */
+{ id:"T-1", epic:"e1", col:"triage", pri:"P0", est:"S", status:"probed", resolves:[],
+  title:"PB 0.40 boot crash: @request.data.* is v0.22 syntax",
+  why:"Migrations 1789383100 + 1789383101 (E1-1/E1-2, in progress by another agent) use @request.data.role:isset — PocketBase 0.23+ renamed request-data refs to @request.body.*, and 0.40 refuses to resolve the old form. Every serve attempt crashes on boot until this is fixed, which blocks ALL verification for every agent working the board.",
+  verified:"Boot log 13:08:28: 'failed to apply migration 1789383101… Invalid rule: invalid left operand @request.data.role'. Maintainer-confirmed (GitHub discussion #6577): v0.23+ uses @request.body.*. Probe scripts probe-authz.mjs / probe-boot.mjs exist in scripts/ for re-verification.",
+  done:["Rewrite both rules: @request.body.role:isset = false || @request.body.role = 'customer' (create) and the updateRule equivalent","Boot PB clean; confirm migrations apply","Re-run the E1-1/E1-2 probes"],
+  files:["pb_migrations/1789383100_locked_users_signup.js","pb_migrations/1789383101_pinned_users_role.js"], deps:[] },
+
+{ id:"T-2", epic:"e1", col:"triage", pri:"P1", est:"S", status:"probed", resolves:[],
+  title:"Multi-agent dev-DB contention needs a protocol",
+  why:"Two agents hardening the same app both spawn PocketBase on 127.0.0.1:8090 with hooksWatch. Observed this session: one agent's instance held the port ~8 min while the other's probes ran; a broken hook in one agent's file made every promotion create 400 for everyone; pkill -f 'pocketbase serve' matches ANY instance, not just one's own. Silent cross-agent interference is the default, not the exception.",
+  verified:"Live this session: bind conflict at 13:04:47, hook ReferenceError 400s during the other agent's active window, pkill fallout. Cross-edits to in-progress migration files happened (restored).",
+  done:["Pick a protocol: one designated PB owner at a time (claimed on the board), or per-agent ports (8091/8092) with separate pb_data dirs","Never pkill a broad pattern — kill by session id","Never edit another agent's in-progress files; file triage instead"],
+  files:["package.json (pb script)","main.js:8"], deps:[] },
+
+/* ============ E8 — SHELL & SIGN-IN UX (one app for customers and staff) ============ */
+{ id:"U-1", epic:"e8", col:"done", pri:"P1", est:"S", status:"probed", resolves:[],
+  title:"One sign-in for everyone — remove the 'Partner portal' gate",
+  why:"The landing header's 'Partner portal' button opens the exact same sign-in modal as 'Open the app' (both wired to openSignin with no special handling) — a segregated-feeling duplicate that signals staff enter elsewhere. Worse, after sign-in staff are force-routed to the portal (enterApp: isStaff() ? 'partners'; brand-home and defaultView too) and never see the customer app — partners can't dogfood the ordering/rewards flows they're meant to improve, and a franchisee who never sees the customer side never reports its bugs. One sign-in for everyone; role decides what's visible AFTER entry.",
+  verified:"Code read: index.html:106, app.js:66/170-178, app.js openSignin wiring list. No test references #lp-portal-signin (e2e uses #lp-signin only).",
+  done:["Remove #lp-portal-signin from the landing nav + its openSignin wiring","Staff land where the CTA points (menu/branches) like everyone else; Portal stays one click away via the staff-only nav link","Sign-in modal copy speaks to everyone (no per-role portal talk)","Verify: somchai signs in → lands on Order with Portal link visible; kate → Order, no Portal"],
+  files:["src/index.html:106","src/app.js:66,170-178,195","src/index.html:1314-1321"], deps:[] },
+
+{ id:"U-2", epic:"e8", col:"done", pri:"P1", est:"S", status:"probed", resolves:[],
+  title:"Phone shell: staff need a Portal tab",
+  why:"At ≤640px the sidebar nav is display:none and the tabbar has only Order · Rewards · Chat — staff on a phone have NO portal entry at all. Today they're auto-dropped into partners and then stranded (no way back); after U-1 they'd have no way in at all. The .staff-only class already exists for exactly this.",
+  verified:"Code read: styles.css:2456+ (#sidebar row layout, .side-nav display:none), index.html:751-771 (tabbar has three buttons).",
+  done:["Add a staff-only Portal tab-btn to #tabbar","Phone check: staff see 4 tabs incl. Portal; customers still see 3"],
+  files:["src/index.html:751-771","src/styles.css:156-157"], deps:["U-1"] },
+
+{ id:"U-3", epic:"e8", col:"done", pri:"P2", est:"S", status:"probed", resolves:[],
+  title:"Sign-in modal: honest, single-source copy",
+  why:"The modal leaks backend dev-speak ('PocketBase sign-in') and its demo-creds paragraph has drifted from the seed: it lists super@naeki.dev as 'approves notifications', but the seeded approver is marketing@ (role admin, seed.mjs:99); meanwhile the quick-fill chips list a third account (admin@naeki.dev). Two cred lists disagreeing inside one modal — the exact two-auth-worlds trap.",
+  verified:"Code read: index.html:1314-1321 vs app.js:216-220 vs scripts/seed.mjs:89-101.",
+  done:["modal-cat → 'Sign in'","Creds live in exactly one place (the quick-fill chips); the paragraph points at them","Chip labels role-factual, no segregation language"],
+  files:["src/index.html:1314-1321","src/app.js:210-232"], deps:[] },
+
+{ id:"U-4", epic:"e8", col:"ready", pri:"P2", est:"M", status:"reported", resolves:[],
+  title:"Landing-page CTA sweep",
+  why:"Two identical 'Open the app' CTAs above the fold (header + hero), and the display-only menu's 'Order now' opens a password prompt. The whole landing gate flow deserves one coherent pass with fresh eyes — labels that match where they land, one primary action per screen.",
+  verified:"Code read: index.html:109/129 (duplicate CTAs), :271 (Order now → openSignin).",
+  done:["Audit every landing CTA: one primary action per screen, honest labels","npm run check:mobile green after changes"],
+  files:["src/index.html (landing sections)"], deps:[] },
+
+/* ---- E8 — INTERFACE & ACCESS: important UI work, currently ownerless ---- */
+{ id:"T-3", epic:"e8", col:"triage", pri:"P1", est:"M", status:"audited", resolves:[],
+  title:"No visible keyboard focus anywhere",
+  why:"The whole app is button/role=button driven, but the button reset (styles.css:95) strips native chrome and every text input kills its outline (:318, :2089, :2230, :2415, :2566) — with zero :focus-visible rules in the file. Dish cards, branch cards, nav rows and steppers are all tab-reachable (tabIndex=0, role=button) yet a keyboard user cannot see which control has focus, so the app is effectively unusable without a mouse.",
+  verified:"Source audit: grep -c focus-visible src/styles.css → 0; five outline:none sites; dishCard sets tabIndex/role (app.js:770-771), branch card (:933-934); the only focus move in a dialog is .modal-x (:1993).",
+  done:["One global :focus-visible ring (2px salmon, 2px offset) that survives the button reset","Custom controls (dish, branch, chips, steppers) inherit it","e2e/a11y: tab through every view — a focus indicator on each stop"],
+  files:["src/styles.css:95, :318, :2089, :2230, :2415, :2566","src/app.js:770, :933"], deps:[] },
+
+{ id:"T-4", epic:"e8", col:"triage", pri:"P0", est:"M", status:"audited", resolves:["F7"],
+  title:"Backend-down / offline is a blank screen with no retry",
+  why:"Every surface now sources from PocketBase at 127.0.0.1:8090, but failures vanish: data.js pbHydrate swallows all errors with a bare catch (:810), pb.js json() returns {ok:false} that most callers ignore, and pollApproved just reschedules on failure (app.js:1654). With PB down the menu/branches/offers silently keep stale defaults or render empty — and the PWA advertises offline support. Nothing tells the user what happened or offers a retry.",
+  verified:"Source audit: pbHydrate try/catch{} (data.js:783-810); json() ok/status never surfaced (pb.js:18-24); only two inline error paths exist (sign-in app.js:225, coupon note :1080). No navigator.onLine use; no offline banner.",
+  done:["Connectivity/health indicator in both shells: online · backend unreachable · offline","Hydrate retries with backoff + a visible 'reconnecting…' and manual Retry","Empty data surfaces show an error state, never a silent blank"],
+  files:["src/data.js:783-810","src/pb.js:18-24","src/app.js:1643-1655"], deps:[] },
+
+{ id:"T-5", epic:"e8", col:"triage", pri:"P1", est:"S", status:"audited", resolves:[],
+  title:"Modals don't trap or restore focus, and the page scrolls behind",
+  why:"openModal only moves focus to the close button (app.js:1993) — Tab then walks out into the page behind the dialog, closing leaves focus nowhere near the dish that opened it, and the background still scrolls under the overlay. #modal and #signin share this. role=dialog/aria-modal is set, so the intent is there; the behavior isn't.",
+  verified:"Source audit: openModal (app.js:1971-1994) focuses .modal-x with no trap or restore; closeModal (:2007) just hides; no body scroll lock on open. Escape closes both (:2009-2012).",
+  done:["Trap Tab within the open dialog; restore focus to the trigger on close","Lock background scroll while a modal is open","Esc, backdrop and × all behave identically"],
+  files:["src/app.js:1971-2012","src/index.html:1288-1306"], deps:[] },
+
+{ id:"T-6", epic:"e8", col:"triage", pri:"P1", est:"S", status:"audited", resolves:[],
+  title:"Destructive actions fire with no confirm or undo",
+  why:"Clear cart (app.js:1162), Reset card (:1961) and coupon remove (:1141) take effect instantly and irreversibly. A cleared cart can be twenty lines of manual rebuilding, and Reset card wipes the whole stamp history log. There is no undo and no confirm — a single mis-tap is permanent.",
+  verified:"Source audit: #cart-clear → S.clearCart() unguarded; #stamp-reset → S.resetCard(); #cpn-remove removes the applied coupon. No confirm()/undo anywhere in src/.",
+  done:["Undo toast for Clear cart and Reset card (restore the prior store state)","Confirm only where undo is impractical","Keep the destructive affordance visually distinct from accent"],
+  files:["src/app.js:1141, :1162, :1961","src/store.js (clearCart/resetCard)"], deps:[] },
+
+{ id:"T-7", epic:"e8", col:"triage", pri:"P1", est:"M", status:"audited", resolves:[],
+  title:"Search and load have no empty or loading state",
+  why:"Filtering the menu to zero matches leaves a blank pane — renderMenu returns early per group and the count reads '0 shown' with no message (app.js:854-865). Branch search behaves the same. And the PB hydrate that swaps the seeded defaults for live rows is invisible: the menu renders defaults, then silently replaces them, so a slow or different backend reads as a flicker rather than loading.",
+  verified:"Source audit: renderMenu `if (!items.length) return` (:858) with no no-results node; count set at :871-874; renderBranches has no empty branch either. No skeleton or aria-busy in src/.",
+  done:["'No dishes match “…” — clear search' empty states for menu and branches","Skeleton or aria-busy while the first hydrate is in flight","State survives refresh cycles without flashing"],
+  files:["src/app.js:846-883, :899-981","src/data.js:783-810"], deps:["T-4"] },
+
+{ id:"T-8", epic:"e8", col:"triage", pri:"P2", est:"S", status:"audited", resolves:[],
+  title:"Menu images have no fallback and reserve no space",
+  why:"dishCard emits <img loading=lazy> with no width/height or aspect box and no onerror (app.js:790). If a PB row carries a bad or missing img the card shows a broken-image icon; before decode the grid reflows. The image set is local and stable today, but PB now drives img paths, so a bad path is one data edit away.",
+  verified:"Source audit: one img tag at app.js:790; CSS sets .dish img aspect-ratio (styles.css:354) but the element declares no dimensions; no onerror handler anywhere in src/.",
+  done:["onerror → branded placeholder in the same aspect box","Reserve space via width/height or the existing aspect-ratio on the element","Cover menu, featured and modal media"],
+  files:["src/app.js:790","src/styles.css:354"], deps:[] },
 /* ============ E1 — LOCK THE GATES ============ */
 { id:"E1-1", epic:"e1", col:"prog", pri:"P0", est:"S", status:"probed", resolves:["F1"],
   title:"Lock public signup to the customer role",

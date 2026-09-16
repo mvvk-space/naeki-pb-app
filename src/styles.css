@@ -2217,7 +2217,8 @@ body:not([data-staff="true"]) .staff-only { display: none; }
 }
 .signin-card p { color: var(--paper-dim); font-size: 13.5px; }
 
-#signin-name {
+#signin-name,
+#signin-pass {
   width: 100%;
   margin-top: 16px;
   background: var(--ink-2);
@@ -2229,8 +2230,10 @@ body:not([data-staff="true"]) .staff-only { display: none; }
   font-family: inherit;
   outline: none;
 }
-#signin-name:focus { border-color: var(--salmon); }
-#signin-name::placeholder { color: var(--paper-faint); }
+#signin-name:focus,
+#signin-pass:focus { border-color: var(--salmon); }
+#signin-name::placeholder,
+#signin-pass::placeholder { color: var(--paper-faint); }
 
 .signin-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 .signin-actions .btn { margin-top: 0; }

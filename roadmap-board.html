@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Naeki · Production Kanban</title>
+<style>
+:root {
+  --ink-0: #101012; --ink-1: #16161a; --ink-2: #1e1e23; --ink-3: #232329;
+  --line: #2a2a31; --line-hover: #3d3d46;
+  --paper: #f3efe7; --paper-dim: #b9b4a8; --paper-faint: #6d6a62;
+  --salmon: #ff8a3c; --wasabi: #9fb83f; --go: #7ea8c9;
+  --gold: #d9a441; --plum: #b48ec9; --teal: #6fbfa8; --rose: #d98a8a;
+  --radius: 14px; --radius-sm: 12px;
+  --font-display: "Noto Serif CJK JP", "Noto Serif Thai", "DejaVu Serif", serif;
+  --font-body: "Noto Sans CJK JP", "Noto Sans Thai", "DejaVu Sans", sans-serif;
+  --font-mono: "DejaVu Sans Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; }
+html { background: var(--ink-0); }
+body {
+  font-family: var(--font-body); color: var(--paper); background: var(--ink-0);
+  font-size: 13.5px; line-height: 1.5; min-height: 100vh;
+}
+button { font-family: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+
+/* ---------- header ---------- */
+header {
+  padding: 22px 22px 14px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(var(--ink-1), var(--ink-0));
+}
+.eyebrow { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .14em; color: var(--paper-faint); text-transform: uppercase; }
+.head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-top: 6px; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 25px; letter-spacing: .01em; }
+h1 .accent { color: var(--salmon); }
+.sub { color: var(--paper-dim); font-size: 12.5px; margin-top: 3px; }
+.sub .n { font-family: var(--font-mono); font-size: 11px; color: var(--paper-faint); }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.search {
+  background: var(--ink-2); border: 1px solid var(--line); color: var(--paper);
+  border-radius: 9px; padding: 7px 11px; font-size: 12.5px; width: 190px; outline: none;
+}
+.search:focus { border-color: var(--line-hover); }
+.search::placeholder { color: var(--paper-faint); }
+.toggle-chip {
+  border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 12px;
+  color: var(--paper-dim); display: inline-flex; gap: 7px; align-items: center; transition: all .15s;
+}
+.toggle-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-hover); }
+.toggle-chip.on { border-color: var(--salmon); color: var(--paper); }
+.toggle-chip.on .dot { background: var(--salmon); }
+.reset-link { font-size: 11.5px; color: var(--paper-faint); text-decoration: underline; text-underline-offset: 3px; }
+.reset-link:hover { color: var(--paper-dim); }
+
+/* ---------- findings + epics strips ---------- */
+.strips { padding: 12px 22px; border-bottom: 1px solid var(--line); background: var(--ink-0); }
+.findings { margin-bottom: 10px; }
+.findings summary { cursor: pointer; font-family: var(--font-mono); font-size: 11px; color: var(--paper-faint); letter-spacing: .08em; user-select: none; }
+.findings summary:hover { color: var(--paper-dim); }
+.findings table { border-collapse: collapse; margin-top: 10px; width: 100%; }
+.findings th { font-family: var(--font-mono); font-size: 10.5px; color: var(--paper-faint); text-align: left; font-weight: 400; letter-spacing: .08em; padding: 5px 12px 5px 0; border-bottom: 1px solid var(--line); }
+.findings td { padding: 7px 12px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 12.5px; color: var(--paper-dim); }
+.findings td.fid { font-family: var(--font-mono); color: var(--salmon); white-space: nowrap; font-size: 11.5px; }
+.findings td.fname { color: var(--paper); white-space: nowrap; }
+.findings .src { font-family: var(--font-mono); font-size: 10.5px; color: var(--paper-faint); white-space: nowrap; }
+.epic-row { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+.epic-chip {
+  border: 1px solid var(--line); border-radius: 999px; padding: 5.5px 12px 5.5px 9px; font-size: 12px;
+  color: var(--paper-dim); display: inline-flex; gap: 7px; align-items: center; transition: all .15s;
+}
+.epic-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+.epic-chip .cnt { font-family: var(--font-mono); font-size: 10.5px; color: var(--paper-faint); }
+.epic-chip:hover { border-color: var(--line-hover); color: var(--paper); }
+.epic-chip.on { border-color: var(--chip, var(--salmon)); color: var(--paper); background: var(--ink-2); }
+
+/* ---------- board ---------- */
+.board-wrap { overflow-x: auto; padding: 16px 22px 26px; }
+.board { display: grid; grid-template-columns: repeat(7, minmax(268px, 1fr)); gap: 12px; min-width: 1980px; }
+.col { background: var(--ink-1); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; min-height: 130px; }
+.col.hot { border-color: #3a2c22; }
+.col-head { padding: 12px 13px 10px; border-bottom: 1px solid var(--line); }
+.col-title { display: flex; align-items: baseline; gap: 8px; }
+.col-title .num { font-family: var(--font-mono); font-size: 10.5px; color: var(--paper-faint); }
+.col-title .nm { font-family: var(--font-display); font-size: 14.5px; font-weight: 600; }
+.col-title .cnt { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--paper-dim); background: var(--ink-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.col.hot .col-title .cnt { color: var(--salmon); border-color: #4a3324; }
+.col-hint { font-size: 10.5px; color: var(--paper-faint); margin-top: 3px; }
+.cards { padding: 10px; display: flex; flex-direction: column; gap: 8px; flex: 1; border-radius: 0 0 var(--radius) var(--radius); min-height: 44px; }
+.cards.drag-over { background: #1a1a20; box-shadow: inset 0 0 0 1.5px var(--line-hover); }
+.col-empty { color: var(--paper-faint); font-size: 11.5px; text-align: center; padding: 10px 4px; border: 1px dashed var(--line); border-radius: var(--radius-sm); }
+
+/* ---------- cards ---------- */
+.card {
+  background: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius-sm);
+  padding: 10px 11px 9px; cursor: grab; transition: border-color .15s, transform .15s, box-shadow .15s;
+  box-shadow: 0 1px 0 rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.025);
+}
+.card:hover { border-color: var(--line-hover); }
+.card.dragging { opacity: .45; cursor: grabbing; }
+.card.hidden { display: none; }
+.card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.epic-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.cid { font-family: var(--font-mono); font-size: 10.5px; color: var(--paper-faint); }
+.pri { margin-left: auto; font-family: var(--font-mono); font-size: 10px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--paper-dim); }
+.pri.p0 { color: var(--salmon); border-color: #4a3324; }
+.pri.p1 { color: var(--gold); border-color: #453a22; }
+.card-title { font-size: 13px; font-weight: 600; letter-spacing: .005em; }
+.card-meta { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+.tag { font-family: var(--font-mono); font-size: 10px; color: var(--paper-faint); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+.tag.probed { color: var(--wasabi); border-color: #38401f; }
+.tag.reported { color: var(--go); border-color: #2b3a45; }
+.tag.est { color: var(--paper-dim); }
+
+/* ---------- drawer ---------- */
+.scrim { position: fixed; inset: 0; background: rgba(8,8,10,.62); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 40; }
+.scrim.open { opacity: 1; pointer-events: auto; }
+.drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 94vw; z-index: 50;
+  background: var(--ink-1); border-left: 1px solid var(--line); transform: translateX(102%);
+  transition: transform .22s ease; overflow-y: auto; box-shadow: -18px 0 50px rgba(0,0,0,.5);
+}
+.drawer.open { transform: translateX(0); }
+.drawer-in { padding: 22px 22px 30px; }
+.d-top { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.d-close { margin-left: auto; color: var(--paper-faint); font-size: 17px; padding: 2px 8px; border-radius: 8px; }
+.d-close:hover { color: var(--paper); background: var(--ink-2); }
+.d-title { font-family: var(--font-display); font-size: 20px; font-weight: 600; line-height: 1.32; margin-bottom: 12px; }
+.d-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.d-sec { margin-bottom: 16px; }
+.d-sec h3 { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--paper-faint); font-weight: 400; margin-bottom: 6px; }
+.d-sec p { color: var(--paper-dim); font-size: 13px; }
+.d-sec ul { list-style: none; }
+.d-sec li { color: var(--paper-dim); font-size: 13px; padding: 3.5px 0 3.5px 16px; position: relative; }
+.d-sec li::before { content: "▸"; position: absolute; left: 0; color: var(--paper-faint); font-size: 11px; top: 6px; }
+.d-sec .code { font-family: var(--font-mono); font-size: 11.5px; color: var(--go); }
+.d-sec .mono { font-family: var(--font-mono); font-size: 11.5px; color: var(--paper-dim); }
+.d-verified { background: var(--ink-2); border: 1px solid #38401f; border-radius: var(--radius-sm); padding: 11px 13px; }
+.d-verified p { color: var(--paper); font-size: 12.5px; }
+.d-verified .vh { font-family: var(--font-mono); font-size: 10px; letter-spacing: .12em; color: var(--wasabi); text-transform: uppercase; margin-bottom: 4px; }
+
+footer { padding: 14px 22px 22px; border-top: 1px solid var(--line); color: var(--paper-faint); font-size: 11.5px; }
+footer .mono { font-family: var(--font-mono); font-size: 10.5px; }
+
+@media (max-width: 900px) {
+  h1 { font-size: 20px; }
+  .drawer { width: 100vw; max-width: none; }
+  .board { grid-template-columns: repeat(7, minmax(258px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">naeki-pb-app · adversarial review → production roadmap</div>
+  <div class="head-row">
+    <div>
+      <h1>From verified exploits to <span class="accent">franchise rails</span></h1>
+      <p class="sub">Seven findings, seven epics, 42 cards. Drag cards between columns — positions persist locally.
+        <span class="n">probe-verified fixes land in <b>In review</b> when the exploit re-run fails.</span></p>
+    </div>
+    <div class="controls">
+      <input class="search" id="q" type="search" placeholder="Search cards…" aria-label="Search cards">
+      <button class="toggle-chip" id="p0only" type="button"><span class="dot"></span>P0 only</button>
+      <button class="reset-link" id="reset" type="button">reset board</button>
+    </div>
+  </div>
+</header>
+
+<div class="strips">
+  <details class="findings">
+    <summary>THE SEVEN VERIFIED FINDINGS — merged from both adversarial reviews (click to expand)</summary>
+    <table>
+      <tr><th>ID</th><th>Finding</th><th>Source</th></tr>
+      <tr><td class="fid">F1</td><td class="fname">Privilege escalation</td><td class="src">live-probed · signup mints superadmin; any user PATCHes own role</td></tr>
+      <tr><td class="fid">F2</td><td class="fname">Approval theater</td><td class="src">live-probed + reported · create-time status injection, self-approval, post-approval edits, fake sendCount, cross-branch compose</td></tr>
+      <tr><td class="fid">F3</td><td class="fname">Client-minted money</td><td class="src">live-probed · points, wallet, gifts, stamps all forgeable via loyalty / user_state writes</td></tr>
+      <tr><td class="fid">F4</td><td class="fname">Frozen coupon ledger</td><td class="src">verified · usedCount never increments; usageLimit decorative; "fully claimed" unreachable</td></tr>
+      <tr><td class="fid">F5</td><td class="fname">Referral free money</td><td class="src">reported · client-side give+get, reusable codes, self-referral across owned accounts</td></tr>
+      <tr><td class="fid">F6</td><td class="fname">Stored XSS</td><td class="src">live-probed · promo fields stored raw, interpolated into 56 innerHTML sites (2 escaped)</td></tr>
+      <tr><td class="fid">F7</td><td class="fname">Platform debt</td><td class="src">mixed · forked branch identity, dead collections, cross-account promo reads, hardcoded BASE ×3, 30s polling, committed creds</td></tr>
+    </table>
+  </details>
+  <div class="epic-row" id="epic-row"></div>
+</div>
+
+<div class="board-wrap"><div class="board" id="board"></div></div>
+
+<footer>
+  Review A = live-probed adversarial pass (Hermes, 15 Sep 2026 — probe artifacts cleaned up afterwards).
+  Review B = second agent's review (create-time bypass, ledger, referrals, platform gaps).
+  Priority: <span class="mono">P0</span> security/blocker · <span class="mono">P1</span> production-path · <span class="mono">P2/P3</span> business stages.
+  Estimates: <span class="mono">S</span> ≤ a day · <span class="mono">M</span> days · <span class="mono">L</span> a week+.
+  <span class="mono">probed</span> = exploit reproduced against the live DB · <span class="mono">reported</span> = from Review B, re-verify when you start the card.
+</footer>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Card detail"></aside>
+
+<script>
+window.__errs = [];
+window.addEventListener("error", e => window.__errs.push(e.message));
+
+const STORE_KEY = "naeki.roadmap.v1";
+const EPICS = {
+  e1: { n: "E1", name: "Lock the gates",     color: "#ff8a3c", desc: "Rules treat the client as hostile" },
+  e2: { n: "E2", name: "Server-authoritative money", color: "#9fb83f", desc: "Client submits intent; the server computes baht" },
+  e3: { n: "E3", name: "Data model v2",       color: "#7ea8c9", desc: "Answers become queryable" },
+  e4: { n: "E4", name: "Delivery fabric",    color: "#d9a441", desc: "The offer buzzes the pocket" },
+  e5: { n: "E5", name: "Franchise portal v2", color: "#b48ec9", desc: "Receipts, not reach" },
+  e6: { n: "E6", name: "Network effects",     color: "#6fbfa8", desc: "The beneficial spiral" },
+  e7: { n: "E7", name: "Compliance & pilot",  color: "#d98a8a", desc: "Real money, real obligations" }
+};
+const COLS = [
+  { id: "icebox",  n: "00", name: "Icebox",       hint: "post-MVP stages (portal v2, network effects, pilot)" },
+  { id: "backlog", n: "01", name: "Backlog",      hint: "queued behind the security core" },
+  { id: "ready",   n: "02", name: "Ready",        hint: "next up — the hardening sprint" },
+  { id: "prog",    n: "03", name: "In progress",  hint: "being built now", hot: true },
+  { id: "review",  n: "04", name: "In review",    hint: "fix built — re-run the probe" },
+  { id: "done",    n: "05", name: "Done",         hint: "probe failed to exploit — verified fixed" },
+  { id: "archive", n: "06", name: "Archive",      hint: "shipped and settled" }
+];
+
+/* card data — col is the initial position; moves persist in localStorage */
+const CARDS = [
+/* ============ E1 — LOCK THE GATES ============ */
+{ id:"E1-1", epic:"e1", col:"prog", pri:"P0", est:"S", status:"probed", resolves:["F1"],
+  title:"Lock public signup to the customer role",
+  why:"users.createRule is empty-string (public) and the role select field is client-assignable: POST /api/collections/users/records with role:'superadmin' returned 200, the fresh account logged in, and could then create coupons. There is no signup UI yet — but production inherits the rule as-is.",
+  verified:"Live probe: signup role=superadmin → 200 → login 200 → minted coupon PWNED (100% off, usageLimit 99999) → 200. Probe artifacts deleted afterwards.",
+  done:["users.createRule → @request.data.role = 'customer' (staff accounts provisioned via superuser only)","Re-run probe: signup with role:superadmin → 400","When signup UI ships: it can only send role:customer"],
+  files:["pb_migrations/1789379136_updated_users.js","scripts/seed.mjs:74-77"], deps:[] },
+
+{ id:"E1-2", epic:"e1", col:"prog", pri:"P0", est:"S", status:"probed", resolves:["F1"],
+  title:"Pin role in the users update rule",
+  why:"updateRule is 'id = @request.auth.id' with no field guard, so any signed-in user can PATCH their own role. Kate (customer) flipped herself to admin — the role gates for coupons, promotions and portal access all inherit from this field.",
+  verified:"Live probe: kate PATCH own role → 'admin' returned 200 and the record reflected it (reverted immediately).",
+  done:["updateRule → id = @request.auth.id && (@request.data.role:isset = false || @request.data.role = role)","Re-run probe: self-PATCH role → 400","Note: only _superusers bypass rules — role:'admin' users don't"],
+  files:["pb_migrations (users rules)","scripts/seed.mjs:78-87"], deps:[] },
+
+{ id:"E1-3", epic:"e1", col:"prog", pri:"P0", est:"S", status:"reported", resolves:["F2"],
+  title:"Force promotion status at create time",
+  why:"promotion.createRule allows franchise_owner with no field-level guard: Review B created a promo directly with status:'approved' and sendCount:123 — it bypassed review entirely and landed in subscriber bell feeds.",
+  verified:"Reported by Review B (record nc1wysqbmnwpoen, deleted). Reproduce before fixing: POST promotion status:'approved' as a franchise owner.",
+  done:["pb hook on promotion create: overwrite status='pending', sendCount=0, strip approver/reviewedAt/sentAt from the client payload","Probe: POST with status:'approved' → stored as pending, appears only in the review queue"],
+  files:["pb_hooks/ (new)","scripts/seed.mjs:289-311 (promotion schema)"], deps:[] },
+
+{ id:"E1-4", epic:"e1", col:"prog", pri:"P0", est:"M", status:"probed", resolves:["F2"],
+  title:"Scope promotion transitions by role",
+  why:"updateRule '(admins) || author = @request.auth.id' was meant to let authors edit drafts — but the author arm grants edit over EVERY field on their own record: self-approve, rewrite content after approval, fake the send count, forge the approver. The approval workflow is currently decorative.",
+  verified:"Live probe as Somchai (franchise_owner), author set: pending → approved (200) · title rewritten post-approval with an <img onerror> payload (200) · status:'sent' + sendCount:999999 (200) · approver set to himself (200). All probe rows deleted.",
+  done:["Author arm only while status='pending' and only with @request.data.status:isset = false (withdraw → draft stays allowed)","status transitions pending→approved/rejected/sent: admin/superadmin only","approver, reviewedAt, sendCount, sentAt: admin-writable only","Re-run all four probe steps → 403/400"],
+  files:["pb_migrations/1789381211_updated_promotion.js","scripts/seed.mjs:307-310"], deps:[] },
+
+{ id:"E1-5", epic:"e1", col:"ready", pri:"P1", est:"M", status:"reported", resolves:["F2","F7"],
+  title:"Enforce branch ownership server-side",
+  why:"The branch lock is UI-only ('Locked to your branch', app.js:482-486). Review B composed a promotion for a branch the owner doesn't hold — the server accepted it. Any owner can currently market on any branch's name.",
+  verified:"Reported by Review B (beypkxr9pjh4mrv, deleted). Also re-probe their claim that one owner PATCHed another owner's promo to 'sent' — if the author arm really resolves cross-author, that's a rule engine quirk to document.",
+  done:["Needs E3-3 (branch relations) first","Rule or hook: @request.body.branch must equal the author's branch; admins exempt","Probe: Somchai composes for BTS Siam → 400"],
+  files:["src/app.js:482-486","scripts/seed.mjs:94-96 (owner→branch seeding)"], deps:["E3-3"] },
+
+{ id:"E1-6", epic:"e1", col:"prog", pri:"P0", est:"M", status:"probed", resolves:["F6"],
+  title:"Escape every server-data interpolation",
+  why:"promotion title/body/when/ctaLabel are stored raw and interpolated into innerHTML without escaping — 56 innerHTML sites in app.js, escapeHtml used at exactly 2 (cpn note :1073, milestone text :1805). A crafted promo is script execution in every subscribed customer's session.",
+  verified:"Live probe: promotion stored '<img src=x onerror=alert(1)> <form action=https://evil.example>…' verbatim → 200 (deleted). notifCardHTML (:296-310) renders r.title/r.body/r.when raw; also cpn-title :1070, pt-item-title :355/:380, rw-offer-title :1423, branch <option> lists :288/:333/:471.",
+  done:["Escape title/body/when/ctaLabel/branch in notifCardHTML and the portal lists","Sweep all 56 innerHTML sites; escape or textContent everything server-sourced","Add a validate.mjs check: flag unescaped ${…} of server fields in template literals","e2e: a promo containing <img onerror> renders as visible text"],
+  files:["src/app.js:296-310, :355, :380, :1070, :1423","scripts/validate.mjs"], deps:[] },
+
+{ id:"E1-7", epic:"e1", col:"ready", pri:"P1", est:"S", status:"probed", resolves:["F7"],
+  title:"Delete dead collections, scope promo reads, purge strays",
+  why:"notify_request has create/list/update open to ANY authed user (anyone can PATCH anyone's row) and is dead code — nothing in the UI reads it. franchise_draft is likewise superseded by promotion. Meanwhile promotion.listRule lets a plain customer read every branch's promos in every status — unreleased drafts and rejects included.",
+  verified:"Live probe: rules confirmed via /api/collections (notify_request updateRule '@request.auth.id != \"\"'); kate listed 4 promotions including ones other branches haven't launched. Review B also found a stray demo@lumen.local account with an empty role.",
+  done:["Drop notify_request + franchise_draft collections, migrations, and pb.js:84-102 client methods","promotion.listRule for customers → status='approved' || status='sent' (staff see all via role arm)","Confirm and delete the stray demo@lumen.local user","Probe: kate's promo list → approved/sent only"],
+  files:["src/pb.js:84-102","pb_migrations/1789375144_*","pb_migrations/1789373424_created_franchise_draft.js"], deps:[] },
+
+/* ============ E2 — SERVER-AUTHORITATIVE MONEY ============ */
+{ id:"E2-1", epic:"e2", col:"ready", pri:"P0", est:"L", status:"probed", resolves:["F3"],
+  title:"Build the earning engine (pb_hooks)",
+  why:"loyalty and user_state rules are just 'owner = @request.auth.id' — the server has no opinion on what's written. Review B POSTed points:999999 directly; the checkout math in store.js:315 is correct but nothing enforces it. The whole top-spenders analytics story is worthless while earning is self-reported.",
+  verified:"Live probe: arbitrary user_state blob PATCH (wallet 999999 / points 999999) accepted → 200, reverted after. Review B: direct POST to loyalty with points:999999 → 200 (rows deleted).",
+  done:["pb_hooks: on order create → compute points (1pt/10฿ × tier × day multiplier — port store.js:315-359 logic) and write loyalty server-side","loyalty + user_state become read-only to clients","Port tests/unit/loyalty.test.mjs expectations to server-side tests","Probe: POST loyalty points:999999 → 403"],
+  files:["src/store.js:315-359","tests/unit/loyalty.test.mjs","pb_hooks/ (new)"], deps:["E3-1"] },
+
+{ id:"E2-2", epic:"e2", col:"backlog", pri:"P0", est:"L", status:"probed", resolves:["F3"],
+  title:"Double-entry wallet_txn ledger",
+  why:"Wallet balance is a field in the client-written blob — one fetch away from a ฿1,000,000 wallet. Stored value must be a computed sum over server-recorded transactions, never a written number.",
+  verified:"Live probe: blob PATCH balance:999999 → server accepted and served it back (reverted).",
+  done:["wallet_txn collection: topup / spend / gift_purchase / points_redemption rows; balance = computed sum","Money mutations only via hooks; user_state loses wallet entirely","Probe: any client write touching balance → ignored/403; balance always equals sum(txns)"],
+  files:["src/store.js:37-44, :156-182 (schedulePush blob)","src/pb.js:64-82"], deps:["E3-2"] },
+
+{ id:"E2-3", epic:"e2", col:"backlog", pri:"P0", est:"M", status:"reported", resolves:["F4"],
+  title:"Atomic coupon redemption hook",
+  why:"Every coupon has usedCount:0 forever: checkout never writes it back — and couldn't, since coupon update rules are admin-only (correctly). So usageLimit is decorative and the 'fully claimed' branch (store.js:738) is unreachable. Same class as client-minted money: the brand's ledger lives where the earning path can't touch it.",
+  verified:"Verified by Review B: usedCount frozen at 0 across all coupons despite the redeem flow existing.",
+  done:["Hook on redemption: transactionally check usedCount < usageLimit then increment + write a per-user coupon_redemption record","Enforce expiry/minSpend/branch server-side (client re-validation stays as UX only)","Test: concurrent redemptions at the limit don't overshoot; exhausted coupon → 'fully claimed' fires"],
+  files:["src/store.js:738","scripts/seed.mjs:233-265 (coupon schema)"], deps:["E2-1"] },
+
+{ id:"E2-4", epic:"e2", col:"backlog", pri:"P0", est:"M", status:"reported", resolves:["F5"],
+  title:"Server-verified referrals (give + get)",
+  why:"redeemReferral (store.js:473) credits +100 pts to the redeemer AND feeds the giver's milestone — all from the redeemer's client. Codes are self-reported: nothing validates the code exists server-side, isn't reused across accounts, or isn't self-referral across two accounts you own. Free money, trivially.",
+  verified:"Reported by Review B (finding #6). Code path confirmed in source: store.js:460-505.",
+  done:["referral collection: codes tied to issuer, one redemption each","Hook credits both sides server-side; milestone state reads server truth","Reject: unknown code, reuse, self-referral (same device/email graph)","Probe: redeem a fabricated code → 400"],
+  files:["src/store.js:460-505","tests/unit/milestones.test.mjs"], deps:["E2-1","E3-2"] },
+
+{ id:"E2-5", epic:"e2", col:"backlog", pri:"P1", est:"S", status:"reported", resolves:["F5"],
+  title:"Server-issued unique codes",
+  why:"Referral codes are client-generated: 'NK-FRIEND-' + 6 random chars (store.js:464). Collision and enumeration are real at scale; same pattern threatens gift and coupon codes.",
+  verified:"Reported by Review B (finding #12).",
+  done:["All code issuance (referral/gift/coupon) moves to hooks with uniqueness checks + a code index","Client can request but never invent codes"],
+  files:["src/store.js:462-468","src/pb.js"], deps:["E2-4"] },
+
+{ id:"E2-6", epic:"e2", col:"backlog", pri:"P0", est:"M", status:"probed", resolves:["F3"],
+  title:"Retire client money writes in store.js",
+  why:"persist() best-effort pushes the ENTIRE user-owned blob to user_state (store.js:156-182) — wallet, loyalty, gifts, stamps included. Even with server-side rules, the write path must not carry money fields, or every fix above is fighting this pipe.",
+  verified:"Live probe: the blob push is what carried the forged balance to the server.",
+  done:["Strip wallet/loyalty/gifts/referral money state from schedulePush payload","store.js becomes: read server truth + submit intents (orders, redemptions, topup requests)","Unit tests keep passing (tests/unit/wallet.test.mjs, loyalty) against the store seam"],
+  files:["src/store.js:156-182","tests/unit/wallet.test.mjs"], deps:["E2-1","E2-2"] },
+
+/* ============ E3 — DATA MODEL v2 ============ */
+{ id:"E3-1", epic:"e3", col:"backlog", pri:"P0", est:"L", status:"probed", resolves:["F3"],
+  title:"order + order_line collections",
+  why:"Order history is a client-authored array trimmed to 50 entries (store.js:353) inside an untyped JSON blob — unmigrateable, unqueryable, unauditable. 'Who are our top spenders, what do they like, how many locations do they visit' is unanswerable while orders live there.",
+  verified:"Live probe: the blob carries whatever the client declares — history included.",
+  done:["order (server-created at checkout: user, branch, total, coupon, points_earned) + order_line (item, qty, price)","Checkout flow: client submits intent → hook validates against menu prices → writes order","Earning engine (E2-1) consumes order create, not client math"],
+  files:["src/store.js:315-359","scripts/seed.mjs (menu_item schema for price truth)"], deps:[] },
+
+{ id:"E3-2", epic:"e3", col:"backlog", pri:"P0", est:"M", status:"probed", resolves:["F3"],
+  title:"wallet_txn · referral · branch_subscription collections",
+  why:"Substrate cards for the money epic: the double-entry ledger (E2-2), verified referrals (E2-4) and real subscriber counts (E5-1) all need their own rows, not blob fragments.",
+  verified:"Same probe family: everything currently rides the blob.",
+  done:["wallet_txn (see E2-2), referral (see E2-4), branch_subscription (user, branch, created)","branch_subscription replaces the subscribedBranches string array (store.js:59-63)"],
+  files:["src/store.js:59-63","src/pb.js"], deps:[] },
+
+{ id:"E3-3", epic:"e3", col:"backlog", pri:"P1", est:"M", status:"probed", resolves:["F7"],
+  title:"Branch relations — kill free-text identity",
+  why:"Branch identity is stored as free text in three places and has already forked: the live branch collection holds BOTH 'Naeki Go! @ BTS Asok' and 'Naeki Go @ BTS Asok' as separate records. Users/promotions seed the '!' spelling (seed.mjs:94, :314); the branch list doesn't (:110); coupon ASOK5 targets a spelling that matches nothing the promotions use (:260) — its branch constraint silently never applies.",
+  verified:"Live probe: both forked records confirmed in the branch collection; ASOK5 branchId doesn't match the '!' records.",
+  done:["users.branch_id, promotion.branch, coupon.branchId → relation fields to branch","Dedupe the forked Asok rows; backfill every record to the surviving id","Seed users/promos/coupons from one canonical branch list"],
+  files:["scripts/seed.mjs:94-96, :110, :260, :314","pb_migrations/1789373424_created_branch.js"], deps:[] },
+
+{ id:"E3-4", epic:"e3", col:"backlog", pri:"P1", est:"S", status:"probed", resolves:["F3"],
+  title:"user_state → device prefs only",
+  why:"Review B's framing is right: one untyped JSON blob per user is unmigrateable, unqueryable, unauditable. Keep it only for genuine device-local prefs (view states, acks); money and history move to real collections.",
+  verified:"Live probe: the blob is the vehicle for every forged write.",
+  done:["Strip cart/wallet/loyalty/gifts/referrals/drafts from the blob","Blob keeps only UI prefs; document the remaining keys in types.d.ts"],
+  files:["src/store.js:13-78 (DEFAULTS)","src/types.d.ts"], deps:["E2-2","E3-1"] },
+
+{ id:"E3-5", epic:"e3", col:"backlog", pri:"P2", est:"M", status:"reported", resolves:["F7"],
+  title:"Migrations-only schema; seed becomes data-only",
+  why:"Two schema sources of truth: pb_migrations/ defines collections AND seed.mjs PATCHes rules over the API. Drift between them is invisible until a fresh deploy behaves differently than the dev DB.",
+  verified:"Observed directly: migrations and seed both write rules; later migrations PATCH earlier ones.",
+  done:["seed.mjs stops creating fields/rules — data inserts only","Every rule change lands as a migration","CI: run migrations into a fresh DB, then seed, then probe scripts"],
+  files:["scripts/seed.mjs","pb_migrations/","tests/e2e/global-setup.mjs"], deps:[] },
+
+{ id:"E3-6", epic:"e3", col:"backlog", pri:"P1", est:"S", status:"probed", resolves:["F7"],
+  title:"Branch subscriptions become real records",
+  why:"subscribedBranches is a string array in the blob filtered against the data layer on load (store.js:126-131). Real rows (E3-2) are what make live subscriber counts and push fan-out possible.",
+  verified:"Same blob family.",
+  done:["branch_subscription rows replace the array; UI toggle writes through pb.js","Counts queryable per branch (feeds E5-1, E4-4)"],
+  files:["src/store.js:126-131","src/app.js:917 (notify toggle)"], deps:["E3-2"] },
+
+/* ============ E4 — DELIVERY FABRIC ============ */
+{ id:"E4-1", epic:"e4", col:"backlog", pri:"P1", est:"S", status:"reported", resolves:["F7"],
+  title:"Config-driven BASE URL",
+  why:"http://127.0.0.1:8090 is hardcoded in three places (pb.js:8, data.js:783-802, main.js:8). Works for the demo; breaks the moment the PWA is served from a phone or the backend moves to a VPS.",
+  verified:"Reported by Review B (finding #7); all three sites confirmed in source.",
+  done:["Derive from location.origin in the PWA, argv/env in Electron main; one config module","CSP connect-src follows the configured origin"],
+  files:["src/pb.js:8","src/data.js:783-802","main.js:8","src/index.html:5 (CSP)"], deps:[] },
+
+{ id:"E4-2", epic:"e4", col:"backlog", pri:"P1", est:"M", status:"probed", resolves:["F7"],
+  title:"SSE realtime replaces 30s polling",
+  why:"pollApproved fetches ALL approved promos for EVERY signed-in client every 30s (app.js:1641-1653), and data.js re-fetches menu/branches on the same cadence. Fine for a demo; a scaling and battery problem at 20 branches × real member counts. PocketBase ships realtime subscriptions — the code is already shaped for it.",
+  verified:"Live probe: polling loop confirmed in source; publish(\"refresh\") is the fanout seam (README:88-89 anticipated the swap).",
+  done:["Subscribe via /api/realtime to promotion (status='approved' || 'sent') and menu/branches","Client filters promos by subscribed branches","Bell rings on realtime events, not on the next tick"],
+  files:["src/app.js:1641-1653","src/data.js (refresh cycle)","src/frames.js"], deps:[] },
+
+{ id:"E4-3", epic:"e4", col:"backlog", pri:"P1", est:"L", status:"reported", resolves:[],
+  title:"Web-push (PWA) with VAPID",
+  why:"Today 'notify' means 'ring an in-app bell while the app is open.' The Facebook-replacement thesis needs the offer to buzz the phone with the app closed — that's the gap between cute demo and 'franchisees cancel their ad spend.'",
+  verified:"Product gap, not a defect (Review B finding #9).",
+  done:["VAPID keypair (env), push subscription collection, service worker push handler","Permission UX in-app; deep link from notification into the offer","Time-boxed offers ('today before 14:00') exploit the one thing Facebook can't: instant guaranteed reach"],
+  files:["src/sw.js","src/app.js (bell)"], deps:[] },
+
+{ id:"E4-4", epic:"e4", col:"backlog", pri:"P1", est:"L", status:"reported", resolves:["F7"],
+  title:"push_outbox fan-out worker",
+  why:"'Sent to N subscribers' is currently a seeded fake. Approve → fan-out needs a worker that expands one approved promotion into per-subscriber push rows — which is also the REAL sendCount source and the receipt machine for E5.",
+  verified:"Live probe: sendCount is client/admin-writable today (see E1-4); nothing computes it.",
+  done:["Worker (cron or PB hooks) fans approved promotions out to branch subscribers","sendCount = count of outbox rows written","Failures retry; per-user delivery state queryable"],
+  files:["scripts/ (worker)","pb_migrations (push_outbox)"], deps:["E4-3","E3-6"] },
+
+{ id:"E4-5", epic:"e4", col:"backlog", pri:"P1", est:"M", status:"reported", resolves:[],
+  title:"VPS deploy: Caddy + HTTPS + litestream",
+  why:"The production shape: PocketBase on one VPS behind Caddy (auto-HTTPS), SQLite streamed to object storage via litestream. This stack comfortably carries tens of thousands of users.",
+  verified:"Deployment plan (both reviews' roadmaps).",
+  done:["Caddy reverse proxy + Let's Encrypt","litestream continuous backup + tested restore","/api/health monitoring; superuser creds in env only"],
+  files:["main.js:9-11 (userData dir note)","deploy/ (new)"], deps:[] },
+
+{ id:"E4-6", epic:"e4", col:"backlog", pri:"P1", est:"S", status:"reported", resolves:["F7"],
+  title:"Secrets rotation + repo hygiene",
+  why:"Demo superuser password is committed (seed.mjs:5, pb:init) and seeded users follow the guessable Name$12345 pattern. run-pb.log, pb_data/, screenshots and .dev-pixel-test.html sit in the tree.",
+  verified:"Reported by Review B (finding #10); all confirmed in source/tree.",
+  done:["Rotate superuser + seeded passwords; read from env (.env gitignored)","gitignore run-pb.log, pb_data/, shot-*.png, .dev-pixel-test.html","First production commit carries zero secrets"],
+  files:["scripts/seed.mjs:5","package.json (pb:init)",".gitignore"], deps:[] },
+
+/* ============ E5 — FRANCHISE PORTAL v2 ============ */
+{ id:"E5-1", epic:"e5", col:"icebox", pri:"P2", est:"M", status:"reported", resolves:["F7"],
+  title:"Real subscriber counts",
+  why:"The portal's 'sent to N subscribers' is a seeded constant (data.js SUBSCRIBERS). Real counts from branch_subscription turn the portal from a send-flow demo into a channel dashboard.",
+  verified:"Live probe: seeded fake confirmed in README/data.js.",
+  done:["Query branch_subscription per branch; portal shows live counts","Labeled 'demo' constants removed"],
+  files:["src/data.js (SUBSCRIBERS)","src/app.js (portal)"], deps:["E3-6"] },
+
+{ id:"E5-2", epic:"e5", col:"icebox", pri:"P2", est:"L", status:"reported", resolves:[],
+  title:"Promotion attribution receipts",
+  why:"The sentence that makes franchisees evangelize: 'your promo reached 340 subscribers, 41 redeemed, ฿19,600 incremental.' Promotion → linked coupon (couponCode field exists) → redemption → order is the chain that produces it.",
+  verified:"Roadmap item (both reviews, stage 3).",
+  done:["Receipts per promotion: sent → opened → redeemed → ฿ incremental","Receipts per branch roll-up; exportable"],
+  files:["pb_migrations (promotion.couponCode)","scripts/ (analytics)"], deps:["E2-3","E4-4","E3-1"] },
+
+{ id:"E5-3", epic:"e5", col:"icebox", pri:"P2", est:"L", status:"reported", resolves:[],
+  title:"Branch dashboards",
+  why:"Each owner sees their subscriber count, redemption rates, top dishes and — the killer — their customers' overlap with nearby branches. Cross-branch visitors are the wallet's best customers; make that visible.",
+  verified:"Roadmap item.",
+  done:["Per-branch dashboard view in the portal (owner-scoped)","Top spenders, dish affinity, cross-branch overlap panels","HQ sees all branches; owners see own"],
+  files:["src/app.js (portal views)"], deps:["E3-1","E5-1"] },
+
+{ id:"E5-4", epic:"e5", col:"icebox", pri:"P2", est:"S", status:"reported", resolves:["F2"],
+  title:"Approval queue SLA + review notes",
+  why:"The compose → approve loop is 70% built; what's missing is the operational layer: time-in-queue, reject-with-reason, and an approval SLA so franchisees trust the channel (an 11:00 offer approved at 16:00 is worthless).",
+  verified:"Live probe: the state machine exists (draft→pending→approved→rejected→sent); the ops layer doesn't.",
+  done:["Queue age shown per pending promo; SLA breach highlighted","Reject flow carries a required reviewNote the owner sees","Notification to the owner on approve/reject"],
+  files:["src/app.js:372-400","pb_migrations (promotion.reviewNote)"], deps:["E1-4"] },
+
+{ id:"E5-5", epic:"e5", col:"icebox", pri:"P3", est:"S", status:"reported", resolves:[],
+  title:"Brand co-op calendar",
+  why:"Franchisees duplicate effort because they can't see each other. A shared brand calendar of promo slots (with HQ curation) turns 20 isolated shouters into one schedule — and kills the 'three branches running the same discount' problem.",
+  verified:"Vision item.",
+  done:["Calendar collection + portal view; owners see all approved upcoming promos","HQ can slot brand-wide campaigns (2× points days)"],
+  files:["src/app.js (portal)"], deps:["E5-1"] },
+
+{ id:"E5-6", epic:"e5", col:"icebox", pri:"P3", est:"M", status:"reported", resolves:[],
+  title:"Weekly owner digest (email/LINE)",
+  why:"The evangelism engine: every Friday each owner gets 'your promo reached N, redeemed M, ฿X, Y new subscribers' — the rising-tide proof, delivered without them opening the portal.",
+  verified:"Vision item.",
+  done:["Digest worker (cron) over receipts + subscriptions","LINE Messaging API + email fallback; owner opt-in"],
+  files:["scripts/ (worker)"], deps:["E5-2"] },
+
+/* ============ E6 — NETWORK EFFECTS ============ */
+{ id:"E6-1", epic:"e6", col:"icebox", pri:"P2", est:"M", status:"reported", resolves:["F5"],
+  title:"Referral trees + creator attribution",
+  why:"A referral code makes the customer a content creator with a direct payoff: their code redeeming = points. Referral trees (who referred whom, multi-hop) make that attributable — the difference between 'referral program' and 'creator program.'",
+  verified:"Vision item; the security prerequisite is E2-4 (today's referrals are client-minted).",
+  done:["Issuer → redeemer graph per code; creator analytics view","Anti-abuse: rate limits, self-referral graph checks"],
+  files:["pb_migrations (referral)"], deps:["E2-4"] },
+
+{ id:"E6-2", epic:"e6", col:"icebox", pri:"P2", est:"M", status:"reported", resolves:[],
+  title:"Gift-card install gate",
+  why:"Gift cards are acquisition in disguise: the sender pays, the recipient must install the app to redeem — an organic install loop where every gift buys the brand a new account.",
+  verified:"Vision item.",
+  done:["Gift redemption requires an account (server-issued codes, E2-5)","Recipient onboarding flow surfaces the stamp card + wallet"],
+  files:["src/app.js (wallet gift flow)"], deps:["E2-5","E3-2"] },
+
+{ id:"E6-3", epic:"e6", col:"icebox", pri:"P3", est:"M", status:"reported", resolves:[],
+  title:"Creator leaderboard",
+  why:"Top referrers become a visible leaderboard — compensation in points, zero baht cost, full tax simplicity. This is the UGC creator program the referral thesis points at.",
+  verified:"Vision item.",
+  done:["Leaderboard over referral redemptions (opt-in, PDPA-safe)","Season resets; brand can feature top creators"],
+  files:["src/app.js (milestones pane)"], deps:["E6-1","E7-1"] },
+
+{ id:"E6-4", epic:"e6", col:"icebox", pri:"P3", est:"M", status:"reported", resolves:[],
+  title:"UGC deep-link loop",
+  why:"Photo of today's onigiri + your referral code, shared to socials with a deep link — the app becomes the content engine, and each post funnels strangers into the ecosystem. The beneficial spiral, made mechanical.",
+  verified:"Vision item.",
+  done:["Share sheet: image + code + deep link","Deep link routes a new install straight to signup with the code attached"],
+  files:["src/app.js (referral pane)","src/sw.js"], deps:["E6-1","E4-3"] },
+
+{ id:"E6-5", epic:"e6", col:"icebox", pri:"P3", est:"S", status:"reported", resolves:[],
+  title:"Branch-agnostic brand offers",
+  why:"'2× points at any GO! kiosk on Points-day' pulls subscribers to the whole brand, not one branch — the rising tide made concrete. The data layer already models brand vs branch scoping (coupon.brand).",
+  verified:"Vision item.",
+  done:["Brand-scoped promotions render in every subscriber's feed regardless of branch picks","Cross-branch redemption visible in dashboards (E5-3)"],
+  files:["src/data.js (POINTS_DAY)","scripts/seed.mjs (coupon.brand)"], deps:["E4-4"] },
+
+/* ============ E7 — COMPLIANCE & PILOT ============ */
+{ id:"E7-1", epic:"e7", col:"icebox", pri:"P1", est:"M", status:"reported", resolves:[],
+  title:"PDPA consent + export + retention",
+  why:"The data moat only monetizes if it's legal: Thai PDPA needs consent at signup, data export, and a retention policy. Budget this before the CRM stage, not after.",
+  verified:"Compliance item (Review B caution).",
+  done:["Consent capture at signup (purpose, channels, withdrawal)","Self-service export; deletion/retention policy implemented"],
+  files:["(new consent collection + flows)"], deps:["E4-3"] },
+
+{ id:"E7-2", epic:"e7", col:"icebox", pri:"P1", est:"M", status:"reported", resolves:[],
+  title:"BOT / e-money legal review",
+  why:"The moment the wallet holds real value you inherit obligations: closed-loop promotional credit is safe territory; open-loop e-money invites Bank of Thailand licensing. Have the conversation before Stage 4, not after.",
+  verified:"Compliance item (both reviews' caution).",
+  done:["Legal opinion on wallet + gift-card structure","If open-loop: licensing path or partner (TrueMoney-style) integration"],
+  files:["(external)"], deps:["E2-2"] },
+
+{ id:"E7-3", epic:"e7", col:"icebox", pri:"P2", est:"M", status:"reported", resolves:[],
+  title:"Financial-grade audit trail",
+  why:"Real money needs immutable receipts: wallet/points transaction log, admin action log, coupon issuance log. Pairs with the double-entry ledger — the audit view over it.",
+  verified:"Compliance item.",
+  done:["Append-only txn log viewable by admins; no delete path","Admin actions (approvals, coupon edits) logged with actor + ts"],
+  files:["pb_hooks (new)"], deps:["E2-2"] },
+
+{ id:"E7-4", epic:"e7", col:"icebox", pri:"P2", est:"L", status:"reported", resolves:[],
+  title:"Capacitor shell + APNs/FCM",
+  why:"The Electron shell is the STAFF harness (great for HQ/counter). Customers get the existing PWA promoted to a Capacitor build for iOS/Android — src/ carries over as-is, which the README already planned.",
+  verified:"Roadmap item (README:95-102 anticipated exactly this).",
+  done:["Capacitor wrap; SQLite-backed store adapter where needed","APNs/FCM through the same push_outbox (E4-4)","Store assets: icons, screenshots, privacy declarations"],
+  files:["README.md:95-102","src/ (as-is)"], deps:["E4-3","E4-4"] },
+
+{ id:"E7-5", epic:"e7", col:"icebox", pri:"P2", est:"M", status:"reported", resolves:[],
+  title:"Beta with 2-3 friendly franchisees",
+  why:"One flagship + two kiosks, staff pushing installs at the counter with the stamp card as the hook. Every promotion goes through the full compose → approve → push → redeem loop weekly.",
+  verified:"Pilot plan.",
+  done:["TestFlight/Play beta distribution","Staff onboarding one-pager (member QR scan → stamp)","Weekly promo ritual established with the beta owners"],
+  files:["(ops)"], deps:["E7-4","E2-3","E4-4"] },
+
+{ id:"E7-6", epic:"e7", col:"icebox", pri:"P2", est:"M", status:"reported", resolves:[],
+  title:"90-day pilot vs Facebook baseline",
+  why:"Measure install→subscriber conversion, push open rate, redemption per promo — next to what those branches spent on Facebook the same quarter. That comparison IS the franchise pitch deck: 'rising tide' stops being a metaphor and becomes a chart.",
+  verified:"Pilot plan (both reviews converge here).",
+  done:["Metrics defined + instrumented from day one of beta","Quarter-end comparison pack per branch","Roll into the franchise sales pitch"],
+  files:["(ops)"], deps:["E7-5","E5-2"] }
+];
+
+/* ---------- state ---------- */
+let moves = {};
+try { moves = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); } catch { moves = {}; }
+const colOf = c => moves[c.id] || c.col;
+let activeEpic = null, p0only = false, query = "";
+
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify(moves)); }
+
+/* ---------- render ---------- */
+const boardEl = document.getElementById("board");
+function colOfCards(id) { return CARDS.filter(c => colOf(c) === id); }
+
+function matches(c) {
+  if (activeEpic && c.epic !== activeEpic) return false;
+  if (p0only && c.pri !== "P0") return false;
+  if (query) {
+    const hay = (c.title + " " + c.why + " " + c.id).toLowerCase();
+    if (!hay.includes(query)) return false;
+  }
+  return true;
+}
+
+function renderBoard() {
+  boardEl.innerHTML = "";
+  for (const col of COLS) {
+    const sec = document.createElement("section");
+    sec.className = "col" + (col.hot ? " hot" : "");
+    sec.dataset.col = col.id;
+    const cards = colOfCards(col.id);
+    const visible = cards.filter(matches);
+    sec.innerHTML =
+      `<div class="col-head"><div class="col-title"><span class="num">${col.n}</span>` +
+      `<span class="nm">${col.name}</span><span class="cnt" data-cnt>${visible.length}</span></div>` +
+      `<div class="col-hint">${col.hint}</div></div>` +
+      `<div class="cards" data-drop></div>`;
+    const drop = sec.querySelector("[data-drop]");
+    if (cards.length === 0) {
+      drop.innerHTML = `<div class="col-empty">nothing here</div>`;
+    } else {
+      let shown = 0;
+      for (const c of cards) {
+        const el = cardEl(c);
+        if (!matches(c)) { el.classList.add("hidden"); } else { shown++; }
+        drop.appendChild(el);
+      }
+      if (shown === 0) drop.insertAdjacentHTML("beforeend", `<div class="col-empty" data-none>no match</div>`);
+    }
+    wireDrop(drop, col.id);
+    boardEl.appendChild(sec);
+  }
+}
+
+function cardEl(c) {
+  const e = EPICS[c.epic];
+  const el = document.createElement("article");
+  el.className = "card"; el.draggable = true; el.dataset.id = c.id; el.tabIndex = 0;
+  el.innerHTML =
+    `<div class="card-top"><span class="epic-dot" style="background:${e.color}"></span>` +
+    `<span class="cid">${e.n} · ${c.id}</span>` +
+    `<span class="pri ${c.pri === "P0" ? "p0" : c.pri === "P1" ? "p1" : ""}">${c.pri}</span></div>` +
+    `<div class="card-title">${c.title}</div>` +
+    `<div class="card-meta"><span class="tag est">${c.est}</span>` +
+    `<span class="tag ${c.status}">${c.status}</span>` +
+    (c.resolves.length ? `<span class="tag">${c.resolves.join(" ")}</span>` : "") + `</div>`;
+  el.addEventListener("click", () => openDrawer(c));
+  el.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); openDrawer(c); } });
+  el.addEventListener("dragstart", ev => {
+    ev.dataTransfer.setData("text/plain", c.id);
+    ev.dataTransfer.effectAllowed = "move";
+    el.classList.add("dragging");
+  });
+  el.addEventListener("dragend", () => el.classList.remove("dragging"));
+  return el;
+}
+
+function wireDrop(drop, colId) {
+  drop.addEventListener("dragover", ev => { ev.preventDefault(); drop.classList.add("drag-over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("drag-over"));
+  drop.addEventListener("drop", ev => {
+    ev.preventDefault();
+    drop.classList.remove("drag-over");
+    const id = ev.dataTransfer.getData("text/plain");
+    const card = CARDS.find(c => c.id === id);
+    if (!card) return;
+    moves[id] = colId; save();
+    const el = boardEl.querySelector(`[data-id="${id}"]`);
+    const none = drop.querySelector("[data-none]");
+    if (none) none.remove();
+    const siblings = [...drop.querySelectorAll(".card:not(.dragging)")];
+    const after = siblings.find(s => ev.clientY < s.getBoundingClientRect().top + s.offsetHeight / 2);
+    if (after) drop.insertBefore(el, after); else drop.appendChild(el);
+    updateCounts();
+  });
+}
+
+function updateCounts() {
+  for (const col of COLS) {
+    const sec = boardEl.querySelector(`[data-col="${col.id}"]`);
+    if (!sec) continue;
+    const n = [...sec.querySelectorAll(".card")].filter(el => !el.classList.contains("hidden")).length;
+    sec.querySelector("[data-cnt]").textContent = n;
+  }
+  renderEpicChips();
+}
+
+/* ---------- epic chips ---------- */
+const epicRow = document.getElementById("epic-row");
+function renderEpicChips() {
+  epicRow.innerHTML = "";
+  const all = chipBtn(null, "All epics", CARDS.filter(matches).length, "#b9b4a8");
+  epicRow.appendChild(all);
+  for (const [k, e] of Object.entries(EPICS)) {
+    const n = CARDS.filter(c => c.epic === k && matches(c)).length;
+    epicRow.appendChild(chipBtn(k, `${e.n} ${e.name}`, n, e.color));
+  }
+}
+function chipBtn(epicId, label, count, color) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "epic-chip" + (activeEpic === epicId ? " on" : "");
+  if (epicId) b.style.setProperty("--chip", color);
+  b.innerHTML = `<span class="dot" style="background:${color}"></span>${label} <span class="cnt">${count}</span>`;
+  b.addEventListener("click", () => { activeEpic = epicId; renderBoard(); renderEpicChips(); });
+  return b;
+}
+
+/* ---------- drawer ---------- */
+const drawer = document.getElementById("drawer"), scrim = document.getElementById("scrim");
+function openDrawer(c) {
+  const e = EPICS[c.epic];
+  const depTxt = c.deps.length ? c.deps.join(", ") : "none";
+  drawer.innerHTML = `<div class="drawer-in">
+    <div class="d-top"><span class="epic-dot" style="background:${e.color}"></span>
+      <span class="cid" style="font-size:11px">${e.n} · ${c.id} · ${e.name}</span>
+      <button class="d-close" id="d-close" aria-label="Close">×</button></div>
+    <div class="d-title">${c.title}</div>
+    <div class="d-chips">
+      <span class="pri ${c.pri === "P0" ? "p0" : c.pri === "P1" ? "p1" : ""}">${c.pri}</span>
+      <span class="tag est">estimate ${c.est}</span>
+      <span class="tag ${c.status}">${c.status}</span>
+      ${c.resolves.map(f => `<span class="tag" style="color:var(--salmon);border-color:#4a3324">${f}</span>`).join("")}
+    </div>
+    <div class="d-sec"><h3>Why this matters</h3><p>${c.why}</p></div>
+    ${c.verified ? `<div class="d-sec"><div class="d-verified"><div class="vh">${c.status === "probed" ? "Verified live" : "Evidence"}</div><p>${c.verified}</p></div></div>` : ""}
+    <div class="d-sec"><h3>Done when</h3><ul>${c.done.map(d => `<li>${d}</li>`).join("")}</ul></div>
+    <div class="d-sec"><h3>Files</h3><p class="mono">${c.files.map(f => `<span class="code">${f}</span>`).join("<br>")}</p></div>
+    <div class="d-sec"><h3>Depends on</h3><p class="mono">${depTxt}</p></div>
+  </div>`;
+  drawer.classList.add("open"); scrim.classList.add("open");
+  drawer.querySelector("#d-close").addEventListener("click", closeDrawer);
+}
+function closeDrawer() { drawer.classList.remove("open"); scrim.classList.remove("open"); }
+scrim.addEventListener("click", closeDrawer);
+window.addEventListener("keydown", ev => { if (ev.key === "Escape") closeDrawer(); });
+
+/* ---------- controls ---------- */
+document.getElementById("q").addEventListener("input", ev => {
+  query = ev.target.value.trim().toLowerCase();
+  renderBoard(); renderEpicChips();
+});
+document.getElementById("p0only").addEventListener("click", ev => {
+  p0only = !p0only;
+  ev.currentTarget.classList.toggle("on", p0only);
+  renderBoard(); renderEpicChips();
+});
+document.getElementById("reset").addEventListener("click", () => {
+  if (confirm("Reset all card positions to the original plan?")) {
+    localStorage.removeItem(STORE_KEY); moves = {}; renderBoard(); renderEpicChips();
+  }
+});
+
+/* ---------- boot ---------- */
+renderBoard();
+renderEpicChips();
+window.__board = { cards: CARDS, colOf, moves, matches, updateCounts };
+</script>
+</body>
+</html>

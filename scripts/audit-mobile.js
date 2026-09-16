@@ -29,29 +29,29 @@ const { spawn } = require("child_process");
 const net = require("net");
 const fs = require("fs");
 
-const PB_HOST = "http://127.0.0.1:8090";
+const API_HOST = "http://127.0.0.1:8090";
 const ROOT = path.join(__dirname, "..");
-// audit spawns its own PocketBase against the project-local seeded DB
-// (same DEMO arrangement main.js uses) so signed-in passes work anywhere.
-const PB_DIR = path.join(ROOT, "pb_data");
 
-/* ---- PocketBase lifecycle for the signed-in passes ---- */
-let pbSpawned = false;
-function pbUp() {
+/* ---- API server lifecycle for the signed-in passes ----
+   Same contract main.js uses: reuse :8090 if something answers, else spawn
+   server/api.mjs as plain Node. */
+let apiSpawned = false;
+function apiUp() {
   return new Promise((resolve) => {
     const probe = net.createConnection({ host: "127.0.0.1", port: 8090 });
     probe.once("connect", () => { probe.end(); resolve(true); });
     probe.once("error", () => {
-      fs.mkdirSync(PB_DIR, { recursive: true });
-      const bin = path.join(ROOT, "pocketbase");
-      if (!fs.existsSync(bin)) { resolve(false); return; }
-      spawn(bin, ["serve", "--http=127.0.0.1:8090", "--dir=" + PB_DIR],
-        { stdio: "ignore", detached: false });
-      pbSpawned = true;
+      const server = path.join(ROOT, "server", "api.mjs");
+      if (!fs.existsSync(server)) { resolve(false); return; }
+      spawn(process.execPath, [server], {
+        stdio: "ignore", detached: false,
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+      });
+      apiSpawned = true;
       const t0 = Date.now();
       const wait = setInterval(async () => {
         try {
-          const r = await fetch(PB_HOST + "/api/health");
+          const r = await fetch(API_HOST + "/api/health");
           if (r.ok) { clearInterval(wait); resolve(true); return; }
         } catch {}
         if (Date.now() - t0 > 8000) { clearInterval(wait); resolve(false); }
@@ -59,11 +59,11 @@ function pbUp() {
     });
   });
 }
-function pbDown() {
-  if (!pbSpawned) return;   // never kill a PocketBase we didn't spawn
+function apiDown() {
+  if (!apiSpawned) return;   // never kill an API we didn't spawn
   try {
     const out = require("child_process").execSync(
-      "pgrep -f 'pocketbase serve.*pb_data' || true", { encoding: "utf8" });
+      "pgrep -f 'server/api.mjs' || true", { encoding: "utf8" });
     out.trim().split("\n").filter(Boolean).forEach((pid) => {
       try { process.kill(Number(pid), "SIGTERM"); } catch {}
     });
@@ -138,9 +138,9 @@ const AUDIT_JS = `(() => {
         oneCol(".home-teasers", "teasers");
         oneCol(".order-grid", "order");
       }
-      // landing menu list: rows are stacked, nothing off-viewport
+      // landing menu: brand-segmented groups of dish cards render stacked
       if (v === "lmenu") {
-        out.lmenuRows = view.querySelectorAll(".lmenu-list li").length;
+        out.lmenuRows = view.querySelectorAll(".lmenu-group .dish").length;
       }
     }
     /* rewards is one section with four tab panes (points / stamps /
@@ -343,7 +343,9 @@ function shellReport(report, shellName, expectedViews) {
       }
     } else fail("sign-in modal did not open for audit");
     if (typeof report.lmenuRows === "number") {
-      if (report.lmenuRows >= 38) pass(`landing menu renders ${report.lmenuRows} rows`);
+      // brand-filtered since the brand toggle: the landing menu shows the
+      // active brand's groups (GO! default = ~27 dishes; "all" was 38)
+      if (report.lmenuRows >= 25) pass(`landing menu renders ${report.lmenuRows} dish cards`);
       else fail(`landing menu rows missing (got ${report.lmenuRows})`);
     }
   }
@@ -399,15 +401,15 @@ async function main() {
     shellReport(landing, "landing", ["home", "lmenu", "about", "franchise", "servicedesk"]);
   }
 
-  /* ---- pass 2: app (signed in, real PocketBase auth) ---- */
-  const pbOk = await pbUp();
-  const signedIn = pbOk && await win.webContents.executeJavaScript(
+  /* ---- pass 2: app (signed in, real API auth) ---- */
+  const apiOk = await apiUp();
+  const signedIn = apiOk && await win.webContents.executeJavaScript(
     `NaekiStore.signIn("kate@naeki.dev", "Kate$12345").then(r => !!r.ok)`, false)
     .catch(() => false);
   if (!signedIn) {
-    fail(`app-shell pass needs PocketBase + seeded auth (kate@naeki.dev) — got ${pbOk ? "sign-in failed" : "no PocketBase"}`);
+    fail(`app-shell pass needs the API + seeded auth (kate@naeki.dev) — got ${apiOk ? "sign-in failed" : "no API server"}`);
   } else {
-    pass("signed in via PocketBase auth (kate@naeki.dev) → app shell");
+    pass("signed in via the Neon API (kate@naeki.dev) → app shell");
     await new Promise((resolve) => {
       win.webContents.once("did-finish-load", resolve);
       win.webContents.reload();
@@ -435,11 +437,11 @@ async function main() {
     if (failures > 0) {
       console.log("\nSelf-test PASSED: detector caught the planted 520px defect " +
                   `(${failures} failure(s) above).`);
-      pbDown(); app.exit(0);
+      apiDown(); app.exit(0);
     } else {
       console.log("\nSelf-test FAILED: detector missed the planted 520px defect — " +
                   "the audit is not protecting mobile. Do not trust it; fix the checks.");
-      pbDown(); app.exit(1);
+      apiDown(); app.exit(1);
     }
     return;
   }
@@ -447,10 +449,10 @@ async function main() {
   if (failures > 0) {
     console.log(`\nResult: FAIL — ${failures} mobile layout problem(s).`);
     console.log("Fix styles.css (see the phone @media block), then re-run: npm run check:mobile");
-    pbDown(); app.exit(1);
+    apiDown(); app.exit(1);
   } else {
     console.log(`\nResult: PASS (${lines.length} checks)`);
-    pbDown(); app.exit(0);
+    apiDown(); app.exit(0);
   }
 }
 

@@ -103,7 +103,6 @@
         <button class="lp-link" data-view="lmenu">Menu</button>
         <button class="lp-link" data-view="about">About Us</button>
         <button class="lp-link" data-view="franchise">Franchise</button>
-        <button class="lp-link" id="lp-portal-signin">Partner portal</button>
         <button class="lp-link" data-view="servicedesk">Customer Service</button>
       </nav>
       <button class="btn accent" id="lp-signin">Open the app</button>
@@ -769,6 +768,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 0-3.1 6.3L20 19.5l-.9-3.2A8 8 0 0 0 20 12z"/></svg>
         <span>Chat</span>
       </button>
+      <button class="tab-btn staff-only" data-view="partners">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V8l7-4 7 4v13M3 21h6m6 0h6M9 21v-6h4v6M14 8h.01"/></svg>
+        <span>Portal</span>
+      </button>
     </nav>
 
     <!-- offer popup: the bell's doorbell — one live unacknowledged offer at a
@@ -1311,14 +1314,11 @@
     <div class="modal-card signin-card" role="dialog" aria-modal="true" aria-labelledby="signin-title">
       <button class="modal-x" data-close aria-label="Close">×</button>
       <div class="modal-body">
-        <div class="modal-cat">PocketBase sign-in</div>
+        <div class="modal-cat">Sign in</div>
         <h3 id="signin-title">Welcome back</h3>
-        <p>Real account, backed by the local PocketBase. Demo logins —
-           <code>kate@naeki.dev</code> / <code>Kate$12345</code> (customer);
-           <code>somchai@naeki.dev</code> / <code>Somchai$12345</code>
-           (franchise owner · partner portal);
-           <code>super@naeki.dev</code> / <code>Super$12345</code>
-           (superadmin · approves notifications).</p>
+        <p>One account for the whole app — order, collect rewards and manage
+           your balance. Staff accounts see their Portal link after signing in.
+           Try a demo account below.</p>
         <form id="signin-form">
           <input id="signin-name" type="email" placeholder="you@naeki.dev"
                  autocomplete="email" aria-label="Email" required />
@@ -1335,7 +1335,7 @@
 
   <script src="data.js"></script>
   <script src="frames.js"></script>
-  <script src="pb.js"></script>
+  <script src="api.js"></script>
   <script src="store.js"></script>
   <script src="app.js"></script>
 </body>

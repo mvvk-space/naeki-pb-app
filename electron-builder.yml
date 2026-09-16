@@ -1,11 +1,10 @@
-# electron-builder config for Naeki PB desktop
-# Output: release/ (gitignored). The PocketBase binary + migrations ship as
-# extraResources so the packaged app can boot its own backend on a fresh machine.
-# NOTE: cross-platform builds need each platform's pb binary present
-#       (./pocketbase = linux amd64; add pocketbase.exe / pocketbase_darwin
-#        alongside and extend extraResources per-platform when packaging there).
+# electron-builder config for the Naeki desktop build
+# Output: release/ (gitignored). The Neon-backed API server ships as part of
+# the app bundle (server/ + node_modules/pg ride along via "files"); main.js
+# spawns it with ELECTRON_RUN_AS_NODE on :8090 at launch. The packaged app
+# needs $NAEKI_DSN or ~/.config/neon/naeki-sushi.dsn on the target machine.
 
-appId: dev.naeki.pb
+appId: dev.naeki.app
 productName: Naeki Sushi Showcase
 copyright: Naeki demo
 
@@ -16,6 +15,7 @@ directories:
 files:
   - main.js
   - package.json
+  - server/**/*
   - src/index.html
   - src/styles.css
   - src/sw.js
@@ -23,13 +23,11 @@ files:
   - src/*.js
   - src/types.d.ts
   - src/assets/**/*
-
-extraResources:
-  # the Go backend (PocketBase) rides along; main.js spawns it on :8090
-  - from: pocketbase
-    to: pocketbase
-  - from: pb_migrations
-    to: pb_migrations
+  - node_modules/pg/**/*
+  - node_modules/pg-protocol/**/*
+  - node_modules/pg-connection-string/**/*
+  - node_modules/pg-pool/**/*
+  - "!node_modules/@types"
 
 asar: true
 
@@ -40,12 +38,6 @@ linux:
   icon: src/assets/icon.png
   desktop:
     Name: Naeki Sushi Showcase
-
-# mac/windows targets activate when their pb binaries + icons exist
-mac:
-  target: []
-win:
-  target: []
 
 # demo build — no codesigning, no auto-update channel yet
 npmRebuild: false

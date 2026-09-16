@@ -1,6 +1,6 @@
 /* Browser e2e — THE INVARIANT TEST: this app is plain HTML/CSS/JS and must
    render in a stock browser with no Electron. Served by `python3 -m http.server`
-   (playwright webServer); PocketBase may be up, but nothing here requires it. */
+   (playwright webServer); the API may be up, but nothing here requires it. */
 import { test, expect } from "@playwright/test";
 
 test("landing renders as plain HTML with real dish cards", async ({ page }) => {
@@ -22,10 +22,19 @@ test("assets resolve: every image on the landing page loads", async ({ page }) =
     if (r.resourceType() === "image") broken.push(r.url());
   });
   await page.goto("/");
-  await page.waitForTimeout(1500);
+  // walk the landing views like a visitor so lazy images actually request
+  for (const view of ["lmenu", "about", "franchise", "servicedesk", "home"]) {
+    await page.locator(`.lp-link[data-view="${view}"]`).first().click();
+    await page.waitForTimeout(400);
+  }
+  await page.waitForTimeout(1000);
   for (const img of await page.locator("img").all()) {
-    const nat = await img.evaluate((el) => el.naturalWidth);
-    if (nat === 0) broken.push(await img.getAttribute("src"));
+    // complete && naturalWidth 0 → the load was ATTEMPTED and failed (real
+    // broken ref). !complete → a lazy image that never entered the viewport
+    // (hidden view / below fold) — not a broken asset, skip it.
+    const state = await img.evaluate((el) =>
+      el.complete ? (el.naturalWidth === 0 ? "broken" : "ok") : "untried");
+    if (state === "broken") broken.push(await img.getAttribute("src"));
   }
   expect(broken, `broken images: ${broken.join(", ")}`).toEqual([]);
 });

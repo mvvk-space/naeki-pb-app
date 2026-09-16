@@ -22,7 +22,7 @@
     // demo order cart — persists across sessions, never leaves the device;
     // lines reference menu items by name (the data-layer key)
     cart: [],                   // [{ name, price, qty, addedAt }]
-    // coupon validated against the PocketBase coupon collection (public read)
+    // coupon validated against the coupon table (public read)
     // and applied at checkout. One per order; cleared once used.
     coupon: null,               // { code, title, type, value, freeItem, minSpend, brand, branchId }
     // loyalty: points earned at demo checkout (1 pt / 10฿, tier + day
@@ -156,12 +156,12 @@
   function persist() {
     try {
       localStorage.setItem(KEY, JSON.stringify(state));
-      // best-effort push of the whole user-owned state to PocketBase,
-      // so stamps/wallet/gifts/referrals/drafts all live in the backend.
-      // The profile record itself stays in pb (the account), so we strip the
+      // best-effort push of the whole user-owned state to the backend, so
+      // stamps/wallet/gifts/referrals/drafts all live in Neon. The profile
+      // record itself stays server-side (the account), so we strip the
       // locally-derived profile out of the pushed blob.
-      const PB = window.NaekiPB;
-      if (PB && state.profile?.email) {
+      const API = window.NaekiAPI;
+      if (API && state.profile?.email) {
         const { profile, ...owned } = state;
         schedulePush(owned);
       }
@@ -175,8 +175,8 @@
   function schedulePush(owned) {
     if (pushTimer) clearTimeout(pushTimer);
     pushTimer = setTimeout(() => {
-      window.NaekiPB?.userStateUpsert(owned).then(ok => {
-        if (!ok) console.warn("[naeki-pb] user_state upsert failed");
+      window.NaekiAPI?.userStateUpsert(owned).then(ok => {
+        if (!ok) console.warn("[naeki-api] user_state upsert failed");
       }).catch(() => {});
     }, 120);  // coalesce bursts (checkout, stamp taps)
   }
@@ -185,15 +185,15 @@
     /** full state (read-only use) */
     get: () => state,
 
-    /** real PocketBase auth. Async: returns { ok, user?, error? }.
+    /** real backend auth (Neon). Async: returns { ok, user?, error? }.
         Sets the local profile from the authenticated record; staff/portal
         access is driven by the seeded `role` field (franchise_owner /
-        admin / superadmin), not the display name. Loyalty is loaded from the
-        owner-scoped pb collection when present. */
+        admin / superadmin), not the display name. Loyalty + the whole
+        user-owned store are loaded from the owner-scoped rows when present. */
     async signIn(email, password) {
-      const PB = window.NaekiPB;
-      if (!PB) return { ok: false, error: "PocketBase not available" };
-      const res = await PB.signIn(email, password);
+      const API = window.NaekiAPI;
+      if (!API) return { ok: false, error: "Backend not available" };
+      const res = await API.signIn(email, password);
       if (!res.ok) return res;
       const staff = res.isStaff;
       state.profile = {
@@ -206,7 +206,7 @@
       };
       // pull the user's ENTIRE server-side store back (stamps, wallet, gifts,
       // referrals, drafts, loyalty…) — subsumes the old loyalty-only read.
-      const us = await PB.userStateGet();
+      const us = await API.userStateGet();
       if (us && us.data && typeof us.data === "object") {
         const saved = us.data;
         state = {
@@ -226,12 +226,12 @@
 
     async signOut() {
       // flush any pending server-side state before dropping the session
-      const PB = window.NaekiPB;
-      if (PB && state.profile?.email) {
+      const API = window.NaekiAPI;
+      if (API && state.profile?.email) {
         const { profile, ...owned } = state;
-        try { await PB.userStateUpsert(owned); } catch {}
+        try { await API.userStateUpsert(owned); } catch {}
       }
-      window.NaekiPB?.signOut();
+      window.NaekiAPI?.signOut();
       state.profile = null; // stamps/history survive sign-out
       return persist();
     },
@@ -240,11 +240,11 @@
       return !!(state.profile && state.profile.role === "staff");
     },
 
-    /** push loyalty to pb (points/history) after earning/spending */
+    /** push loyalty to the backend (points/history) after earning/spending */
     async persistLoyalty() {
-      const PB = window.NaekiPB;
-      if (!PB || !state.profile?.email) return;
-      await PB.upsertLoyalty({
+      const API = window.NaekiAPI;
+      if (!API || !state.profile?.email) return;
+      await API.upsertLoyalty({
         points: state.loyalty.points,
         lifetime: state.loyalty.lifetime,
         history: state.loyalty.history
@@ -354,7 +354,7 @@
       state.cart = [];
       persist();
       emit();
-      // push the updated loyalty to the local PocketBase (best-effort)
+      // push the updated loyalty to the backend (best-effort)
       if (window.NaekiStore.persistLoyalty) window.NaekiStore.persistLoyalty();
       return receipt;
     },

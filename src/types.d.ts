@@ -1,17 +1,17 @@
-/* NAEKI-PB — project-wide type surface (ambient declarations).
+/* NAEKI — project-wide type surface (ambient declarations).
    Loaded via `/// <reference path>` from each script + tsconfig "include".
    Describes the three window globals the codebase communicates through —
-   NaekiData (data layer), NaekiStore (persistence), NaekiPB (PocketBase
-   client) — plus the PocketBase record shapes as created by pb_migrations
-   and seeded by scripts/seed.mjs. Types are checked at development time
-   (tsc --noEmit, see tsconfig.json) and erased at runtime; the browser
-   never sees this file.
+   NaekiData (data layer), NaekiStore (persistence), NaekiAPI (HTTP client
+   for server/api.mjs) — plus the record shapes as created by
+   db/app-schema.sql and seeded by db/app-data.sql. Types are checked at
+   development time (tsc --noEmit, see tsconfig.json) and erased at runtime;
+   the browser never sees this file.
 
    NOTE on `@ts-ignore`: the app intentionally mutates frozen-in-place
    arrays (MENU.length = 0) so every view re-sources live data without a
    reference swap; ignore markers are scoped to those lines. */
 
-/* ---------- PocketBase record shapes (from pb_migrations/*.js) ---------- */
+/* ---------- record shapes (Neon tables, db/app-schema.sql) ---------- */
 
 type PBRecord = {
   id: string;
@@ -448,8 +448,8 @@ type NaekiDataAPI = {
   refresh: () => void;
 };
 
-/** window.NaekiPB — pb.js. Thin PocketBase REST client. */
-type NaekiPBAPI = {
+/** window.NaekiAPI — api.js. Thin client for server/api.mjs (Neon Postgres). */
+type NaekiAPIAPI = {
   BASE: string;
   signIn: (email: string, password: string) => Promise<{
     ok: boolean;
@@ -460,14 +460,11 @@ type NaekiPBAPI = {
   }>;
   signOut: () => Promise<void>;
   me: () => UsersRecord | null;
-  getLoyalty: () => Promise<LoyaltyRecord | null>;
-  upsertLoyalty: (patch: { points: number; lifetime: number; history: PurchaseRecord[] }) => Promise<LoyaltyRecord | null>;
-  userStateGet: () => Promise<UserStateRecord | null>;
+  getLoyalty: () => Promise<{ points: number; lifetime: number; history: PurchaseRecord[] } | null>;
+  upsertLoyalty: (patch: { points: number; lifetime: number; history: PurchaseRecord[] }) => Promise<{ points: number; lifetime: number; history: PurchaseRecord[] } | null>;
+  userStateGet: () => Promise<{ data: OwnedState | null } | null>;
   userStateUpsert: (data: OwnedState) => Promise<boolean>;
-  notifyList: (filter?: string) => Promise<NotifyRequestRecord[]>;
-  notifyCreate: (payload: Partial<NotifyRequestRecord>) => Promise<NotifyRequestRecord | null>;
-  notifyUpdate: (id: string, patch: Partial<NotifyRequestRecord>) => Promise<NotifyRequestRecord | null>;
-  couponList: (filter?: string) => Promise<CouponRecord[]>;
+  couponList: () => Promise<CouponRecord[]>;
   couponByCode: (code: string) => Promise<CouponRecord | null>;
   promoList: (filter?: string) => Promise<PromotionRecord[]>;
   promoCreate: (payload: Partial<PromotionRecord>) => Promise<PromotionRecord | null>;
@@ -535,8 +532,8 @@ type NaekiStoreAPI = {
 interface Window {
     NaekiData: NaekiDataAPI;
     NaekiStore: NaekiStoreAPI;
-    NaekiPB: NaekiPBAPI;
-    NaekiPBReady?: boolean;
+    NaekiAPI: NaekiAPIAPI;
+    NaekiAPIReady?: boolean;
     NaekiFrames: { define: (name: string, config: FrameConfig) => void; mount: (root?: ParentNode) => void };
     NAEKI: NaekiDataAPI;   // compat alias in data.js
     /** app.js pollApproved() stash of approved/sent promotions (bell feed) */

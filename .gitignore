@@ -15,9 +15,6 @@ branch_links.json
 .DS_Store
 Thumbs.db
 *.log
-# pocketbase binary + live database (machine-local, re-seedable)
-pocketbase
-pb_data/
 
 # dev screenshots
 shot-*.png

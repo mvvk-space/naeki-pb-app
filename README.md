@@ -17,11 +17,21 @@ All UI lives in **`src/`** — the Electron main process only wraps it.
 
 ```bash
 npm install     # already done in this folder
-npm start       # launches the Electron window
+npm run api     # starts the Neon-backed API on :8090 (kept running for dev)
+npm start       # launches the Electron window (spawns the API if not up)
 
 # or, as a website / PWA:
 cd src && python3 -m http.server 8000
 ```
+
+The API server (`server/api.mjs`) talks to the Neon Postgres database
+(`naeki-sushi` project, `neondb`) that holds users, menu, branches, coupons,
+promotions and per-user state. The connection string lives at
+`~/.config/neon/naeki-sushi.dsn` (chmod 600, never committed); override with
+`$NAEKI_DSN`. Schema lives in `db/app-schema.sql`, seed data in `db/app-data.sql`.
+Demo logins: `kate@naeki.dev` / `Kate$12345` (customer), `somchai@naeki.dev` /
+`Somchai$12345` (franchise owner), `marketing@naeki.dev` / `Marketing$12345`
+(approvals). Sessions are in-memory — restart the API and you sign in again.
 
 ## Quality gates
 
@@ -31,7 +41,11 @@ cd src && python3 -m http.server 8000
   390px, both shells, every view. Catches what file checks can't see — horizontal
   overflow, off-viewport elements, grids that didn't collapse, undersized touch
   targets, modals that don't fit. Also runs in `.githooks/pre-commit`.
-- `npm run check:all` — both, in order.
+- `npm test` — vitest unit suites (coupon engine, loyalty math, milestones,
+  wallet) over the browser-IIFE sandbox.
+- `npm run test:e2e` — Playwright end-to-end: the full app in Electron against
+  the live API (sign-in → cart → coupon → checkout), plus the plain-HTML
+  browser project. Requires `npm run api` up (globalSetup checks).
 - `NAEKI_AUDIT_BREAK=1 npm run check:mobile` — audit self-test: plants a 520px
   defect in the active view; the audit must catch it (exit 0 = detector works).
 - Skip in a pinch: `NAEKI_SKIP_MOBILE=1 git commit` (mobile only) or

@@ -60,10 +60,10 @@
   let mode = S.get().profile ? "app" : "landing";
   function isStaff() { return S.isStaff(); }
 
-  /* signed-in routing: staff logins (admin/franchisee/marketing) land on the
-     partner portal; everyone else lands on the customer menu. */
+  /* signed-in routing: everyone lands on the customer app (one app, one
+     sign-in). Staff reach their Portal via the staff-only nav link. */
   function defaultView() {
-    return isStaff() ? "partners" : "menu";
+    return "menu";
   }
   function goToView(name) {
     if (!name) return;                          // guard: button without data-view
@@ -165,17 +165,19 @@
   const SEGMENT_PARENT = { menu: null, cart: "menu", branches: "menu" };
 
   /* sign-in handoff: flip to app mode, then land on the CTA's target (if any)
-     instead of the default view — "All branches in the app →" reaches branches */
+     instead of the default view — "All branches in the app →" reaches branches.
+     One sign-in for everyone: staff land on the same target; their Portal is
+     one nav click away (side link + phone tab), so they dogfood the customer
+     app instead of being walled off from it. */
   function enterApp(view) {
     applyMode(false);                     // don't bounce through the default
-    // staff logins always route to the portal; consumer names honor the CTA
-    goToView(isStaff() ? "partners" : (view || "menu"));
+    goToView(view || "menu");
   }
 
   $$(".side-link").forEach(btn => {
     btn.addEventListener("click", () => goToView(btn.dataset.view));
   });
-  $("#brand-home").addEventListener("click", () => goToView(isStaff() ? "partners" : "menu"));
+  $("#brand-home").addEventListener("click", () => goToView("menu"));
 
   // secondary nav (landing header brand + section links, landing "read more" links)
   $$("button[data-view]:not(.side-link):not(.lp-link)").forEach(btn => {
@@ -199,7 +201,7 @@
     $("#signin-name").focus();
   }
   function closeSignin() { signin.hidden = true; }
-  ["#lp-signin", "#home-open-app", "#cta-open-app", "#hours-open-app", "#lmenu-order-now", "#lp-portal-signin"].forEach(sel => {
+  ["#lp-signin", "#home-open-app", "#cta-open-app", "#hours-open-app", "#lmenu-order-now"].forEach(sel => {
     $(sel).addEventListener("click", openSignin);
   });
   $$("#signin [data-close]").forEach(el => el.addEventListener("click", closeSignin));
@@ -216,8 +218,8 @@
     demos.innerHTML = `
       <span class="signin-demos-label">Quick-fill:</span>
       <button type="button" class="signin-demo-chip" data-email="kate@naeki.dev" data-pass="Kate$12345">kate · customer</button>
-      <button type="button" class="signin-demo-chip" data-email="somchai@naeki.dev" data-pass="Somchai$12345">somchai · franchise</button>
-      <button type="button" class="signin-demo-chip" data-email="admin@naeki.dev" data-pass="Admin$12345">admin · superuser</button>`;
+      <button type="button" class="signin-demo-chip" data-email="somchai@naeki.dev" data-pass="Somchai$12345">somchai · franchise owner</button>
+      <button type="button" class="signin-demo-chip" data-email="marketing@naeki.dev" data-pass="Marketing$12345">marketing · approvals</button>`;
     const err = document.createElement("p");
     err.id = "signin-error";
     err.className = "signin-error";
@@ -254,7 +256,7 @@
       if (isStaff() && typeof renderPt === "function") renderPt();
     } else {
       // inline, in-place, no alert() — the modal keeps focus and the typed email
-      const why = !window.NaekiPB ? "PocketBase isn't running — start it with: npm run pb"
+      const why = !window.NaekiAPI ? "Backend isn't running — start it with: npm run api"
         : (res && res.error) || "Sign in failed";
       if (err) err.textContent = why;
       else alert(why);
@@ -263,14 +265,14 @@
     }
   });
   $("#side-signout").addEventListener("click", async () => {
-    await S.signOut();     // flush store to PB first, THEN re-render (async now)
+    await S.signOut();     // flush store to the backend first, THEN re-render (async now)
     applyMode();
   });
 
   /* ---------------- Partner portal (landing) — the send-flow demo ----------------
-     Two local personas, one store. Franchisee drafts for their branch, submits;
-     marketing admin approves → published (to a seeded subscriber count) and merged
-     into the offers feed. Everything stays on-device — see the portal disclaimer. */
+     Franchisee drafts for their branch, submits; marketing admin approves →
+     published (to a seeded subscriber count) and merged into the offers feed.
+     State lives in the Neon backend — see the portal disclaimer. */
   /** @returns {(HTMLElement & Partial<HTMLInputElement>) | null} — pragmatic: id lookups are mostly form controls; DOM-only usages still check. */
   const $id = (x) => document.getElementById(x);
   /** current value of a form control by id ("" when absent) */
@@ -286,7 +288,7 @@
   function fillBranchSel() {
     if (!branchSel) return;
     branchSel.innerHTML = D.BRANCHES.map(b =>
-      `<option value="${b.name}">${b.name}</option>`).join("");
+      `<option value="${escapeHtml(b.name)}">${escapeHtml(b.name)}</option>`).join("");
   }
   fillBranchSel();
 
@@ -297,15 +299,15 @@
     const type = r.type || "offer";
     const branch = r.branch ? D.shortName({ name: r.branch }) : "Naeki";
     return `\
-      <div class="notif-card" data-type="${type}">
+      <div class="notif-card" data-type="${escapeHtml(type)}">
         <div class="notif-meta">
-          <span class="notif-type">${PT_TYPE[type] || type}</span>
-          <span class="notif-when">${r.when ? r.when : ""}</span>
-          <span class="notif-branch">${branch}</span>
+          <span class="notif-type">${PT_TYPE[type] || escapeHtml(type)}</span>
+          <span class="notif-when">${escapeHtml(r.when || "")}</span>
+          <span class="notif-branch">${escapeHtml(branch)}</span>
         </div>
-        <div class="notif-title">${r.title}</div>
-        <p class="notif-body">${r.body}</p>
-        ${r.ctaLabel ? `<div class="notif-actions"><button class="btn accent sm" type="button">${r.ctaLabel}</button></div>` : ""}
+        <div class="notif-title">${escapeHtml(r.title || "")}</div>
+        <p class="notif-body">${escapeHtml(r.body || "")}</p>
+        ${r.ctaLabel ? `<div class="notif-actions"><button class="btn accent sm" type="button">${escapeHtml(r.ctaLabel)}</button></div>` : ""}
       </div>`;
   }
 
@@ -321,9 +323,9 @@
 
   function renderPt() {
     if (!myDraftsEl) return;
-    const PB = window.NaekiPB;
-    if (!PB) return;
-    const me = PB.me && PB.me();
+    const API = window.NaekiAPI;
+    if (!API) return;
+    const me = API.me && API.me();
     const persona = portalPersona();
 
     // branch lock: franchise owners compose for their OWN seeded branch
@@ -331,7 +333,7 @@
     if (branchSel) {
       if (lockBranch) branchSel.value = persona.branchId;   // set (and it's not user-changeable below)
       else branchSel.innerHTML = D.BRANCHES.map(b =>
-        `<option value="${b.name}">${D.shortName({ name: b.name })}</option>`).join("");
+        `<option value="${escapeHtml(b.name)}">${escapeHtml(D.shortName({ name: b.name }))}</option>`).join("");
     }
     if (branchSel) {
       branchSel.disabled = !!lockBranch;    // franchise owner can't shop branches
@@ -349,11 +351,11 @@
         ? mine.map(d => `\
             <div class="pt-item">
               <div class="pt-item-top">
-                <span class="pt-tag">${PT_STATUS[d.status] || d.status}</span>
-                <span class="pt-branch">${D.shortName({ name: d.branch }) || ""}</span>
+                <span class="pt-tag">${PT_STATUS[d.status] || escapeHtml(d.status)}</span>
+                <span class="pt-branch">${escapeHtml(D.shortName({ name: d.branch }) || "")}</span>
               </div>
-              <div class="pt-item-title">${d.title}</div>
-              <p>${d.body}</p>
+              <div class="pt-item-title">${escapeHtml(d.title || "")}</div>
+              <p>${escapeHtml(d.body || "")}</p>
               <div class="pt-item-actions">
                 ${d.status === "pending" && !persona.isAdmin
                   ? `<button class="btn ghost sm" data-ptdel="${d.id}">Withdraw</button>` : ""}
@@ -362,7 +364,7 @@
         : `<div class="pt-empty">No promotions yet — compose one above and submit for approval${persona.isAdmin ? " (or review below)" : ""}.</div>`;
       myDraftsEl.querySelectorAll("[data-ptdel]").forEach(btn =>
         btn.addEventListener("click", async () => {
-          await PB.promoUpdate((/** @type {HTMLElement} */ (btn)).dataset.ptdel, { status: "draft" });
+          await API.promoUpdate((/** @type {HTMLElement} */ (btn)).dataset.ptdel, { status: "draft" });
           refreshPt();
         }));
     };
@@ -375,10 +377,10 @@
               <div class="pt-item">
                 <div class="pt-item-top">
                   <span class="pt-tag">${PT_STATUS.pending}</span>
-                  <span class="pt-branch">${D.shortName({ name: d.branch }) || ""}</span>
+                  <span class="pt-branch">${escapeHtml(D.shortName({ name: d.branch }) || "")}</span>
                 </div>
-                <div class="pt-item-title">${d.title}</div>
-                <p>${d.body}</p>
+                <div class="pt-item-title">${escapeHtml(d.title || "")}</div>
+                <p>${escapeHtml(d.body || "")}</p>
                 <div class="pt-item-actions">
                   <button class="btn accent sm" data-ptapprove="${d.id}">Approve & send</button>
                   <button class="btn ghost sm" data-ptreturn="${d.id}">Reject / return</button>
@@ -388,12 +390,12 @@
         : `<div class="pt-empty">Approval queue is for admins only.</div>`;
       reviewEl.querySelectorAll("[data-ptapprove]").forEach(btn =>
         btn.addEventListener("click", async () => {
-          await PB.promoUpdate((/** @type {HTMLElement} */ (btn)).dataset.ptapprove, { status: "approved", reviewedAt: Date.now() });
+          await API.promoUpdate((/** @type {HTMLElement} */ (btn)).dataset.ptapprove, { status: "approved", reviewedAt: Date.now() });
           refreshPt(); syncBellAndPop();
         }));
       reviewEl.querySelectorAll("[data-ptreturn]").forEach(btn =>
         btn.addEventListener("click", async () => {
-          await PB.promoUpdate((/** @type {HTMLElement} */ (btn)).dataset.ptreturn, { status: "rejected" });
+          await API.promoUpdate((/** @type {HTMLElement} */ (btn)).dataset.ptreturn, { status: "rejected" });
           refreshPt();
         }));
     };
@@ -406,7 +408,7 @@
         : `<div class="pt-empty">Nothing sent yet — approved promotions land here.</div>`;
     };
     const refreshPt = async () => {
-      const rows = await PB.promoList();
+      const rows = await API.promoList();
       const owned = me ? rows.filter(r => {
         // owners see their own; admins see all
         if (persona.isAdmin) return true;
@@ -469,15 +471,15 @@
   // fill branch select once
   if (branchSel) {
     branchSel.innerHTML = D.BRANCHES.map(b =>
-      `<option value="${b.name}">${D.shortName({ name: b.name })}</option>`).join("");
+      `<option value="${escapeHtml(b.name)}">${escapeHtml(D.shortName({ name: b.name }))}</option>`).join("");
   }
   wirePreview();
 
   const draftForm = $id("pt-draft-form");
   draftForm && draftForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const PB = window.NaekiPB;
-    if (!PB) return alert("PocketBase not available");
+    const API = window.NaekiAPI;
+    if (!API) return alert("Backend not available");
     const persona = portalPersona();
     // franchise owners can only compose for their own branch (locked in renderPt)
     const branch = (branchSel && branchSel.value) || persona.branchId;
@@ -493,7 +495,7 @@
       status: /** @type {"pending"} */ ("pending"),
       created: Date.now(),
     };
-    const made = await PB.promoCreate(payload);
+    const made = await API.promoCreate(payload);
     if (made) {
       ["pt-title", "pt-text", "pt-when", "pt-cta-label", "pt-cta-url"].forEach(id => { const el = $id(id); if (el) (/** @type {HTMLInputElement} */ (el)).value = ""; });
       renderPt();
@@ -1066,9 +1068,9 @@
     const cpnRow = applied
       ? `<div class="cpn-row applied">
           <div class="cpn-chip">
-            <span class="cpn-code">${applied.code}</span>
-            <span class="cpn-title">${applied.title || applied.type}</span>
-            <button class="cpn-x" id="cpn-remove" aria-label="Remove coupon ${applied.code}">×</button>
+            <span class="cpn-code">${escapeHtml(applied.code)}</span>
+            <span class="cpn-title">${escapeHtml(applied.title || applied.type)}</span>
+            <button class="cpn-x" id="cpn-remove" aria-label="Remove coupon ${escapeHtml(applied.code)}">×</button>
           </div>
           ${problem ? `<p class="cpn-note">${escapeHtml(problem)}</p>` : ""}
         </div>`
@@ -1115,10 +1117,10 @@
       const note = foot.querySelector("#cpn-note");
       const code = input.value.trim().toUpperCase();
       if (!code) { note.textContent = "Type a code first."; return; }
-      const PB = window.NaekiPB;
-      if (!PB || !PB.couponByCode) { note.textContent = "Coupons need the local PocketBase running."; return; }
+      const API = window.NaekiAPI;
+      if (!API || !API.couponByCode) { note.textContent = "Coupons need the backend running."; return; }
       note.textContent = "Checking " + code + "…";
-      const rec = await PB.couponByCode(code);
+      const rec = await API.couponByCode(code);
       if (!rec) {
         note.textContent = `“${code}” isn't a Naeki coupon. Try NAEKI10 or WELCOME.`;
         return;
@@ -1303,9 +1305,9 @@
     offerPop.innerHTML = `
       <div class="offer-pop-card ${o.personal ? "personal" : ""}">
         <button class="offer-pop-x" data-ack="popup" aria-label="Acknowledge offer">×</button>
-        <div class="offer-pop-kicker">${o.kicker}${o.personal ? " · just for you" : ""}</div>
-        <div class="offer-pop-title">${o.title}</div>
-        <p>${o.text}</p>
+        <div class="offer-pop-kicker">${escapeHtml(o.kicker)}${o.personal ? " · just for you" : ""}</div>
+        <div class="offer-pop-title">${escapeHtml(o.title)}</div>
+        <p>${escapeHtml(o.text)}</p>
         <div class="offer-pop-actions">
           <button class="btn ghost" data-ack="popup">Got it</button>
           <button class="btn accent" data-cta="rewards">See rewards</button>
@@ -1398,15 +1400,15 @@
           const label = { offer: "Offer", event: "Event", update: "News" }[t] || "Update";
           return `
             <div class="rw-offer branch ${acked ? "acked" : "live"}">
-              <div class="notif-card" data-type="${t}">
+              <div class="notif-card" data-type="${escapeHtml(t)}">
                 <div class="notif-meta">
-                  <span class="notif-type">${label}</span>
-                  <span class="notif-when">${o.when || recency.replace(/<[^>]+>/g, "")}</span>
-                  <span class="notif-branch">${(o.branchId ? D.shortName({ name: o.branchId }) : "")}</span>
+                  <span class="notif-type">${escapeHtml(label)}</span>
+                  <span class="notif-when">${escapeHtml(o.when || recency.replace(/<[^>]+>/g, ""))}</span>
+                  <span class="notif-branch">${escapeHtml(o.branchId ? D.shortName({ name: o.branchId }) : "")}</span>
                 </div>
-                <div class="notif-title">${o.title}</div>
-                <p class="notif-body">${o.text}</p>
-                ${o.ctaLabel ? `<div class="notif-actions"><button class="btn accent sm" type="button">${o.ctaLabel}</button>
+                <div class="notif-title">${escapeHtml(o.title)}</div>
+                <p class="notif-body">${escapeHtml(o.text)}</p>
+                ${o.ctaLabel ? `<div class="notif-actions"><button class="btn accent sm" type="button">${escapeHtml(o.ctaLabel)}</button>
                   ${acked ? "" : `<button class="rw-offer-ack" data-ackkey="${o.key}">Got it</button>`}</div>` : ""}
                 ${!o.ctaLabel && !acked && o.live ? `<div class="notif-actions"><button class="btn ghost sm" data-ackkey="${o.key}">Got it</button></div>` : ""}
                 ${acked ? `<span class="rw-offer-seen">Seen ✓</span>` : ""}
@@ -1420,8 +1422,8 @@
               <div class="rw-offer-kicker">${sourceNote || o.kicker}${o.personal ? " · just for you" : ""}</div>
               ${recency}
             </div>
-            <div class="rw-offer-title">${o.title}</div>
-            <p>${o.text}</p>
+            <div class="rw-offer-title">${escapeHtml(o.title)}</div>
+            <p>${escapeHtml(o.text)}</p>
             ${acked ? `<span class="rw-offer-seen">Seen ✓</span>`
               : o.live ? `<button class="rw-offer-ack" data-ackkey="${o.key}">✓ Got it</button>`
               : ""}
@@ -1642,9 +1644,9 @@
   // franchise composer → approval → delivery loop).
   (function pollApproved() {
     window.__approvedRequests = window.__approvedRequests || [];
-    const PB = window.NaekiPB;
-    if (!PB || !PB.me || !PB.me()) { setTimeout(pollApproved, 30000); return; }
-    PB.promoList("status='approved' || status='sent'").then(rows => {
+    const API = window.NaekiAPI;
+    if (!API || !API.me || !API.me()) { setTimeout(pollApproved, 30000); return; }
+    API.promoList("status='approved' || status='sent'").then(rows => {
       const prev = (window.__approvedRequests || []).length;
       window.__approvedRequests = rows;
       const fresh = rows.length > prev;
@@ -1739,7 +1741,7 @@
     if (MM_REF_CODES && S.referralCodesState().length) {
       MM_REF_CODES.innerHTML = S.referralCodesState()
         .slice(0, 3)
-        .map(c => `<div class="mm-ref-row"><code>${c.code}</code><span>${fmtWhen(c.created)}</span></div>`)
+        .map(c => `<div class="mm-ref-row"><code>${escapeHtml(c.code)}</code><span>${fmtWhen(c.created)}</span></div>`)
         .join("");
     }
 

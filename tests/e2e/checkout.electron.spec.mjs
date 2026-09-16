@@ -1,4 +1,4 @@
-/* Electron e2e: the full app with real PocketBase behind it.
+/* Electron e2e: the full app with the real Neon-backed API behind it.
    Flow 1: sign in as kate (customer) -> app shell
    Flow 2: add to cart -> coupon NAEKI10 -> checkout -> receipt */
 import { test, expect } from "@playwright/test";
@@ -35,8 +35,11 @@ test("cart: add, apply NAEKI10, checkout, receipt", async () => {
     await expect(win.locator("body")).toHaveAttribute("data-mode", "app");
   }
 
-  // go to the order view's menu segment and add a dish
-  const dish = win.locator(".view.active .dish", { hasText: "Salmon Nigiri" }).first();
+  // go to the order view's menu segment and add a dish (default brand is
+  // Naeki GO! — pick a GO! item; the sushi-brand menu is a brand toggle away).
+  // Scoped to the app shell: the hidden landing shell also has .view.active
+  // sections with display-only dish cards (no steppers) that would win .first().
+  const dish = win.locator("#main .view.active .dish", { hasText: "Roasted Salmon" }).first();
   await dish.locator(".d-plus").click();
   await expect(win.locator("#cart-badge")).not.toBeHidden();
   await expect(win.locator("#cart-badge")).toHaveText(/^([1-9]|10)$/);

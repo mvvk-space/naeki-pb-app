@@ -773,25 +773,24 @@ window.NaekiData = (() => {
     };
   }
 
-  /* ---- the "backend feed": in production this becomes a fetch()/SSE
-     poll of the real Naeki backend; here the interval stands in and
-     republishes so every frame re-sources itself from this module.
-     The rotation makes the refresh visible; hours edits propagate the
-     same way. ---- */
+  /* ---- the "backend feed": poll the Neon-backed API for the reference
+     data (menu/branches/milestones), then republish so every frame
+     re-sources itself from this module. The rotation makes the refresh
+     visible; hours edits propagate the same way. ---- */
   async function pbHydrate() {
     try {
-      const r = await fetch("http://127.0.0.1:8090/api/collections/menu_item/records?perPage=200");
+      const r = await fetch("http://127.0.0.1:8090/api/menu");
       const m = await r.json();
       if (m.items && m.items.length) {
         const byGroup = {};
         for (const it of m.items) {
           const k = it.group_id || "other";
-          (byGroup[k] = byGroup[k] || []).push({ name: it.name, price: it.price, sub: it.sub || "", img: it.img || "", story: it.story || "" });
+          (byGroup[k] = byGroup[k] || []).push({ name: it.name, price: Number(it.price) || 0, sub: it.sub || "", img: it.img || "", story: it.story || "" });
         }
         const newMenu = MENU.map(g => ({ ...g, items: byGroup[g.id] || g.items }));
         MENU.length = 0; MENU.push(...newMenu);
       }
-      const rb = await fetch("http://127.0.0.1:8090/api/collections/branch/records?perPage=50");
+      const rb = await fetch("http://127.0.0.1:8090/api/branches");
       const b = await rb.json();
       if (b.items && b.items.length) {
         BRANCHES.length = 0;
@@ -799,11 +798,11 @@ window.NaekiData = (() => {
       }
       // milestones: hydrate the seven achievements from the DB (overrides the
       // hard-coded default when rows exist; order by the seeded `order`)
-      const mr = await fetch("http://127.0.0.1:8090/api/collections/milestone/records?perPage=50&sort=order");
+      const mr = await fetch("http://127.0.0.1:8090/api/milestones");
       const ms = await mr.json();
       if (ms.items && ms.items.length) {
         const mapped = ms.items
-          .map(x => ({ id: x.id, kicker: x.kicker, title: x.title, text: x.text, pts: x.pts, jp: x.jp, order: x.order }))
+          .map(x => ({ id: x.id, kicker: x.kicker, title: x.title, text: x.text, pts: Number(x.pts) || 0, jp: x.jp, order: x.order }))
           .sort((a, b) => (a.order ?? 9) - (b.order ?? 9));
         if (mapped.length) { MILESTONES.length = 0; MILESTONES.push(...mapped); }
       }

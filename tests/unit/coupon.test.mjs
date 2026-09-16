@@ -1,4 +1,4 @@
-/* Coupon engine — pure logic, no PocketBase, no network. */
+/* Coupon engine — pure logic, no backend, no network. */
 import { describe, it, expect, beforeEach } from "vitest";
 import { S } from "../helpers/sandbox.mjs";
 

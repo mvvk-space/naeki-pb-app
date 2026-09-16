@@ -1,6 +1,6 @@
-// Throwaway smoke harness for the coupon pass: loads data.js + store.js + pb.js
+// Throwaway smoke harness for the coupon pass: loads data.js + store.js + api.js
 // in a sandbox with a localStorage stub and drives apply → checkout against the
-// LIVE PocketBase. Run: node scripts/smoke-coupon.mjs
+// LIVE API (Neon-backed). Run: node scripts/smoke-coupon.mjs
 import fs from "node:fs";
 import vm from "node:vm";
 import path from "node:path";
@@ -27,12 +27,12 @@ const sandbox = {
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 const ctx = vm.createContext(sandbox);
-for (const f of ["data.js", "pb.js", "store.js"]) {
+for (const f of ["data.js", "api.js", "store.js"]) {
   vm.runInContext(fs.readFileSync(path.join(root, "src", f), "utf8"), ctx, { filename: f });
 }
 
 const S = sandbox.window.NaekiStore;
-const PB = sandbox.window.NaekiPB;
+const PB = sandbox.window.NaekiAPI;
 let fails = 0;
 const ok = (name, cond, extra = "") => {
   if (cond) console.log("  ✓", name);
@@ -45,8 +45,8 @@ const mkCoupon = (over = {}) => ({
   usageLimit: 0, usedCount: 0, ...over
 });
 
-// ---- live pb: coupon lookup ----
-console.log("pb coupon lookups (live PocketBase):");
+// ---- live api: coupon lookup ----
+console.log("coupon lookups (live Neon API):");
 ok("couponByCode finds NAEKI10", (await PB.couponByCode("naeki10"))?.code === "NAEKI10");
 ok("couponByCode unknown → null", (await PB.couponByCode("NOPE123")) === null);
 ok("couponByCode empty → null", (await PB.couponByCode("  ")) === null);

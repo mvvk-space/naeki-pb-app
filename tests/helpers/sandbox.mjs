@@ -1,6 +1,6 @@
-/* Shared sandbox loader for the browser IIFE modules (data.js / pb.js / store.js).
+/* Shared sandbox loader for the browser IIFE modules (data.js / api.js / store.js).
    Same trick as scripts/smoke-coupon.mjs: a vm context with browser shims, no jsdom.
-   The sandbox has NO network unless the test dials the real PocketBase explicitly. */
+   The sandbox has NO network unless the test dials the real API explicitly. */
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";

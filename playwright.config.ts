@@ -1,14 +1,14 @@
 import { defineConfig } from "@playwright/test";
 
 const APP_URL = process.env.NAEKI_APP_URL || "http://127.0.0.1:8931/index.html";
-const PB_URL = process.env.NAEKI_PB_URL || "http://127.0.0.1:8090/api/health";
+const API_URL = process.env.NAEKI_PB_URL || "http://127.0.0.1:8090/api/health";
 
 export default defineConfig({
   globalSetup: "tests/e2e/global-setup.mjs",
   testDir: "tests/e2e",
   timeout: 45_000,
   expect: { timeout: 8_000 },
-  fullyParallel: false, // one PocketBase, one seeded world — keep runs serial
+  fullyParallel: false, // one API server, one seeded world — keep runs serial
   workers: 1,
   retries: 0,
   reporter: [["list"]],
@@ -25,7 +25,7 @@ export default defineConfig({
   },
   projects: [
     {
-      // full app via Electron (PocketBase-backed flows)
+      // full app via Electron (Neon-API-backed flows)
       name: "electron",
       testMatch: /.*\.electron\.spec\.mjs/,
       use: { appUrl: undefined },
@@ -38,5 +38,5 @@ export default defineConfig({
       use: { baseURL: APP_URL, appUrl: undefined },
     },
   ],
-  metadata: { pocketbaseHealth: PB_URL },
+  metadata: { apiHealth: API_URL },
 });

@@ -1,14 +1,12 @@
 {
   "name": "naeki-pb-app",
-  "productName": "Naeki Sushi Showcase · PocketBase",
-  "version": "2.11.1-pb",
-  "description": "Naeki showcase backed by a local PocketBase (real auth + seeded menu/branches)",
+  "productName": "Naeki Sushi Showcase · Neon",
+  "version": "2.12.0-neon",
+  "description": "Naeki showcase backed by Neon Postgres via a thin local API (real auth + seeded menu/branches)",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "pb": "pocketbase serve --http=127.0.0.1:8090 --dir=pb_data",
-    "seed": "node scripts/seed.mjs",
-    "pb:init": "pocketbase superuser upsert 'admin@naeki.dev' 'Naeki$Dev123' && pocketbase serve --http=127.0.0.1:8090 --dir=pb_data",
+    "api": "node server/api.mjs",
     "check": "node scripts/validate.mjs",
     "check:mobile": "electron scripts/audit-mobile.js",
     "test": "vitest run",
@@ -29,7 +27,7 @@
     "vitest": "^5.0.0"
   },
   "dependencies": {
-    "pocketbase": "^0.28.1",
+    "pg": "^8.23.0",
     "zod": "^4.6.5"
   }
 }

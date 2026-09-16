@@ -1,6 +1,6 @@
-/* Global setup for Playwright runs: require a healthy PocketBase on :8090.
-   The dev workflow keeps PB running (npm run pb); the e2e suite refuses to
-   guess — if PB is down, the run fails fast with an explicit message. */
+/* Global setup for Playwright runs: require a healthy API server on :8090.
+   `npm run api` (or `npm start`, which spawns it) keeps it running; the
+   e2e suite refuses to guess — if the API is down, the run fails fast. */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,22 +17,22 @@ export default async function globalSetup() {
   } catch {}
   if (!healthy) {
     throw new Error(
-      `[naeki-e2e] PocketBase is not reachable at ${base}.\n` +
-      `Start it first:  npm run pb   (or: npm run pb:init for a fresh superuser + serve)`
+      `[naeki-e2e] The API server is not reachable at ${base}.\n` +
+      `Start it first:  npm run api`
     );
   }
   // the seeded demo accounts the flows rely on
-  const r = await fetch(`${base}/api/collections/users/auth-with-password`, {
+  const r = await fetch(`${base}/api/auth/sign-in`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identity: "kate@naeki.dev", password: "Kate$12345" }),
+    body: JSON.stringify({ email: "kate@naeki.dev", password: "Kate$12345" }),
     signal: AbortSignal.timeout(5000),
   });
   if (!r.ok) {
     throw new Error(
-      `[naeki-e2e] PocketBase is up but the seeded users are missing (kate login failed, HTTP ${r.status}).\n` +
-      `Run: npm run seed`
+      `[naeki-e2e] The API is up but sign-in failed (HTTP ${r.status}) — check the Neon users table.\n` +
+      `DSN: ~/.config/neon/naeki-sushi.dsn  (schema: db/app-schema.sql, data: db/app-data.sql)`
     );
   }
-  fs.writeFileSync(path.join(root, "tests", "e2e", ".pb-ready"), "ok");
+  fs.writeFileSync(path.join(root, "tests", "e2e", ".api-ready"), "ok");
 }

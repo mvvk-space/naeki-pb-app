@@ -1,6 +1,6 @@
 // Throwaway rendered-DOM audit for the coupon pass (offscreen Electron).
-// Loads the real src/index.html against the live PocketBase, signs a demo
-// user in, applies a coupon, and asserts the cart + sign-in DOM actually
+// Loads the real src/index.html against the live API (Neon-backed), signs a
+// demo user in, applies a coupon, and asserts the cart + sign-in DOM actually
 // paints it. Not part of the pre-commit gate — run manually:
 //   npx electron scripts/audit-coupon-dom.js
 const { app, BrowserWindow } = require('electron');
@@ -25,7 +25,7 @@ app.whenReady().then(async () => {
 
   const result = await win.webContents.executeJavaScript(`(async () => {
     const $ = s => document.querySelector(s);
-    const S = window.NaekiStore, PB = window.NaekiPB;
+    const S = window.NaekiStore, PB = window.NaekiAPI;
     const out = { errors: [] };
     try {
       // sign-in helpers injected?

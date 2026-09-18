@@ -9,14 +9,17 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, "..", "..");
 
-export function makeSandbox({ files = ["data.js", "store.js"] } = {}) {
+export function makeSandbox({ files = ["data.js", "store.js"], seed } = {}) {
   const mem = new Map();
+  // optional pre-seeded localStorage (e.g. a persisted state blob) so the
+  // modules' load() round-trip guards run against real saved values
+  if (seed) for (const [k, v] of Object.entries(seed)) mem.set(k, String(v));
   const sandbox = {
     console,
     fetch: () => Promise.resolve({ ok: false, status: 0, json: async () => ({}) }),
     setTimeout, clearTimeout, setInterval, clearInterval,
     structuredClone, Date, Math, JSON, Number, String, Boolean, Array, Object,
-    performance,
+    URL, performance,
     localStorage: {
       getItem: (k) => (mem.has(k) ? mem.get(k) : null),
       setItem: (k, v) => mem.set(k, String(v)),

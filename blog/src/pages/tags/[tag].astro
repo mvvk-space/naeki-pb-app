@@ -1,0 +1,54 @@
+---
+import Base from "@/layouts/Base.astro";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { getCollection } from "astro:content";
+import { tagCounts, tagHref, tagSlug, fmtDate, publishedPosts, type Post } from "@/lib/blog";
+
+export async function getStaticPaths() {
+  const posts = publishedPosts(await getCollection("blog"));
+  return tagCounts(posts).map(({ tag, count }) => ({
+    params: { tag: tagSlug(tag) },
+    props: { tag, count, posts: posts.filter((p) => p.data.tags.includes(tag)) },
+  }));
+}
+
+const { tag, count, posts } = Astro.props as { tag: string; count: number; posts: Post[] };
+---
+
+<Base title={`${tag} — Naeki Journal`} description={`Posts tagged “${tag}” on the Naeki Journal.`}>
+  <a href="/tags" class="text-sm text-muted-foreground transition-colors hover:text-foreground">
+    ← All tags
+  </a>
+  <div class="mt-6 flex flex-wrap items-center gap-3">
+    <h1 class="text-3xl font-semibold">{tag}</h1>
+    <Badge variant="outline">{count} {count === 1 ? "post" : "posts"}</Badge>
+  </div>
+
+  <ul class="mt-10 space-y-4">
+    {posts.map((post) => (
+      <li>
+        <Card className="transition-colors hover:border-line-hover">
+          <CardHeader>
+            <div class="flex flex-wrap items-center gap-3">
+              <time datetime={post.data.pubDate.toISOString()} class="text-xs text-muted-foreground">
+                {fmtDate(post.data.pubDate, "short")}
+              </time>
+              {post.data.tags.map((t) => (
+                <a href={tagHref(t)} class="no-underline">
+                  <Badge variant={t === tag ? "gold" : "outline"} className="transition-colors hover:border-gold/60">{t}</Badge>
+                </a>
+              ))}
+            </div>
+            <CardTitle className="mt-2 text-lg">
+              <a href={`/blog/${post.id}`} class="transition-colors hover:text-gold-bright">
+                {post.data.title}
+              </a>
+            </CardTitle>
+            <CardDescription>{post.data.description}</CardDescription>
+          </CardHeader>
+        </Card>
+      </li>
+    ))}
+  </ul>
+</Base>

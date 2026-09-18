@@ -1,0 +1,48 @@
+---
+import Base from "@/layouts/Base.astro";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { getCollection } from "astro:content";
+import { fmtDate, tagHref, publishedPosts } from "@/lib/blog";
+
+const posts = publishedPosts(await getCollection("blog"));
+---
+
+<Base title="Journal — Naeki">
+  <div class="flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold">The journal</h1>
+      <p class="mt-3 text-muted-foreground">
+        {posts.length} {posts.length === 1 ? "post" : "posts"} · written in Markdown, rendered by Astro.
+      </p>
+    </div>
+    <a href="/tags" class="text-sm text-gold transition-colors hover:text-gold-bright">Browse tags →</a>
+  </div>
+
+  <ul class="mt-10 space-y-4">
+    {posts.map((post) => (
+      <li>
+        <Card className="transition-colors hover:border-line-hover">
+          <CardHeader>
+            <div class="flex flex-wrap items-center gap-3">
+              <time datetime={post.data.pubDate.toISOString()} class="text-xs text-muted-foreground">
+                {fmtDate(post.data.pubDate, "short")}
+              </time>
+              {post.data.tags.map((tag) => (
+                <a href={tagHref(tag)} class="no-underline">
+                  <Badge variant="outline" className="transition-colors hover:border-gold/60">{tag}</Badge>
+                </a>
+              ))}
+            </div>
+            <CardTitle className="mt-2 text-lg">
+              <a href={`/blog/${post.id}`} class="transition-colors hover:text-gold-bright">
+                {post.data.title}
+              </a>
+            </CardTitle>
+            <CardDescription>{post.data.description}</CardDescription>
+          </CardHeader>
+        </Card>
+      </li>
+    ))}
+  </ul>
+</Base>

@@ -8,6 +8,8 @@
   <title>Naeki Sushi &amp; Go! — Bangkok Showcase</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="shadcn.css" />
+  <link rel="stylesheet" href="tailwind.css" />
   <link rel="icon" href="assets/icon.png" />
 </head>
 <body data-mode="landing">
@@ -104,6 +106,7 @@
         <button class="lp-link" data-view="about">About Us</button>
         <button class="lp-link" data-view="franchise">Franchise</button>
         <button class="lp-link" data-view="servicedesk">Customer Service</button>
+        <button class="lp-link" data-view="uikit">UI Kit</button>
       </nav>
       <button class="btn accent" id="lp-signin">Open the app</button>
     </header>
@@ -190,6 +193,20 @@
           </div>
         </div>
       </div>
+
+      <!-- journal: the Astro blog's latest posts — NaekiJournal fetches the
+           feed (API origin /rss.xml, served from blog/dist) and renders the
+           cards here; the last good feed stays cached for offline -->
+      <div class="home-featured-head sec-head" id="journal-head" hidden>
+        <h3>From the journal</h3>
+        <span class="rule"></span>
+        <button class="link-more" id="journal-open">All articles →</button>
+      </div>
+      <p class="home-featured-sub" id="journal-sub" hidden>
+        Notes from the case and the counter — what onigiri is, where Grab &amp; Go
+        in Thailand is heading, fresh from the journal.
+      </p>
+      <div class="journal-grid" id="journal-strip" hidden><!-- live: blog RSS via NaekiJournal --></div>
 
       <!-- CTA band -->
       <div class="fr-cta home-cta">
@@ -675,6 +692,503 @@
             Official Account, which is how Naeki handles large orders, party
             trays and customer service. Replies, ordering and delivery happen
             inside LINE (including LINE MAN).
+          </p>
+        </div>
+      </section>
+
+<!-- ================= UI KIT (shadcn/ui showcase) =================
+     A live reference for the vanilla shadcn port. The .s-* recipes live in
+     shadcn.css and re-theme entirely from the semantic tokens in styles.css;
+     components.js wires the interactive ones. Every tile below is real,
+     working markup — nothing here is a screenshot. -->
+      <section id="view-uikit" class="view">
+
+        <header class="view-head">
+          <h2>UI Kit <span class="jp-inline" lang="ja">コンポーネント</span></h2>
+          <p>
+            The shadcn/ui layer, ported to plain CSS so it survives the
+            no-build, no-React Electron/PWA setup. Same semantic tokens
+            (<span lang="en">background, foreground, primary, muted, ring…</span>),
+            same component recipes — re-themed onto the Naeki palette.
+          </p>
+        </header>
+
+        <div class="s-showcase-grid">
+
+          <!-- Buttons -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Button</div>
+              <p class="s-card-description">Six variants, four sizes, icon support.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <div class="s-row">
+                <button class="s-btn s-btn-primary">Primary</button>
+                <button class="s-btn s-btn-secondary">Secondary</button>
+                <button class="s-btn s-btn-destructive">Destructive</button>
+              </div>
+              <div class="s-row">
+                <button class="s-btn s-btn-outline">Outline</button>
+                <button class="s-btn s-btn-ghost">Ghost</button>
+                <button class="s-btn s-btn-link">Link</button>
+              </div>
+              <div class="s-row">
+                <button class="s-btn s-btn-primary s-btn-sm">Small</button>
+                <button class="s-btn s-btn-primary">Default</button>
+                <button class="s-btn s-btn-primary s-btn-lg">Large</button>
+                <button class="s-btn s-btn-outline s-btn-icon" data-icon="plus" aria-label="Add"></button>
+                <button class="s-btn s-btn-primary" data-icon="check" data-icon-position="start">Saved</button>
+              </div>
+              <div class="s-row">
+                <button class="s-btn s-btn-primary" disabled>Disabled</button>
+                <button class="s-btn s-btn-outline" data-toast="Copied to clipboard" data-toast-title="Copied" data-toast-description="Referral code NK-FRIEND-7Q2 is on your clipboard.">Fire a toast</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Badges -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Badge</div>
+              <p class="s-card-description">Status marks and metadata chips.</p>
+            </div>
+            <div class="s-card-content s-row">
+              <span class="s-badge s-badge-primary">New</span>
+              <span class="s-badge s-badge-secondary">Maguro tier</span>
+              <span class="s-badge s-badge-destructive">Closed</span>
+              <span class="s-badge s-badge-outline">Onigiri</span>
+              <span class="s-badge s-badge-secondary" data-icon="check">Verified</span>
+            </div>
+          </div>
+
+          <!-- Inputs -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Input &amp; Select</div>
+              <p class="s-card-description">Form controls on the input/border/ring tokens.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <div class="s-field">
+                <label class="s-label" for="s-demo-email">Email</label>
+                <input class="s-input" id="s-demo-email" type="email" placeholder="you@naeki.dev" />
+              </div>
+              <div class="s-field">
+                <label class="s-label" for="s-demo-branch">Branch</label>
+                <select class="s-select" id="s-demo-branch">
+                  <option>Naeki @ BTS Siam</option>
+                  <option>Naeki GO! @ Chula</option>
+                  <option>Naeki @ Thonglor</option>
+                </select>
+              </div>
+              <div class="s-field">
+                <label class="s-label" for="s-demo-note">Note</label>
+                <textarea class="s-textarea" id="s-demo-note" rows="2" placeholder="Any allergies?"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Tabs</div>
+              <p class="s-card-description">Arrow-key navigable, one active panel per group.</p>
+            </div>
+            <div class="s-card-content">
+              <div class="s-tabs" data-tabs>
+                <div class="s-tabs-list" role="tablist" aria-label="Order type">
+                  <button class="s-tabs-trigger" data-tab="takeaway" role="tab" aria-selected="true" data-state="active">Takeaway</button>
+                  <button class="s-tabs-trigger" data-tab="dinein" role="tab" aria-selected="false" data-state="inactive">Dine-in</button>
+                  <button class="s-tabs-trigger" data-tab="delivery" role="tab" aria-selected="false" data-state="inactive">Delivery</button>
+                </div>
+                <div class="s-tabs-panel" data-tab-panel="takeaway" role="tabpanel">Grab-and-go at the counter — kiosk-ready in under a minute.</div>
+                <div class="s-tabs-panel" data-tab-panel="dinein" role="tabpanel" hidden>Table service at the flagship; onigiri shaped to order.</div>
+                <div class="s-tabs-panel" data-tab-panel="delivery" role="tabpanel" hidden>LINE MAN across the GO! network.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Switch / Progress / Skeleton -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Switch, Progress &amp; Skeleton</div>
+              <p class="s-card-description">Stateful controls and loading placeholders.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <div class="s-row" data-switch>
+                <button class="s-switch" role="switch" aria-checked="true" data-state="checked" aria-label="Notifications">
+                  <span class="s-switch-thumb"></span>
+                </button>
+                <span class="s-muted-note">Branch notifications</span>
+              </div>
+              <div class="s-progress-row">
+                <div class="s-progress" data-value="72"><div class="s-progress-indicator"></div></div>
+                <span class="s-muted-note">72%</span>
+              </div>
+              <div class="s-stack">
+                <div class="s-skeleton s-skel-line s-skel-80"></div>
+                <div class="s-skeleton s-skel-line s-skel-55"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alert -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Alert</div>
+              <p class="s-card-description">Inline callouts, default and destructive.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <div class="s-alert">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                <div class="s-alert-body">
+                  <div class="s-alert-title">Points posted</div>
+                  <div class="s-alert-description">114 points from your last order are in your wallet.</div>
+                </div>
+              </div>
+              <div class="s-alert s-alert-destructive">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4M12 17h.01"/></svg>
+                <div class="s-alert-body">
+                  <div class="s-alert-title">Payment failed</div>
+                  <div class="s-alert-description">Your card was declined. Try another method at checkout.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Avatar / Kbd / Separator / Tooltip -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Avatar, Kbd &amp; Tooltip</div>
+              <p class="s-card-description">Small parts used across the app shell.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <div class="s-row">
+                <span class="s-avatar"><span class="s-avatar-fallback">KS</span></span>
+                <span class="s-avatar"><span class="s-avatar-fallback">NK</span></span>
+                <span class="s-muted-note">Signed in as Kate · Maguro tier</span>
+              </div>
+              <div class="s-row">
+                <span class="s-muted-note">Open the palette</span>
+                <span class="s-kbd">Ctrl</span><span class="s-kbd">K</span>
+              </div>
+              <div class="s-separator s-separator-horizontal"></div>
+              <div class="s-tip">
+                <button class="s-btn s-btn-outline s-btn-sm">Hover me</button>
+                <span class="s-tip-content" role="tooltip">A tooltip on the popover/foreground tokens.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Table</div>
+              <p class="s-card-description">Dense data with row hover.</p>
+            </div>
+            <div class="s-card-content">
+              <div class="s-table-wrap">
+                <table class="s-table">
+                  <caption class="s-table-caption">Branches open right now.</caption>
+                  <thead>
+                    <tr><th>Branch</th><th>Kind</th><th>Closes</th><th>Status</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>BTS Siam</td><td>Flagship</td><td>21:00</td><td><span class="s-badge s-badge-primary">Open</span></td></tr>
+                    <tr><td>Chula</td><td>GO!</td><td>18:00</td><td><span class="s-badge s-badge-primary">Open</span></td></tr>
+                    <tr><td>Thonglor</td><td>Flagship</td><td>—</td><td><span class="s-badge s-badge-destructive">Closed</span></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accordion -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Accordion</div>
+              <p class="s-card-description">Single-open disclosure with rotating chevron.</p>
+            </div>
+            <div class="s-card-content">
+              <div class="s-accordion" data-accordion>
+                <div class="s-accordion-item">
+                  <button class="s-accordion-trigger" aria-expanded="true" aria-controls="s-acc-1">
+                    <span>What is Naeki?</span>
+                    <span class="s-accordion-chevron" data-icon="chevronDown"></span>
+                  </button>
+                  <div class="s-accordion-content" id="s-acc-1"><div>A grab-and-go onigiri &amp; sushi kiosk network across Bangkok.</div></div>
+                </div>
+                <div class="s-accordion-item">
+                  <button class="s-accordion-trigger" aria-expanded="false" aria-controls="s-acc-2">
+                    <span>How do rewards work?</span>
+                    <span class="s-accordion-chevron" data-icon="chevronDown"></span>
+                  </button>
+                  <div class="s-accordion-content" id="s-acc-2" hidden><div>Earn points per baht, climb tiers, and unlock branch moments.</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dialog -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Dialog</div>
+              <p class="s-card-description">Focus-trapped, Esc to close, backdrop dismiss.</p>
+            </div>
+            <div class="s-card-content">
+              <button class="s-btn s-btn-primary" data-dialog-open="s-dialog-demo">Open dialog</button>
+              <div class="s-dialog" id="s-dialog-demo" data-dialog hidden>
+                <div class="s-dialog-backdrop" data-dialog-close></div>
+                <div class="s-dialog-card" role="dialog" aria-modal="true" aria-labelledby="s-dialog-title">
+                  <button class="s-dialog-close" data-dialog-close aria-label="Close">×</button>
+                  <div class="s-dialog-title" id="s-dialog-title">Clear your tray?</div>
+                  <p class="s-dialog-description">This removes every item from the demo cart. Nothing leaves the device.</p>
+                  <div class="s-dialog-footer">
+                    <button class="s-btn s-btn-outline" data-dialog-close>Cancel</button>
+                    <button class="s-btn s-btn-destructive" data-dialog-close data-toast-title="Tray cleared" data-toast-description="Your demo cart is empty." data-toast="cleared">Clear tray</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tokens -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Theme tokens</div>
+              <p class="s-card-description">The semantic layer every recipe reads from.</p>
+            </div>
+            <div class="s-card-content">
+              <div class="s-swatches">
+                <div class="s-swatch"><div class="s-swatch-chip s-fill-background"></div><div class="s-swatch-name">background</div></div>
+                <div class="s-swatch"><div class="s-swatch-chip s-fill-card"></div><div class="s-swatch-name">card</div></div>
+                <div class="s-swatch"><div class="s-swatch-chip s-fill-muted"></div><div class="s-swatch-name">muted</div></div>
+                <div class="s-swatch"><div class="s-swatch-chip s-fill-primary"></div><div class="s-swatch-name">primary</div></div>
+                <div class="s-swatch"><div class="s-swatch-chip s-fill-secondary"></div><div class="s-swatch-name">secondary</div></div>
+                <div class="s-swatch"><div class="s-swatch-chip s-fill-destructive"></div><div class="s-swatch-name">destructive</div></div>
+                <div class="s-swatch"><div class="s-swatch-chip s-fill-accent"></div><div class="s-swatch-name">accent</div></div>
+                <div class="s-swatch"><div class="s-swatch-chip s-fill-border"></div><div class="s-swatch-name">border</div></div>
+                <div class="s-swatch"><div class="s-swatch-chip s-fill-ring"></div><div class="s-swatch-name">ring</div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Checkbox / Radio -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Checkbox &amp; Radio</div>
+              <p class="s-card-description">Selection controls on the primary/input tokens.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <div class="s-row">
+                <button class="s-checkbox" role="checkbox" aria-checked="true" data-state="checked" aria-label="Extra wasabi"></button>
+                <span class="s-muted-note">Extra wasabi</span>
+                <button class="s-checkbox" role="checkbox" aria-checked="false" data-state="unchecked" aria-label="No seaweed"></button>
+                <span class="s-muted-note">No seaweed</span>
+                <button class="s-checkbox" role="checkbox" aria-checked="false" data-state="unchecked" aria-label="Unavailable" disabled></button>
+                <span class="s-muted-note">Sold out</span>
+              </div>
+              <div class="s-separator s-separator-horizontal"></div>
+              <div class="s-radio-group" role="radiogroup" aria-label="Pickup timing">
+                <label class="s-radio-option">
+                  <button class="s-radio" role="radio" aria-checked="true" data-state="checked"></button>
+                  <span>ASAP — ready in ~10 min</span>
+                </label>
+                <label class="s-radio-option">
+                  <button class="s-radio" role="radio" aria-checked="false" data-state="unchecked"></button>
+                  <span>Schedule a pickup window</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Toggle group / Slider -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Toggle &amp; Slider</div>
+              <p class="s-card-description">Pressed-state buttons and a token-bound range.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <div class="s-toggle-group" data-type="single" aria-label="Menu category">
+                <button class="s-toggle" data-state="on" aria-pressed="true">All</button>
+                <button class="s-toggle" data-state="off" aria-pressed="false">Onigiri</button>
+                <button class="s-toggle" data-state="off" aria-pressed="false">Sushi</button>
+              </div>
+              <div class="s-toggle-group" data-type="multiple" aria-label="Dietary filters">
+                <button class="s-toggle" data-state="on" aria-pressed="true" data-icon="check">Vegetarian</button>
+                <button class="s-toggle" data-state="off" aria-pressed="false">Spicy</button>
+              </div>
+              <div class="s-slider-row">
+                <div class="s-slider">
+                  <input type="range" min="0" max="100" value="65" aria-label="Spice level" />
+                </div>
+                <span class="s-muted-note">Spice</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Breadcrumb / Pagination -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Breadcrumb &amp; Pagination</div>
+              <p class="s-card-description">Wayfinding for deeper surfaces.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <nav aria-label="Breadcrumb">
+                <ol class="s-breadcrumb">
+                  <li><a href="#" data-noop>Home</a></li>
+                  <li><span class="s-breadcrumb-sep" data-icon="chevronRight" aria-hidden="true"></span></li>
+                  <li><a href="#" data-noop>Branches</a></li>
+                  <li><span class="s-breadcrumb-sep" data-icon="chevronRight" aria-hidden="true"></span></li>
+                  <li><span aria-current="page">BTS Siam</span></li>
+                </ol>
+              </nav>
+              <div class="s-separator s-separator-horizontal"></div>
+              <nav class="s-pagination" aria-label="Pages">
+                <a href="#" data-noop aria-disabled="true" aria-label="Previous" data-icon="chevronLeft"></a>
+                <a href="#" data-noop data-state="active" aria-current="page">1</a>
+                <a href="#" data-noop>2</a>
+                <a href="#" data-noop>3</a>
+                <span class="s-pagination-ellipsis">…</span>
+                <a href="#" data-noop>9</a>
+                <a href="#" data-noop aria-label="Next" data-icon="chevronRight"></a>
+              </nav>
+            </div>
+          </div>
+
+          <!-- Dropdown menu / Popover -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Dropdown &amp; Popover</div>
+              <p class="s-card-description">Disclosure on the popover tokens; Esc and outside-click close.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <div class="s-dropdown">
+                <button class="s-btn s-btn-outline" data-dropdown-trigger data-icon="sliders" data-icon-position="start">Sort &amp; filter</button>
+                <div class="s-dropdown-menu" role="menu" hidden>
+                  <div class="s-dropdown-label">Sort by</div>
+                  <button class="s-dropdown-item" role="menuitem" data-icon="check">Newest first</button>
+                  <button class="s-dropdown-item" role="menuitem">Price: low → high</button>
+                  <button class="s-dropdown-item" role="menuitem">Most popular</button>
+                  <div class="s-dropdown-separator"></div>
+                  <button class="s-dropdown-item" role="menuitem" data-destructive data-icon="trash">Clear filters</button>
+                </div>
+              </div>
+              <div class="s-popover">
+                <button class="s-btn s-btn-outline" data-popover-trigger data-icon="info" data-icon-position="start">Points info</button>
+                <div class="s-popover-content" role="dialog" hidden>
+                  <div class="s-popover-title">How points work</div>
+                  <p class="s-popover-description">Earn 1 point per ฿10. Tuesdays double. Points never expire while you order once a season.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sheet -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Sheet</div>
+              <p class="s-card-description">Right-side drawer for secondary flows.</p>
+            </div>
+            <div class="s-card-content">
+              <button class="s-btn s-btn-primary" data-sheet-open="s-sheet-demo">Open sheet</button>
+              <div class="s-sheet" id="s-sheet-demo" data-sheet hidden>
+                <div class="s-sheet-backdrop" data-sheet-close></div>
+                <div class="s-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="s-sheet-title">
+                  <button class="s-sheet-close" data-sheet-close aria-label="Close">×</button>
+                  <div class="s-sheet-title" id="s-sheet-title">Branch details</div>
+                  <p class="s-sheet-description">Naeki @ BTS Siam — flagship. Open 07:00–21:00, kiosk and dine-in. This panel slides in from the edge as a non-blocking surface.</p>
+                  <div class="s-sheet-footer">
+                    <button class="s-btn s-btn-outline" data-sheet-close>Close</button>
+                    <button class="s-btn s-btn-primary" data-sheet-close data-toast-title="Following" data-toast-description="You'll hear from BTS Siam." data-toast="followed">Follow branch</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Alert dialog / Aspect ratio -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Alert dialog &amp; Aspect ratio</div>
+              <p class="s-card-description">Destructive confirmation and a media frame.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <button class="s-btn s-btn-destructive" data-dialog-open="s-alert-dialog-demo">Delete address</button>
+              <div class="s-dialog s-alert-dialog" id="s-alert-dialog-demo" data-dialog hidden>
+                <div class="s-dialog-backdrop" data-dialog-close></div>
+                <div class="s-dialog-card" role="alertdialog" aria-modal="true" aria-labelledby="s-alert-dialog-title">
+                  <div class="s-alert-dialog-head">
+                    <span class="s-alert-dialog-icon" data-icon="alert" aria-hidden="true"></span>
+                    <div>
+                      <div class="s-dialog-title" id="s-alert-dialog-title">Delete this address?</div>
+                      <p class="s-dialog-description">This can't be undone. Orders won't default here anymore.</p>
+                    </div>
+                  </div>
+                  <div class="s-dialog-footer">
+                    <button class="s-btn s-btn-outline" data-dialog-close>Cancel</button>
+                    <button class="s-btn s-btn-destructive" data-dialog-close data-toast-variant="destructive" data-toast-title="Address deleted" data-toast-description="It's gone from your saved places." data-toast="deleted">Delete</button>
+                  </div>
+                </div>
+              </div>
+              <div class="s-aspect s-aspect-16x9"><div class="s-aspect-content">16 : 9</div></div>
+            </div>
+          </div>
+
+          <!-- Scroll area / Item / Empty -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Scroll area, Item &amp; Empty</div>
+              <p class="s-card-description">List primitives for feeds and zero-states.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <div class="s-scroll-area">
+                <div class="s-stack">
+                  <div class="s-item"><div><div class="s-item-title">Salmon nigiri</div><div class="s-item-description">฿55 · in stock</div></div><span class="s-badge s-badge-primary">Ordered</span></div>
+                  <div class="s-item"><div><div class="s-item-title">Unagi onigiri</div><div class="s-item-description">฿65 · in stock</div></div><span class="s-badge s-badge-secondary">Saved</span></div>
+                  <div class="s-item"><div><div class="s-item-title">Truffle tuna</div><div class="s-item-description">฿79 · low stock</div></div><span class="s-badge s-badge-outline">2 left</span></div>
+                  <div class="s-item"><div><div class="s-item-title">Matcha pudding</div><div class="s-item-description">฿45 · in stock</div></div><span class="s-badge s-badge-outline">Dessert</span></div>
+                </div>
+              </div>
+              <div class="s-empty">
+                <span data-icon="inbox" aria-hidden="true"></span>
+                <div class="s-empty-title">No saved trays yet</div>
+                <p class="s-empty-description">Build a tray and it'll appear here for one-tap reordering.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Spinner / Input OTP -->
+          <div class="s-card">
+            <div class="s-card-header">
+              <div class="s-card-title">Spinner &amp; Input OTP</div>
+              <p class="s-card-description">Loading affordance and a segmented one-time-code field.</p>
+            </div>
+            <div class="s-card-content s-stack">
+              <div class="s-row">
+                <span class="s-spinner" role="status" aria-label="Loading"></span>
+                <span class="s-spinner s-spinner-lg" role="status" aria-label="Loading"></span>
+                <button class="s-btn s-btn-outline" disabled><span class="s-spinner"></span>Processing…</button>
+              </div>
+              <div class="s-otp" role="group" aria-label="Verification code">
+                <input class="s-otp-input" inputmode="numeric" maxlength="1" value="7" aria-label="Digit 1" />
+                <input class="s-otp-input" inputmode="numeric" maxlength="1" value="4" aria-label="Digit 2" />
+                <input class="s-otp-input" inputmode="numeric" maxlength="1" value="2" aria-label="Digit 3" />
+                <span class="s-otp-sep">–</span>
+                <input class="s-otp-input" inputmode="numeric" maxlength="1" aria-label="Digit 4" />
+                <input class="s-otp-input" inputmode="numeric" maxlength="1" aria-label="Digit 5" />
+                <input class="s-otp-input" inputmode="numeric" maxlength="1" aria-label="Digit 6" />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="disclaimer">
+          <p>
+            Ported from shadcn/ui (MIT). React primitives become declarative
+            <span lang="en">data-*</span> wiring in components.js; Tailwind
+            recipes become the token-bound <span lang="en">.s-*</span> rules in
+            shadcn.css. No bundler, no runtime dependency, CSP intact.
           </p>
         </div>
       </section>
@@ -1227,20 +1741,41 @@
                 </label>
               </div>
 
-              <!-- live preview: exactly what the end-user card will look like -->
+              <!-- live preview: the subscriber's phone, miniaturized — the
+                   arrival toast + the ledger card, exactly as the Rewards
+                   bell paints them (wirePreview() repaints on every input) -->
               <div class="pt-preview">
-                <span class="pt-preview-label">Live preview — end user</span>
-                <div id="pt-preview-card" class="notif-card preview">
-                  <div class="notif-meta">
-                    <span class="notif-type offer">Offer</span>
-                    <span class="notif-branch">Naeki @ BTS Siam</span>
-                  </div>
-                  <div class="notif-title">Your headline</div>
-                  <p class="notif-body">A short, friendly description of the promotion goes here.</p>
-                  <div class="notif-actions">
-                    <button class="btn accent sm" type="button">See offer</button>
+                <span class="pt-preview-label">Live preview — a subscriber's phone<span id="pt-preview-reach"></span></span>
+                <div class="phone-frame" aria-hidden="true">
+                  <div class="phone-screen">
+                    <div class="phone-statusbar">
+                      <span>11:41</span>
+                      <span class="phone-island"></span>
+                      <span>4G ▮▮▮</span>
+                    </div>
+                    <div class="phone-appbar">
+                      <span class="phone-app-title">Rewards</span>
+                      <span class="offer-bell has-mail" id="pt-preview-bell" role="img" aria-label="Offers bell">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 3a6 6 0 0 0-6 6v3.2L4.2 16a1 1 0 0 0 .9 1.5h13.8a1 1 0 0 0 .9-1.5L18 12.2V9a6 6 0 0 0-6-6z"/>
+                          <path class="offer-bell-clapper" d="M9.8 19.5a2.3 2.3 0 0 0 4.4 0z"/>
+                        </svg>
+                        <span class="offer-bell-dot"></span>
+                      </span>
+                    </div>
+                    <div class="phone-ledger">
+                      <h4 class="rw-offers-group"><span class="rg-label">Active · from your branches</span><span class="rg-count">1</span></h4>
+                      <div class="rw-offer branch live" id="pt-preview-inbox"></div>
+                    </div>
+                    <div class="phone-toasthost" id="pt-preview-toast"></div>
+                    <div class="phone-tabbar">
+                      <span class="phone-tab">Order</span>
+                      <span class="phone-tab on">Rewards</span>
+                      <span class="phone-tab">Chat</span>
+                    </div>
                   </div>
                 </div>
+                <span class="pt-preview-caption">The toast is the arrival — the card is where the offer lives after "See rewards".</span>
               </div>
               <div class="pt-form-actions">
                 <button class="btn ghost sm" type="button" id="pt-preview-toggle">Preview ↑</button>
@@ -1338,10 +1873,8 @@
     </div>
   </div>
 
-  <script src="data.js"></script>
-  <script src="frames.js"></script>
-  <script src="api.js"></script>
-  <script src="store.js"></script>
-  <script src="app.js"></script>
+  <!-- single ESM entry: Vite bundles it (electron-vite), plain module
+       scripts still work when src/ is served raw (web e2e / python) -->
+  <script type="module" src="./entry.js"></script>
 </body>
 </html>

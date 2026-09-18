@@ -1,8 +1,10 @@
 # electron-builder config for the Naeki desktop build
-# Output: release/ (gitignored). The Neon-backed API server ships as part of
-# the app bundle (server/ + node_modules/pg ride along via "files"); main.js
-# spawns it with ELECTRON_RUN_AS_NODE on :8090 at launch. The packaged app
-# needs $NAEKI_DSN or ~/.config/neon/naeki-sushi.dsn on the target machine.
+# Output: release/ (gitignored). The API server ships bundled as
+# out/main/api.js (electron-vite builds server/api.ts as a second main
+# entry); src/main/index.ts spawns it with ELECTRON_RUN_AS_NODE on :8090 at
+# launch. Production deps (pg, drizzle-orm) ride along in node_modules
+# automatically — no hand-vendored list anymore. The packaged app needs
+# $NAEKI_DSN or ~/.config/neon/naeki-sushi.dsn on the target machine.
 
 appId: dev.naeki.app
 productName: Naeki Sushi Showcase
@@ -13,20 +15,8 @@ directories:
   buildResources: build
 
 files:
-  - main.js
   - package.json
-  - server/**/*
-  - src/index.html
-  - src/styles.css
-  - src/sw.js
-  - src/manifest.webmanifest
-  - src/*.js
-  - src/types.d.ts
-  - src/assets/**/*
-  - node_modules/pg/**/*
-  - node_modules/pg-protocol/**/*
-  - node_modules/pg-connection-string/**/*
-  - node_modules/pg-pool/**/*
+  - out/**/*
   - "!node_modules/@types"
 
 asar: true

@@ -27,8 +27,11 @@
   --nori: #1c2e22;
   --wasabi: #9fb83f;
   --go: #7ea8c9;         /* Naeki GO! kiosk marker */
-  --off: #55555e;        /* closed / "off" status */
-  --paper-faint: #6d6a62;/* tertiary text: placeholders, legal, captions */
+  --off: #6e6e79;        /* closed / "off" status dot — raised from #55555e to
+                            clear 3:1 (non-text UI) on ink-0/ink-1 */
+  --paper-faint: #8a857a;/* tertiary text: placeholders, legal, captions.
+                            raised from #6d6a62 so captions clear AA (4.5:1)
+                            on ink-0/ink-1/ink-2 — the dark-mode audit fix */
   --line-hover: #3d3d46; /* hover / affordance border */
   --grad-brand: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-coral) 100%);
   --radius: 14px;        /* cards */
@@ -40,6 +43,39 @@
   --font-display: "Prompt", "Noto Serif CJK JP", "Noto Serif Thai", "DejaVu Serif", sans-serif;
   --font-body: "Prompt", "Noto Sans CJK JP", "Noto Sans Thai", "DejaVu Sans", sans-serif;
   --font-mono: "DejaVu Sans Mono", monospace;
+
+  /* ---- shadcn/ui semantic token layer ------------------------------
+     shadcn components are themed ENTIRELY through these named tokens, so
+     exposing the same names is what makes it "shadcn" rather than a pile
+     of lookalike classes. We bind each token to the Naeki palette above,
+     so a shadcn recipe dropped in later adopts the brand for free.
+     Dark-first by design: this app lives on ink, so :root IS the dark
+     theme (no .dark toggle needed). See shadcn.css for the recipes. */
+  --background: var(--ink-0);
+  --foreground: var(--paper);
+  --card: var(--ink-1);
+  --card-foreground: var(--paper);
+  --popover: var(--ink-1);
+  --popover-foreground: var(--paper);
+  --primary: var(--brand-orange);
+  --primary-foreground: #1b1205;
+  --secondary: var(--ink-2);
+  --secondary-foreground: var(--paper);
+  --muted: var(--ink-2);
+  --muted-foreground: var(--paper-dim);
+  --accent: var(--ink-2);
+  --accent-foreground: var(--paper);
+  --destructive: #e2654c;
+  --destructive-foreground: #1b0e0a;
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--gold);
+
+  /* shadcn radius scale — only the steps that don't already exist here.
+     --radius-sm / --radius-lg above stay untouched so the existing UI is
+     unchanged; these extend the scale for shadcn-shaped surfaces. */
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
 }
 
 /* the brand face, vendored for offline use (naeki.co serves Prompt) */
@@ -217,6 +253,20 @@ body:not([data-staff="true"]) .staff-only { display: none; }
 .clock-time { font-family: var(--font-mono); font-size: 21px; letter-spacing: 0.06em; margin-top: 2px; }
 
 .since { font-size: 11.5px; color: var(--paper-dim); line-height: 1.5; }
+
+/* sidebar "Sounds" toggle (renderSoundPref in app.js) — device preference
+   for UI sounds + haptics; sits above Sign out in the session block */
+.sound-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 12px;
+  font-size: 11.5px;
+  color: var(--paper-dim);
+  cursor: pointer;
+  user-select: none;
+}
+.sound-opt input { accent-color: var(--salmon); cursor: pointer; }
 
 /* ---------------- MAIN / VIEWS ---------------- */
 
@@ -1481,6 +1531,23 @@ body:not([data-staff="true"]) .staff-only { display: none; }
   color: var(--paper-faint);
 }
 .dish-order.has-qty .d-qty { color: var(--salmon); font-weight: 700; }
+/* live stock counter (dish_stock table) + "Reserve one" — the badge is
+   honest urgency: the number is a real server-side counter, patched in
+   place by the 30s hydration loop */
+.stock-badge {
+  display: inline-block;
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+}
+.stock-badge[hidden] { display: none; }
+.stock-badge.low { color: var(--brand-coral); }
+.stock-badge.out { color: var(--paper-faint); }
+.stock-reserve { margin-top: 10px; padding: 7px 12px; font-size: 11.5px; align-self: flex-start; }
+.stock-reserve:hover { transform: none; }
 /* display-only cards (landing): stepper hidden, price stands alone */
 .dish:not(:has(.dish-order)) .dish-foot { justify-content: flex-start; }
 /* landing menu cards: CTA to order in the app instead of a stepper */
@@ -2236,6 +2303,67 @@ body:not([data-staff="true"]) .staff-only { display: none; }
 
 .home-cta { margin-top: 40px; }
 
+/* ---------------- JOURNAL strip (landing home) ----------------
+   Latest posts from the Astro blog, fetched live from the feed the API
+   serves. Cards share the home-teaser visual language: ink panel, hairline
+   border, display face for titles. NaekiJournal un-hides the section once
+   it has something to show — no feed, no empty block. */
+.journal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+.journal-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ink-1);
+  overflow: hidden;
+}
+.journal-link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+  padding: 18px 20px 20px;
+  text-align: left;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.journal-card:hover .journal-link { border-color: transparent; }
+.journal-card:hover { border-color: var(--salmon); }
+.journal-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--paper-dim);
+}
+.journal-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--paper);
+}
+.journal-desc {
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--paper-dim);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.journal-more { font-size: 12px; color: var(--salmon); margin-top: auto; }
+@media (max-width: 900px) {
+  .journal-grid { grid-template-columns: 1fr; }
+}
+
 /* ---------------- SIDEBAR: session + CTA ---------------- */
 
 .side-cta {
@@ -2272,18 +2400,22 @@ body:not([data-staff="true"]) .staff-only { display: none; }
   width: 100%;
   margin-top: 16px;
   background: var(--ink-2);
-  border: 1px solid var(--line);
-  color: var(--paper);
+  border: 1px solid var(--input);
+  color: var(--foreground);
   border-radius: 10px;
   padding: 11px 14px;
   font-size: 14px;
   font-family: inherit;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 #signin-name:focus,
-#signin-pass:focus { border-color: var(--salmon); }
+#signin-pass:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 35%, transparent);
+}
 #signin-name::placeholder,
-#signin-pass::placeholder { color: var(--paper-faint); }
+#signin-pass::placeholder { color: var(--muted-foreground); }
 
 .signin-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 .signin-actions .btn { margin-top: 0; }
@@ -2726,6 +2858,74 @@ body:not([data-staff="true"]) .staff-only { display: none; }
   text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 8px;
 }
 .pt-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pt-preview-caption {
+  display: block; margin-top: 10px; text-align: center;
+  color: var(--paper-faint); font-size: 10.5px;
+}
+
+/* phone-frame preview: the subscriber's device, miniaturized. Everything
+   inside reuses the real bell / offer-pop-card / notif-card / rw-offer
+   vocabulary, so what the partner composes is literally what the diner's
+   phone paints — no lookalike styles, only the geometry is new. */
+.phone-frame {
+  width: 250px;
+  margin: 2px auto 0;
+  padding: 7px;
+  background: var(--ink-1);
+  border: 1px solid var(--line-hover);
+  border-radius: 34px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+.phone-screen {
+  position: relative;
+  display: flex; flex-direction: column;
+  height: 432px;
+  background: var(--ink-0);
+  border-radius: 27px;
+  overflow: hidden;
+}
+.phone-statusbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 16px 3px;
+  font-family: var(--font-mono); font-size: 9px; color: var(--paper-faint);
+}
+.phone-island {
+  width: 66px; height: 17px; border-radius: 999px;
+  background: #000; border: 1px solid var(--line);
+}
+.phone-appbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px 9px;
+  border-bottom: 1px solid var(--line);
+}
+.phone-app-title { font-family: var(--font-display); font-size: 14px; }
+.phone-ledger {
+  flex: 1;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 8px 10px;
+  overflow: hidden;
+}
+.phone-ledger .rw-offers-group { margin: 2px 0 0; }
+.phone-ledger .rw-offer { padding: 6px; }
+.phone-ledger .notif-card { padding: 10px 11px; gap: 5px; }
+.phone-ledger .notif-title { font-size: 13.5px; }
+.phone-ledger .notif-body { font-size: 11.5px; }
+.phone-toasthost { position: absolute; left: 9px; right: 9px; bottom: 46px; }
+.phone-toasthost .offer-pop-card { padding: 12px 14px 11px; }
+.phone-toasthost .offer-pop-title { font-size: 14.5px; }
+.phone-toasthost p { font-size: 11px; margin-bottom: 9px; }
+.phone-toasthost .offer-pop-actions .btn { padding: 9px 8px; font-size: 11.5px; }
+.phone-tabbar {
+  display: flex; justify-content: space-around; align-items: center;
+  padding: 8px 10px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--ink-1);
+}
+.phone-tab {
+  font-family: var(--font-mono); font-size: 8.5px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--paper-faint);
+}
+.phone-tab.on { color: var(--salmon); }
 
 @media (max-width: 640px) {
   .pt-composer .pt-two-col { grid-template-columns: 1fr; }
@@ -2794,3 +2994,265 @@ body:not([data-staff="true"]) .staff-only { display: none; }
 }
 .signin-demo-chip:hover { border-color: var(--line-hover); color: var(--paper); }
 .signin-error { color: var(--salmon); font-size: 12.5px; margin: 10px 0 0; }
+
+/* ---------------- COMMAND PALETTE (⌘K / Ctrl-K) ----------------
+   Keyboard-first layer over the whole app. Ink panel, gold focus,
+   gradient hairline under the input. Built DOM-side by
+   command-palette.js; everything here is class-scoped .cp-*. */
+
+#cp { position: fixed; inset: 0; z-index: 85; }
+#cp[hidden] { display: none; }
+.cp-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 16, 18, 0.62);
+  backdrop-filter: blur(2px);
+}
+.cp-panel {
+  position: relative;
+  margin: 10vh auto 0;
+  width: min(560px, calc(100vw - 32px));
+  background: var(--ink-1);
+  border: 1px solid var(--line-hover);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.cp-panel::before {
+  content: "";
+  height: 3px;
+  background: var(--grad-brand);
+  flex: none;
+}
+.cp-input {
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--paper);
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding: 15px 20px;
+  outline: none;
+  flex: none;
+}
+.cp-input::placeholder { color: var(--paper-faint); }
+.cp-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  max-height: 46vh;
+  flex: 1;
+}
+.cp-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.cp-item.active { background: var(--ink-2); }
+.cp-item.active .cp-item-label { color: var(--gold-bright); }
+.cp-item-label {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  color: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cp-item-jp {
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--paper-faint);
+  flex: none;
+}
+.cp-item-sub {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+.cp-empty {
+  padding: 18px 14px;
+  font-size: 13px;
+  color: var(--paper-faint);
+}
+.cp-foot {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  padding: 8px 16px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--paper-faint);
+  flex: none;
+}
+.cp-foot-k {
+  margin-left: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 7px;
+  color: var(--gold-soft);
+}
+
+@media (max-width: 640px) {
+  .cp-panel { margin-top: 6vh; }
+}
+
+/* ============================================================
+   MOTION LAYER — hx-fade frames, art-library moments, receipt
+   theatre. All animations die under prefers-reduced-motion via
+   the global kill at the bottom of this file (animation:none).
+   ============================================================ */
+
+/* ---- htmx-style frame swap: new content fades in (hx-fade flavor) ---- */
+[data-frame].frame-in {
+  animation: frame-fade 0.26s ease-out;
+}
+@keyframes frame-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- shared art-library pieces ---- */
+.naeki-art { display: block; color: var(--salmon); }
+
+/* cart empty-state: the empty basket, gently breathing */
+.cart-empty { text-align: center; }
+.cart-empty-art {
+  width: 84px;
+  margin: 0 auto 6px;
+  color: var(--paper-faint);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cart-empty-art svg { animation: art-breathe 3.6s ease-in-out infinite; }
+}
+@keyframes art-breathe {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-3px) scale(1.03); }
+}
+
+/* offers empty-state: the sleeping bell (basket rules, plus drifting Zzz) */
+.rw-offers-empty { text-align: center; padding: 18px 8px 6px; }
+.rw-offers-empty-art { width: 92px; margin: 0 auto 4px; color: var(--paper-faint); }
+.rw-offers-empty p { max-width: 46ch; margin: 0 auto; font-size: 13px; color: var(--paper-faint); }
+@media (prefers-reduced-motion: no-preference) {
+  .rw-offers-empty-art svg { animation: art-breathe 4.2s ease-in-out infinite; }
+  .rw-offers-empty-art .art-zzz { animation: zzz-drift 3.2s ease-in-out infinite; }
+  .rw-offers-empty-art .art-zzz.z2 { animation-delay: 1.6s; }
+}
+@keyframes zzz-drift {
+  0%   { transform: translateY(2px); opacity: 0.25; }
+  35%  { opacity: 0.9; }
+  100% { transform: translateY(-5px); opacity: 0.15; }
+}
+
+/* drop-card mascot: sits left of the copy, hungry = a slow lean-in */
+.drop-card { position: relative; }
+.drop-art {
+  position: absolute;
+  right: 16px;
+  top: 14px;
+  width: 54px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.drop-art.hungry { transform: rotate(-8deg); }
+.drop-card.claimed .drop-art { transform: rotate(0deg); }
+.drop-card.claimed .drop-art svg { color: var(--wasabi); }
+.drop-art svg { width: 100%; height: auto; }
+@media (max-width: 640px) {
+  .drop-art { width: 40px; top: 10px; right: 10px; opacity: 0.55; }
+}
+
+/* ---- receipt theatre: rolling ball → drawn PAID stamp → mascot ---- */
+.cart-receipt { position: relative; overflow: hidden; }
+.receipt-roll {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  width: 26px;
+  height: 26px;
+  color: var(--salmon);
+  opacity: 0.9;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .receipt-roll svg {
+    animation: receipt-roll 0.9s linear 2, receipt-roll-out 0.5s ease 1.8s forwards;
+  }
+}
+@keyframes receipt-roll {
+  from { transform: translateX(-260px) rotate(0deg); }
+  to   { transform: translateX(0) rotate(720deg); }
+}
+@keyframes receipt-roll-out { to { opacity: 0; } }
+
+.receipt-stamp {
+  position: absolute;
+  top: 34px;
+  right: 22px;
+  width: 104px;
+  color: var(--wasabi);
+  transform: rotate(-11deg);
+  opacity: 0.9;
+  pointer-events: none;
+}
+.receipt-stamp .art-draw { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.receipt-stamp .art-draw-text { opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .receipt-stamp .art-draw { animation: stamp-draw 0.45s ease-out forwards; }
+  .receipt-stamp .art-draw:nth-of-type(1) { animation-delay: 0.9s; }
+  .receipt-stamp .art-draw:nth-of-type(2) { animation-delay: 1.15s; }
+  .receipt-stamp .art-draw:nth-of-type(3) { animation-delay: 1.3s; }
+  .receipt-stamp .art-draw-text { animation: stamp-text 0.3s ease 1.5s forwards; }
+}
+@keyframes stamp-draw { to { stroke-dashoffset: 0; } }
+@keyframes stamp-text { to { opacity: 1; } }
+
+.receipt-mascot {
+  width: 74px;
+  margin: 14px auto 0;
+  color: var(--gold);
+  opacity: 0.9;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .receipt-mascot svg { animation: mascot-nod 2.6s ease-in-out infinite; transform-origin: 50% 90%; }
+}
+@keyframes mascot-nod {
+  0%, 100% { transform: rotate(0deg); }
+  30%      { transform: rotate(-4deg); }
+  65%      { transform: rotate(3deg); }
+}
+
+/* ---- rewards hero: the SVG tier ring (track + drawing fill) ---- */
+.rw-hero { position: relative; }
+.rw-tier-ring {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 52px;
+  height: 52px;
+  transform: rotate(-90deg);          /* draw starts at 12 o'clock */
+}
+.rw-ring-track { stroke: var(--line); }
+.rw-ring-fill {
+  stroke: var(--gold);
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+/* ---- offer popup: bell art accents (the popup already slides in) ---- */
+#offer-pop .offer-pop-kicker { position: relative; }

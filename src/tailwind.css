@@ -1,0 +1,6 @@
+/* Tailwind v4 — theme tokens + utilities only, NO preflight: styles.css owns
+   the base look and a preflight reset would fight it. React islands (and any
+   new markup) can use utility classes against the same semantic tokens the
+   shadcn recipes read. */
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);

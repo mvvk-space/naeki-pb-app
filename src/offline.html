@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline'; font-src 'self'; img-src 'self'; object-src 'none'" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101012" />
+  <title>Naeki — shop window</title>
+  <style>
+    /* NAEKI OFFLINE SHOP WINDOW — served by the service worker when the
+       device is offline. Fully self-contained (inline CSS/JS, no shell
+       assets required) so the precached copy can never render half-broken:
+       Prompt is attempted from the vendored woff2 files and falls through
+       to the system stack. Palette: ink #101012 · paper #f3efe7 ·
+       gold #cc9a3d, straight from styles.css tokens. */
+
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: #101012;
+      color: #f3efe7;
+      font-family: "Prompt", ui-sans-serif, system-ui, "Noto Sans", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100svh;
+      padding: 32px 22px calc(44px + env(safe-area-inset-bottom));
+      text-align: center;
+    }
+
+    .wordmark-line {
+      color: #cc9a3d;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.34em;
+      text-indent: 0.34em;
+    }
+    .wordmark-line em { font-style: italic; }
+    .wordmark-jp {
+      margin-top: 6px;
+      color: #b9b4a8;
+      font-size: 12px;
+      letter-spacing: 0.5em;
+      text-indent: 0.5em;
+    }
+
+    /* the shop window is a <button> — tap and keyboard both pat the rice */
+    .shop-window {
+      appearance: none;
+      background: none;
+      border: 0;
+      padding: 0;
+      margin-top: 16px;
+      width: min(86vw, 340px);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      color: inherit;
+      font: inherit;
+    }
+    .shop-window:focus-visible {
+      outline: 2px solid #cc9a3d;
+      outline-offset: 10px;
+      border-radius: 12px;
+    }
+    .scene { width: 100%; height: auto; display: block; }
+
+    /* stroke-by-stroke reveal, same trick as the splash scene (pathLength=1) */
+    .draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.8s ease var(--d, 0s) forwards; }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    #plaque { transform-box: fill-box; transform-origin: 50% 0%; }
+    #onigiri-breath { transform-box: fill-box; transform-origin: 50% 100%; }
+    #onigiri { transform-box: fill-box; transform-origin: 50% 94%; }
+    #plaque, #onigiri, #onigiri-breath { will-change: transform; }
+
+    @media (prefers-reduced-motion: no-preference) {
+      #plaque { animation: sway 5.5s ease-in-out infinite; }
+      #onigiri-breath { animation: breathe 4.6s ease-in-out infinite; }
+      .zzz { animation: drift 3.2s ease-in-out infinite; }
+      .zzz.z2 { animation-delay: 1.6s; }
+    }
+    @keyframes sway {
+      0%, 100% { transform: rotate(-2.2deg); }
+      50% { transform: rotate(2.2deg); }
+    }
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.012, 0.988); }
+    }
+    @keyframes drift {
+      0% { transform: translateY(3px); opacity: 0; }
+      30% { opacity: 0.85; }
+      100% { transform: translateY(-9px); opacity: 0; }
+    }
+
+    /* the pat: squish, spring back */
+    #onigiri.squish { animation: squish 0.5s cubic-bezier(0.32, 1.55, 0.44, 1); }
+    @keyframes squish {
+      0% { transform: scale(1, 1); }
+      32% { transform: translate(0, 3px) scale(1.09, 0.83); }
+      68% { transform: translate(0, -1px) scale(0.97, 1.05); }
+      100% { transform: scale(1, 1); }
+    }
+
+    /* rice grains that pop off on a pat */
+    .pop { transform-box: fill-box; animation: pop 0.9s ease-out forwards; }
+    @keyframes pop {
+      from { transform: translateY(2px) scale(0.5); opacity: 0.9; }
+      to { transform: translateY(-36px) scale(1.05); opacity: 0; }
+    }
+
+    .zzz { opacity: 0.6; }
+    /* after enough pats the rice stops sleeping — the Zzz fade out */
+    .scene.rested .zzz { transition: opacity 1.2s ease; opacity: 0; }
+
+    /* ten pats and one eye opens: the rice acknowledges you */
+    .eye-awake { display: none; }
+    .scene.awake .eye-awake { display: block; }
+    .scene.awake .eye-asleep { display: none; }
+
+    .quip {
+      margin-top: 16px;
+      font-size: 17px;
+      min-height: 1.6em;
+    }
+    .pats {
+      margin-top: 4px;
+      color: #8a857a;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+    }
+    .pats[hidden] { display: none; }
+
+    .shop-foot {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    .status {
+      color: #b9b4a8;
+      font-size: 13px;
+      max-width: 36ch;
+    }
+    .reopen {
+      color: #101012;
+      background: #cc9a3d;
+      border: 1px solid #cc9a3d;
+      border-radius: 999px;
+      padding: 9px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .reopen[hidden] { display: none; }
+    .tray {
+      color: #b9b4a8;
+      border: 1px solid #2a2a31;
+      border-radius: 999px;
+      padding: 9px 20px;
+      font-size: 14px;
+      text-decoration: none;
+    }
+    .legal {
+      margin-top: 14px;
+      color: #55555e;
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
+    }
+
+    .hazard {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: 8px;
+      background: repeating-linear-gradient(-45deg, #cc9a3d 0 12px, #101012 12px 24px);
+      opacity: 0.35;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="wordmark">
+    <div class="wordmark-line">NAEKI <em>GO!</em></div>
+    <div class="wordmark-jp" lang="ja">なえき · 店休中</div>
+  </header>
+
+  <button id="shopwindow" class="shop-window" aria-label="Pat the onigiri in the shop window">
+    <svg id="scene" class="scene" viewBox="0 0 320 320" fill="none" stroke="#f3efe7"
+         stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" role="img"
+         aria-label="A line-art Naeki storefront at night; the onigiri in the window is asleep.">
+      <!-- halo: the window's warm glow -->
+      <circle class="draw" pathLength="1" style="--d:0.5s" cx="160" cy="170" r="124"
+              stroke="#cc9a3d" stroke-width="2" opacity="0.4"/>
+
+      <!-- awning + scallops -->
+      <path class="draw" pathLength="1" style="--d:0s" d="M58 96 C70 56 250 56 262 96"/>
+      <path class="draw" pathLength="1" style="--d:0.1s"
+            d="M58 96 Q68 111 78 96 Q88 111 98 96 Q108 111 118 96 Q128 111 138 96 Q148 111 158 96 Q168 111 178 96 Q188 111 198 96 Q208 111 218 96 Q228 111 238 96 Q248 111 258 96"/>
+      <!-- posts + ground -->
+      <path class="draw" pathLength="1" style="--d:0.2s" d="M64 96 V250"/>
+      <path class="draw" pathLength="1" style="--d:0.2s" d="M256 96 V250"/>
+      <path class="draw" pathLength="1" style="--d:0.3s" d="M44 250 H276"/>
+
+      <!-- hanging plaque: closed for the night -->
+      <g id="plaque">
+        <path class="draw" pathLength="1" style="--d:0.35s" d="M212 96 V120 M240 96 V120"
+              stroke="#cc9a3d" stroke-width="2.5"/>
+        <rect class="draw" pathLength="1" style="--d:0.4s" x="200" y="120" width="52" height="40" rx="5"
+              stroke="#cc9a3d" stroke-width="2.5"/>
+        <text x="226" y="137" text-anchor="middle" fill="#cc9a3d" stroke="none"
+              font-size="9" letter-spacing="1.5">CLOSED</text>
+        <text x="226" y="151" text-anchor="middle" fill="#b9b4a8" stroke="none"
+              font-size="8.5" letter-spacing="2" lang="ja">店休中</text>
+      </g>
+
+      <!-- the onigiri, asleep in the window -->
+      <g id="onigiri-breath">
+        <g id="onigiri">
+          <path class="draw" pathLength="1" style="--d:0.45s"
+                d="M148 128 Q160 110 172 128 L206 228 Q212 246 190 246 L130 246 Q108 246 114 228 Z"/>
+          <rect class="draw" pathLength="1" style="--d:0.5s" x="138" y="204" width="44" height="34" rx="7"/>
+          <circle class="cheek" cx="133" cy="192" r="3.2" fill="#cc9a3d" opacity="0.55" stroke="none"/>
+          <circle class="cheek" cx="187" cy="192" r="3.2" fill="#cc9a3d" opacity="0.55" stroke="none"/>
+          <g stroke-width="3.5">
+            <path class="eye-asleep draw" pathLength="1" style="--d:0.55s" d="M142 180 Q148 186 154 180"/>
+            <path class="eye-asleep draw" pathLength="1" style="--d:0.55s" d="M166 180 Q172 186 178 180"/>
+            <circle class="eye-awake" cx="172" cy="181" r="4.5" fill="#f3efe7" stroke="none"/>
+          </g>
+          <text class="zzz z1" x="206" y="152" fill="#b9b4a8" stroke="none" font-size="15" font-style="italic">z</text>
+          <text class="zzz z2" x="217" y="136" fill="#b9b4a8" stroke="none" font-size="11" font-style="italic">z</text>
+        </g>
+      </g>
+    </svg>
+  </button>
+
+  <p class="quip" id="quip" aria-live="polite">We're closed — the rice is resting.</p>
+  <p class="pats" id="pats" hidden>pats so far: <span id="pat-count">0</span></p>
+
+  <footer class="shop-foot">
+    <p class="status" id="status">You're offline — this shop window is served from your device.</p>
+    <a class="reopen" id="reopen" href="index.html" hidden>We're open again — reopen the shop →</a>
+    <a class="tray" href="index.html?tray=1">Browse the offline tray instead →</a>
+    <p class="legal">Unofficial showcase · fan tribute — not affiliated with Naeki Sushi Co., Ltd.</p>
+  </footer>
+
+  <div class="hazard" aria-hidden="true"></div>
+
+  <script>
+    (() => {
+      "use strict";
+      const scene = document.getElementById("scene");
+      const onigiri = document.getElementById("onigiri");
+      const quipEl = document.getElementById("quip");
+      const patsEl = document.getElementById("pats");
+      const countEl = document.getElementById("pat-count");
+      const svgNS = "http://www.w3.org/2000/svg";
+
+      const QUIPS = [
+        "We're closed — the rice is resting.",
+        "The nori is napping. Shh.",
+        "Fresh shaping resumes at first light.",
+        "Zzz… even onigiri need a break.",
+        "The case is empty, the kettle is still warm.",
+        "Come back hungry — we'll be shaped and ready.",
+      ];
+      let quipIndex = 0;
+      let pats = 0;
+
+      /* one grain of rice drifts off the blob on each pat */
+      function spawnGrain() {
+        const grain = document.createElementNS(svgNS, "circle");
+        grain.setAttribute("class", "pop");
+        grain.setAttribute("cx", String(140 + Math.random() * 40));
+        grain.setAttribute("cy", String(148 + Math.random() * 30));
+        grain.setAttribute("r", (2 + Math.random() * 2.4).toFixed(1));
+        grain.setAttribute("fill", "#cc9a3d");
+        scene.appendChild(grain);
+        grain.addEventListener("animationend", () => grain.remove(), { once: true });
+      }
+
+      function pat() {
+        pats += 1;
+        countEl.textContent = pats;
+        patsEl.hidden = false;
+
+        if (pats === 5) scene.classList.add("rested");   // the Zzz stops
+        if (pats === 10) {
+          scene.classList.add("awake");                  // one eye opens
+          quipEl.textContent = "…you're still here? The rice appreciates you.";
+        } else {
+          quipEl.textContent = QUIPS[quipIndex % QUIPS.length];
+          quipIndex += 1;
+        }
+
+        // restart the squish animation even on rapid taps
+        onigiri.classList.remove("squish");
+        void onigiri.getBoundingClientRect();
+        onigiri.classList.add("squish");
+        for (let n = 0; n < 3; n += 1) setTimeout(spawnGrain, n * 70);
+      }
+
+      document.getElementById("shopwindow").addEventListener("click", pat);
+
+      /* back online → flip the sign, offer the way in */
+      const status = document.getElementById("status");
+      const reopen = document.getElementById("reopen");
+      const ONLINE_MSG = "The shutters are up — you're back online.";
+      const OFFLINE_MSG = "You're offline — this shop window is served from your device.";
+      function syncStatus() {
+        const online = navigator.onLine;
+        status.textContent = online ? ONLINE_MSG : OFFLINE_MSG;
+        reopen.hidden = !online;
+      }
+      window.addEventListener("online", syncStatus);
+      window.addEventListener("offline", syncStatus);
+      syncStatus();
+    })();
+  </script>
+</body>
+</html>

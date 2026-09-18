@@ -109,11 +109,38 @@
     return r.ok ? r.data : null;
   }
 
+  /* ---------- live dish stock ----------
+     stockList: null means "backend absent/unreachable" (distinct from an
+     empty ledger) so the UI can hide the whole surface quietly. */
+  async function stockList() {
+    try {
+      const r = await json("/api/stock", "GET");
+      return r.ok ? r.data.items || [] : null;
+    } catch { return null; }
+  }
+
+  async function stockReserve(dish, branch) {
+    try {
+      const r = await json("/api/stock/reserve", "POST", { dish, branch });
+      return r.ok
+        ? { ok: true, qty: r.data.qty }
+        : { ok: false, status: r.status, error: (r.data && r.data.message) || "Could not reserve" };
+    } catch { return { ok: false, status: 0, error: "Backend not reachable" }; }
+  }
+
+  async function stockRestock(payload) {           // staff/dev only — reset counters
+    try {
+      const r = await json("/api/stock/restock", "POST", payload);
+      return r.ok ? r.data : null;
+    } catch { return null; }
+  }
+
   window.NaekiAPI = {
     BASE,
     signIn, signOut, me, getLoyalty, upsertLoyalty, userStateGet, userStateUpsert,
     couponList, couponByCode,
-    promoList, promoCreate, promoUpdate
+    promoList, promoCreate, promoUpdate,
+    stockList, stockReserve, stockRestock
   };
 
   /* expose to app.js for auth-gated flows */

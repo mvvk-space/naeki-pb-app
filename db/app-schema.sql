@@ -170,4 +170,17 @@ create table if not exists user_state (
   updated timestamptz not null default now()
 );
 
+-- live per-dish-per-branch counters ("2 salmon left at Asok"). Keys are the
+-- app's join keys: menu_item.NAME and branch.NAME (text, no FKs — same
+-- convention as coupon.branch_id). seed_qty is the restock target used by
+-- POST /api/stock/restock {all:true}; db/stock-data.sql re-seeds it too.
+create table if not exists dish_stock (
+  dish     text not null,
+  branch   text not null,
+  qty      int not null default 0 check (qty >= 0),
+  seed_qty int not null default 0,
+  updated  timestamptz not null default now(),
+  primary key (dish, branch)
+);
+
 commit;

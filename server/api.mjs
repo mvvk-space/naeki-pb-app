@@ -14,9 +14,10 @@
    Electron:   main.js spawns this file on launch (ELECTRON_RUN_AS_NODE=1). */
 
 import http from "node:http";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { join, dirname, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
 import pg from "pg";
 
@@ -70,6 +71,43 @@ function readBody(req) {
 function sessionOf(req) {
   const m = /^Bearer\s+(.+)$/.exec(req.headers.authorization || "");
   return m ? sessions.get(m[1]) || null : null;
+}
+
+/* ---------------- journal (the built Astro blog under blog/dist) ----------------
+   Anything not under /api is a static file from the blog build, so the
+   renderer can fetch /rss.xml (and read posts) on the API origin the CSP
+   already whitelists. No build step here: `npm run build` inside blog/
+   produces the dist this serves; a missing dist just keeps 404ing. */
+
+const BLOG_DIST = join(dirname(fileURLToPath(import.meta.url)), "..", "blog", "dist");
+
+const MIME = {
+  ".html": "text/html; charset=utf-8", ".css": "text/css",
+  ".js": "text/javascript", ".mjs": "text/javascript",
+  ".xml": "application/xml; charset=utf-8", ".json": "application/json",
+  ".txt": "text/plain; charset=utf-8", ".webmanifest": "application/manifest+json",
+  ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+  ".webp": "image/webp", ".svg": "image/svg+xml", ".ico": "image/x-icon",
+  ".woff": "font/woff", ".woff2": "font/woff2",
+};
+
+function serveBlog(res, pathname) {
+  let rel = pathname;
+  try { rel = decodeURIComponent(pathname); } catch { return false; }
+  if (rel.endsWith("/")) rel += "index.html";
+  const abs = join(BLOG_DIST, rel);
+  // traversal guard: the resolved file must stay inside blog/dist
+  if (!(abs === BLOG_DIST || abs.startsWith(BLOG_DIST + sep))) return false;
+  if (!existsSync(abs) || !statSync(abs).isFile()) return false;
+  const ext = abs.slice(abs.lastIndexOf(".")).toLowerCase();
+  const immutable = abs.startsWith(BLOG_DIST + sep + "_astro" + sep); // hashed asset names
+  res.writeHead(200, {
+    "Content-Type": MIME[ext] || "application/octet-stream",
+    "Cache-Control": immutable ? "public, max-age=31536000, immutable" : "no-cache",
+    "Access-Control-Allow-Origin": "*",
+  });
+  res.end(readFileSync(abs));
+  return true;
 }
 
 /* ---------------- row mappers (DB snake_case -> UI camelCase) ---------------- */
@@ -160,6 +198,51 @@ async function route(req, res) {
       id: r.id, kicker: r.kicker || "", title: r.title, text: r.text || "",
       pts: num(r.pts), order: num(r.order),
     })) });
+  }
+
+  /* ---------- live dish stock (public read, session-gated reserve) ----------
+     Counters keyed by menu_item.name × branch.name — the app's join keys.
+     Reserve is a single atomic conditional UPDATE, so two concurrent
+     reserves can never both take the last unit. */
+  if (req.method === "GET" && path === "/api/stock") {
+    const { rows } = await pool.query(
+      `select dish, branch, qty from dish_stock order by dish, branch`);
+    return send(res, 200, { items: rows.map(r => ({
+      dish: r.dish, branch: r.branch, qty: num(r.qty),
+    })) });
+  }
+
+  if (req.method === "POST" && path === "/api/stock/reserve") {
+    const s = sessionOf(req);
+    if (!s) return fail(res, 401, "Sign in to reserve.");
+    const b = await readBody(req);
+    if (!b.dish || !b.branch) return fail(res, 400, "dish and branch are required.");
+    const { rows } = await pool.query(
+      `update dish_stock set qty = qty - 1, updated = now()
+         where dish = $1 and branch = $2 and qty > 0
+         returning qty`, [String(b.dish), String(b.branch)]);
+    if (!rows.length) return fail(res, 409, "Sold out — none left at this counter.");
+    return send(res, 200, { ok: true, dish: b.dish, branch: b.branch, qty: num(rows[0].qty) });
+  }
+
+  if (req.method === "POST" && path === "/api/stock/restock") {
+    const s = sessionOf(req);
+    if (!s) return fail(res, 401, "Sign in first.");
+    if (!["franchise_owner", "admin", "superadmin"].includes(s.role))
+      return fail(res, 403, "Staff only.");
+    const b = await readBody(req);
+    if (b.all) {                       // reset every counter to its seed qty
+      await pool.query(`update dish_stock set qty = seed_qty, updated = now()`);
+      return send(res, 200, { ok: true, all: true });
+    }
+    if (!b.dish || !b.branch) return fail(res, 400, "dish and branch (or all:true) are required.");
+    const qty = Math.max(0, Math.floor(Number(b.qty) || 0));
+    await pool.query(
+      `insert into dish_stock (dish, branch, qty, seed_qty) values ($1, $2, $3, $3)
+         on conflict (dish, branch) do update
+           set qty = excluded.qty, seed_qty = excluded.seed_qty, updated = now()`,
+      [String(b.dish), String(b.branch), qty]);
+    return send(res, 200, { ok: true, dish: b.dish, branch: b.branch, qty });
   }
 
   /* ---------- coupons (public read; the brand's ledger) ---------- */
@@ -270,6 +353,11 @@ async function route(req, res) {
         [newId(), s.id, num(b.points), num(b.lifetime), historyJson]);
       return send(res, 200, { points: num(b.points), lifetime: num(b.lifetime), history: b.history || [] });
     }
+  }
+
+  /* ---------- journal: the built blog's static files (incl. /rss.xml) ---------- */
+  if (req.method === "GET" && path !== "/api" && !path.startsWith("/api/")) {
+    if (serveBlog(res, path)) return;
   }
 
   return fail(res, 404, "Not found.");

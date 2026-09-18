@@ -35,6 +35,11 @@ window.NaekiData = (() => {
     return MENU.filter(g => g.brand === id ? true : (g.brand == null));
   }
 
+  /* live dish stock — hydrated from the API (dish_stock table), keyed by
+     menu_item.name × branch.name. Empty until the backend answers, which is
+     the signal for the UI to hide badges/reserve (no fake counters). */
+  const STOCK = [];           // [{ dish, branch, qty }]
+
   /* brand identity for the segmented menu + landing switcher */
   const BRANDS = [
     { id: "sushi", name: "Naeki Sushi", short: "Sushi",
@@ -807,14 +812,30 @@ window.NaekiData = (() => {
           .sort((a, b) => (a.order ?? 9) - (b.order ?? 9));
         if (mapped.length) { MILESTONES.length = 0; MILESTONES.push(...mapped); }
       }
+      // live dish stock: public counters, refreshed with the same cycle —
+      // only a non-empty ledger replaces the current one (a dead API keeps
+      // the last known numbers rather than blanking badges)
+      const sr = await fetch("http://127.0.0.1:8090/api/stock");
+      const st = await sr.json();
+      if (st.items && st.items.length) {
+        STOCK.length = 0;
+        STOCK.push(...st.items.map(x => ({ dish: x.dish, branch: x.branch, qty: Number(x.qty) || 0 })));
+      }
     } catch {}
+  }
+
+  /** stock counter for a dish at a branch (both by name), or null */
+  function stockAt(dish, branch) {
+    return STOCK.find(s => s.dish === dish && s.branch === branch) || null;
   }
 
   function refresh() {
     refreshCount++;
     lastRefreshAt = bangkokParts();
     publish("refresh", { count: refreshCount, at: lastRefreshAt });
-    pbHydrate();
+    // the hydration promise rides the return value so callers can await a
+    // completed feed (tests do; the boot path chains its own .finally)
+    return pbHydrate();
   }
 
   // minute tick: status-only topic (open/closed flips at closing time)
@@ -831,6 +852,8 @@ window.NaekiData = (() => {
     // Brand filter: Sushi shows counters, GO! shows kiosks.
     kindsForBrand: (id) => id === "go" ? ["go"] : ["flagship"],
     branchInBrand: (b, id) => id === "go" ? b.kind === "go" : b.kind === "flagship",
+    // live dish stock (badge + reserve; empty unless the backend answers)
+    STOCK, stockAt,
     subscribe, publish,
     bangkokParts, toMins, isOpenNow, shortName, stats, featured, order,
     branchKicker, subscriberCountOf,

@@ -391,6 +391,13 @@ async function main() {
   /* ---- pass 1: landing (signed out) ---- */
   await win.loadFile(path.join(ROOT, "src", "index.html"), { query: { v: "audit" } });
   await win.webContents.executeJavaScript(SETTLE_JS, false);
+  // the landing menu is brand-filtered AND hydrated: the API's menu rows
+  // replace the static data.js counts ~400ms after boot (then a "refresh"
+  // republish repaints the frames). Measure only after that settles, so
+  // the lmenuRows invariant sees the hydrated menu, not the static one.
+  await win.webContents.executeJavaScript(
+    `NaekiData.refresh().then(() => new Promise(r => setTimeout(r, 200)))`, false)
+    .catch(() => {});
   const modeSeen = await win.webContents.executeJavaScript(
     "document.body.dataset.mode", false);
   if (modeSeen !== "landing") {

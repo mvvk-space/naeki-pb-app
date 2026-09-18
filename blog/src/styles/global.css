@@ -1,0 +1,209 @@
+/* Naeki blog — brand theme.
+   Palette ported verbatim from the app's src/styles.css :root so the blog and
+   the app read as one product. The shadcn semantic tokens below are the exact
+   names shadcn/ui components consume, so every recipe in components/ui adopts
+   the Naeki look for free. Dark-first: :root IS the dark theme. */
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Prompt";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/prompt-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Prompt";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/prompt-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Prompt";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/prompt-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Prompt";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/prompt-700.woff2") format("woff2");
+}
+
+:root {
+  --ink-0: #101012;
+  --ink-1: #16161a;
+  --ink-2: #1e1e23;
+  --line: #2a2a31;
+  --paper: #f3efe7;
+  --paper-dim: #b9b4a8;
+  --gold: #cc9a3d;
+  --gold-soft: #dbb877;
+  --gold-bright: #e8c88a;
+  --brand-orange: #f79421;
+  --brand-coral: #e2654c;
+  --brand-cream: #ffedd9;
+  --line-hover: #3d3d46;
+  --paper-faint: #8a857a;
+  --grad-brand: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-coral) 100%);
+  --radius: 14px;
+  --radius-sm: 12px;
+  --radius-lg: 18px;
+
+  /* shadcn semantic token layer (same names as src/styles.css) */
+  --background: var(--ink-0);
+  --foreground: var(--paper);
+  --card: var(--ink-1);
+  --card-foreground: var(--paper);
+  --popover: var(--ink-1);
+  --popover-foreground: var(--paper);
+  --primary: var(--brand-orange);
+  --primary-foreground: #1b1205;
+  --secondary: var(--ink-2);
+  --secondary-foreground: var(--paper);
+  --muted: var(--ink-2);
+  --muted-foreground: var(--paper-dim);
+  --accent: var(--ink-2);
+  --accent-foreground: var(--paper);
+  --destructive: #e2654c;
+  --destructive-foreground: #1b0e0a;
+  --border: var(--line);
+  --input: var(--line);
+  --ring: var(--gold);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-ink-0: var(--ink-0);
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-sm);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  --font-sans: "Prompt", "Noto Sans CJK JP", "Noto Sans Thai", "DejaVu Sans", sans-serif;
+  --font-mono: "DejaVu Sans Mono", monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+  }
+  a {
+    color: inherit;
+  }
+}
+
+.brand-gradient {
+  background: var(--grad-brand);
+}
+
+/* reading progress — a gold hairline pinned to the top of the viewport,
+   scaled by scroll position from the post page's inline script */
+.read-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  height: 3px;
+  background: transparent;
+  pointer-events: none;
+}
+.read-progress span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--grad-brand);
+  transition: transform 0.1s linear;
+}
+
+.prose-naeki {
+  color: var(--paper-dim);
+  line-height: 1.75;
+  font-size: 1.0625rem;
+}
+.prose-naeki h2 {
+  color: var(--paper);
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin: 2.25rem 0 0.75rem;
+}
+.prose-naeki h3 {
+  color: var(--paper);
+  font-weight: 600;
+  font-size: 1.2rem;
+  margin: 1.75rem 0 0.5rem;
+}
+.prose-naeki p {
+  margin: 1rem 0;
+}
+.prose-naeki a {
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.prose-naeki ul,
+.prose-naeki ol {
+  margin: 1rem 0;
+  padding-left: 1.4rem;
+}
+.prose-naeki li {
+  margin: 0.35rem 0;
+}
+.prose-naeki code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.1em 0.4em;
+  color: var(--gold-bright);
+}
+.prose-naeki blockquote {
+  border-left: 3px solid var(--gold);
+  margin: 1.5rem 0;
+  padding: 0.25rem 0 0.25rem 1rem;
+  color: var(--paper);
+}
+.prose-naeki img {
+  border-radius: var(--radius);
+  max-width: 100%;
+}

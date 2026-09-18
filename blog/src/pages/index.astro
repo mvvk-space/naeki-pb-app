@@ -1,0 +1,50 @@
+---
+import Base from "@/layouts/Base.astro";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { getCollection } from "astro:content";
+
+const posts = (await getCollection("blog", ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 3);
+---
+
+<Base title="Naeki Journal">
+  <section class="mb-16">
+    <Badge variant="gold">Bangkok · Grab-and-go</Badge>
+    <h1 class="mt-4 text-4xl font-semibold leading-tight md:text-5xl">
+      Notes from behind the counter
+    </h1>
+    <p class="mt-4 max-w-2xl text-lg text-muted-foreground">
+      Menus in motion, kiosk launches, and the small decisions that keep a
+      grab-and-go sushi bar honest. This journal is a static Astro site — the
+      app it links to is untouched and still runs in Electron and as a PWA.
+    </p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <Button asChild>
+        <a href="/blog">Read the journal</a>
+      </Button>
+      <Button variant="outline" asChild>
+        <a href="http://localhost:8000">Open the app</a>
+      </Button>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="mb-6 text-xl font-semibold">Latest</h2>
+    <div class="grid gap-4 md:grid-cols-3">
+      {posts.map((post) => (
+        <a href={`/blog/${post.id}`} class="block">
+          <Card className="h-full transition-colors hover:border-line-hover">
+            <CardHeader>
+              <Badge variant="outline">{post.data.tags[0] ?? "Journal"}</Badge>
+              <CardTitle className="mt-3">{post.data.title}</CardTitle>
+              <CardDescription>{post.data.description}</CardDescription>
+            </CardHeader>
+          </Card>
+        </a>
+      ))}
+    </div>
+  </section>
+</Base>

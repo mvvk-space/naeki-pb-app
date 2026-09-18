@@ -1,0 +1,25 @@
+/* Strict TS for the built/checked node-side code: electron-vite config,
+   main + preload, the API server, and the Drizzle schema. The renderer's
+   checkJs surface keeps the lenient root tsconfig.json. */
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2023"],
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": [
+    "electron.vite.config.ts",
+    "drizzle.config.ts",
+    "src/main/**/*.ts",
+    "src/preload/**/*.ts",
+    "server/**/*.ts",
+    "db/**/*.ts"
+  ]
+}

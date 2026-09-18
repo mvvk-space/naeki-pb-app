@@ -1,0 +1,48 @@
+---
+import "@/styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "Notes from the Naeki kitchen — Bangkok grab-and-go sushi." } = Astro.props;
+const appUrl = "http://localhost:8000";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/png" href="/brand/logo_320.png" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="border-b border-border">
+      <div class="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <a href="/" class="flex items-center gap-3">
+          <img src="/brand/logo_320.png" alt="Naeki" class="h-9 w-auto" />
+          <span class="text-sm font-medium tracking-wide text-muted-foreground">Journal</span>
+        </a>
+        <nav class="flex items-center gap-6 text-sm">
+          <a href="/blog" class="text-muted-foreground transition-colors hover:text-foreground">Blog</a>
+          <a href="/tags" class="text-muted-foreground transition-colors hover:text-foreground">Tags</a>
+          <a href="/rss.xml" class="text-muted-foreground transition-colors hover:text-foreground">RSS</a>
+          <a href={appUrl} class="text-gold transition-colors hover:text-gold-bright">Open the app →</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-5xl px-6 py-12">
+      <slot />
+    </main>
+
+    <footer class="border-t border-border">
+      <div class="mx-auto max-w-5xl px-6 py-8 text-sm text-muted-foreground">
+        <p>Naeki Sushi &amp; Go! — an unofficial fan showcase. Bangkok, est. 2013.</p>
+      </div>
+    </footer>
+  </body>
+</html>

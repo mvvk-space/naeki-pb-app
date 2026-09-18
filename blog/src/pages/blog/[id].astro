@@ -1,0 +1,58 @@
+---
+import Base from "@/layouts/Base.astro";
+import { Badge } from "@/components/ui/badge";
+import { getCollection, render } from "astro:content";
+import { fmtDate, readingLabel, tagHref } from "@/lib/blog";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog");
+  return posts.map((post) => ({ params: { id: post.id }, props: { post } }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const readTime = readingLabel(post.body);
+---
+
+<Base title={`${post.data.title} — Naeki Journal`} description={post.data.description}>
+  <!-- reading progress: scroll-linked gold bar pinned to the top of the viewport -->
+  <div class="read-progress" aria-hidden="true"><span id="read-progress-bar"></span></div>
+
+  <article class="mx-auto max-w-2xl">
+    <a href="/blog" class="text-sm text-muted-foreground transition-colors hover:text-foreground">
+      ← All posts
+    </a>
+    <h1 class="mt-6 text-3xl font-semibold leading-tight md:text-4xl">{post.data.title}</h1>
+    <div class="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+      <time datetime={post.data.pubDate.toISOString()}>{fmtDate(post.data.pubDate)}</time>
+      <span>·</span>
+      <span>{post.data.author}</span>
+      <span>·</span>
+      <span>{readTime}</span>
+      {post.data.tags.map((tag) => (
+        <a href={tagHref(tag)} class="no-underline">
+          <Badge variant="gold" className="transition-colors hover:border-gold/60">{tag}</Badge>
+        </a>
+      ))}
+    </div>
+    <div class="prose-naeki mt-10" id="post-body">
+      <Content />
+    </div>
+  </article>
+
+  <script>
+    // reading progress, dependency-free: document-height based, so it still
+    // works with the prose's own scrollbox-less flow.
+    const bar = document.getElementById("read-progress-bar");
+    const update = () => {
+      if (!bar) return;
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - doc.clientHeight;
+      const pct = max > 0 ? Math.min(100, Math.max(0, (doc.scrollTop / max) * 100)) : 0;
+      bar.style.transform = `scaleX(${pct / 100})`;
+    };
+    update();
+    document.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update, { passive: true });
+  </script>
+</Base>

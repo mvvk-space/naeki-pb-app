@@ -11,25 +11,27 @@
   /* indicative-price formatter (see data.js: prices are demo THB) */
   const fmtBaht = (n) => "฿" + Math.round(Number(n) || 0);
 
-  /* shared timestamp formatter (ledger rows, receipt, stamp + chat history) */
+  /* shared timestamp formatter (ledger rows, receipt, stamp + chat history).
+     Thai locale on Thai content: th-TH gives Thai month names + Buddhist era. */
   function fmtWhen(ts) {
-    return new Date(ts).toLocaleString(undefined, {
+    return new Date(ts).toLocaleString("th-TH", {
       day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
     });
   }
 
-  /* compact relative time: "now", "12m", "3h", "2d" — for the offers feed's
-     recency line. Old/unknown falls back to an absolute stamp. */
+  /* compact relative time, in Thai: "เมื่อสักครู่", "12 นาทีที่แล้ว",
+     "3 ชม.ที่แล้ว", "2 วันที่แล้ว" — for the offers feed's recency line.
+     Old/unknown falls back to an absolute Thai stamp. */
   function fmtAgo(ts) {
     if (!ts) return "";
     const s = Math.max(0, (Date.now() - ts) / 1000);
-    if (s < 60) return "now";
+    if (s < 60) return "เมื่อสักครู่";
     const m = Math.floor(s / 60);
-    if (m < 60) return m + "m";
+    if (m < 60) return m + " นาทีที่แล้ว";
     const h = Math.floor(m / 60);
-    if (h < 24) return h + "h";
+    if (h < 24) return h + " ชม.ที่แล้ว";
     const d = Math.floor(h / 24);
-    return d < 14 ? d + "d" : fmtWhen(ts);
+    return d < 14 ? d + " วันที่แล้ว" : fmtWhen(ts);
   }
 
   /* registry of live dish-card qty syncs, keyed by menu-item name —
@@ -37,6 +39,11 @@
      Declared here (not near dishCard) because F.mount() builds featured
      cards at load time, before the later const declarations run. */
   const orderables = new Map();
+
+  /* registry of live stock badges, keyed by menu-item name — the 30s data
+     refresh patches counters in place instead of rebuilding the menu grid
+     (renderMenu() would drop focus and scroll). Filled by dishCard. */
+  const stockEls = new Map();
 
   /* ---------------- Bangkok clock ---------------- */
   function tickClock() {
@@ -56,6 +63,7 @@
      which shell is visible (see styles.css). */
   const S = window.NaekiStore;
   const D = window.NaekiData;      // the data layer ("backend") — single source of truth
+  const Art = window.NaekiArt;     // shared SVG art library (mascot, basket, stamps)
 
   let mode = S.get().profile ? "app" : "landing";
   function isStaff() { return S.isStaff(); }
@@ -82,6 +90,8 @@
     // each shell has its own scroller: the page (landing) or #main (app)
     if (shell.id === "landing") window.scrollTo({ top: 0, behavior: "smooth" });
     else $("#main").scrollTo({ top: 0, behavior: "smooth" });
+    // navigation sound — a tiny tap on every successful view swap
+    window.NaekiSound?.pop();
     // merged Rewards section: land on the requested tab (or keep the current one);
     // Order segments deep-link the same way ("menu/cart", "menu/branches")
     if (sub) {
@@ -100,6 +110,7 @@
 
     const profile = S.get().profile;
     if (profile) $("#session-greeting").textContent = "Hi, " + profile.name;
+    renderSoundPref();
     // staff logins keep the portal reachable via a "Portal" nav link (CSS shows
     // it only for body[data-staff] and hides the consumer tabs/links)
     document.body.dataset.staff = profile ? (isStaff() ? "true" : "false") : "";
@@ -247,6 +258,7 @@
     if (btn) { btn.disabled = false; btn.textContent = "Sign in"; }
     if (res && res.ok) {
       if (err) err.textContent = "";
+      window.NaekiSound?.chime();                 // the shop's door chime — you're in
       closeSignin();
       enterApp(pendingView);
       pendingView = null;
@@ -424,9 +436,17 @@
     refreshPt();
   }
 
-  // live preview: keep the composer card in step with the form
+  // live preview: keep the subscriber-phone mock in step with the form.
+  // The toast is the arrival moment (as showOfferPop() paints a branch
+  // offer), the ledger card is where the offer lives afterwards (as
+  // renderOffersInbox() paints an un-acked one) — one card language,
+  // see the .notif-card block in styles.css. The mounts are stable
+  // containers swapped by innerHTML, so listeners never need rebinding.
   function wirePreview() {
-    const card = $id("pt-preview-card");
+    const inbox = $id("pt-preview-inbox");
+    const toast = $id("pt-preview-toast");
+    const bell = $id("pt-preview-bell");
+    const reach = $id("pt-preview-reach");
     const pull = () => ({
       type: $val("pt-type") || "offer",
       branch: branchSel ? branchSel.value : "Naeki",
@@ -436,20 +456,52 @@
       ctaLabel: $val("pt-cta-label"),
     });
     const paint = () => {
-      if (!card) return;
       const p = pull();
-      card.outerHTML = notifCardHTML({
-        ...p,
-        branch: p.branch || "Naeki",
-        body: p.body || "A short, friendly description of the promotion goes here.",
-      });
-      wirePreview(); // re-grab the replaced card, rebind
+      const branch = p.branch || "Naeki";
+      const t = p.type || "offer";
+      if (inbox) {
+        inbox.innerHTML = `
+          <div class="notif-card" data-type="${escapeHtml(t)}">
+            <div class="notif-meta">
+              <span class="notif-type">${PT_TYPE[t] || escapeHtml(t)}</span>
+              <span class="notif-when">${escapeHtml(p.when || "")}</span>
+              <span class="notif-branch">${escapeHtml(D.shortName({ name: branch }))}</span>
+            </div>
+            <div class="notif-title">${escapeHtml(p.title)}</div>
+            <p class="notif-body">${escapeHtml(p.body)}</p>
+            ${p.ctaLabel ? `<div class="notif-actions"><button class="btn accent sm" type="button">${escapeHtml(p.ctaLabel)}</button>
+              <button class="rw-offer-ack" type="button">Got it</button></div>` : ""}
+            ${!p.ctaLabel ? `<div class="notif-actions"><button class="btn ghost sm" type="button">Got it</button></div>` : ""}
+          </div>`;
+      }
+      if (toast) {
+        toast.innerHTML = `
+          <div class="offer-pop-card">
+            <button class="offer-pop-x" type="button" aria-label="Acknowledge offer">×</button>
+            <div class="offer-pop-kicker">${escapeHtml(D.branchKicker(branch))}</div>
+            <div class="offer-pop-title">${escapeHtml(p.title)}</div>
+            <p>${escapeHtml(p.body)}</p>
+            <div class="offer-pop-actions">
+              <button class="btn ghost" type="button">Got it</button>
+              <button class="btn accent" type="button">See rewards</button>
+            </div>
+          </div>`;
+      }
+      // every edit re-rings the bell — the offer is "arriving" as they type
+      if (bell) {
+        bell.classList.remove("has-mail");
+        void bell.offsetWidth;                       // style flush (CSP-safe class swap)
+        bell.classList.add("has-mail");
+      }
+      // seeded demo figure, same source the "Sent to subscribers" log uses
+      if (reach) reach.textContent = ` · ${D.subscriberCountOf(branch)} subscribers`;
     };
     ["pt-type", "pt-when", "pt-title", "pt-text", "pt-cta-label"].forEach(id => {
       const el = $id(id);
       if (el) el.addEventListener("input", paint);
     });
     if (branchSel) branchSel.addEventListener("change", paint);
+    paint();
     const toggle = $id("pt-preview-toggle");
     if (toggle) toggle.addEventListener("click", () => {
       const pre = document.querySelector(".pt-preview");
@@ -746,6 +798,31 @@
 
   let activeCat = "all";
 
+  /* -------- live dish stock (badge + reserve) --------
+     Counters come from the dish_stock table via the 30s hydration loop.
+     The device orders "against" one branch: the first subscribed branch,
+     else the first open in-brand counter, else the first in-brand one. */
+  function stockBranch() {
+    const subs = S.subscribedBranchesState();
+    if (subs.length) return D.BRANCHES.find(b => b.name === subs[0]) || null;
+    const inBrand = D.BRANCHES.filter(b => D.branchInBrand(b, D.getBrand().id));
+    return inBrand.find(b => D.isOpenNow(b)) || inBrand[0] || null;
+  }
+
+  /** repaint one dish's stock badge (+ reserve visibility) in place */
+  function markStock(name) {
+    const rec = stockEls.get(name);
+    if (!rec || !rec.badge) return;
+    const b = stockBranch();
+    const s = b ? D.stockAt(name, b.name) : null;
+    if (!s) { rec.badge.hidden = true; if (rec.btn) rec.btn.hidden = true; return; }
+    rec.badge.hidden = false;
+    rec.badge.textContent = s.qty === 0 ? "Sold out" : s.qty + " left";
+    rec.badge.classList.toggle("out", s.qty === 0);
+    rec.badge.classList.toggle("low", s.qty > 0 && s.qty <= 2);
+    if (rec.btn) rec.btn.hidden = s.qty === 0;
+  }
+
   function renderChips() {
     // chips only span the active brand's groups (+ "All")
     const activeGroups = D.brandGroups(D.getBrand().id);
@@ -785,7 +862,8 @@
           <span class="d-qty" aria-live="polite">0</span>
           <button class="d-step d-plus" aria-label="Add one ${item.name}">+</button>
         </div>
-      </div>`;
+      </div>
+      <button class="btn ghost sm stock-reserve" type="button" hidden>Reserve one</button>`;
       return `<div class="dish-foot"><span class="dish-price">${fmtBaht(item.price)}</span></div>`;
     };
     card.innerHTML = `
@@ -793,6 +871,7 @@
       <div class="dish-body">
         <h4>${item.name}</h4>
         <div class="dish-sub">${item.sub || ""}</div>
+        <span class="stock-badge" hidden></span>
         ${foot()}
       </div>`;
     // ordering: stepper writes to the store, badge + steppers sync.
@@ -810,6 +889,7 @@
       card.querySelector(".d-plus").addEventListener("click", e => {
         e.stopPropagation();                       // don't open the modal
         S.addToCart(name, item.price);
+        window.NaekiSound?.tick(); window.NaekiSound?.vibrate(8);
         syncCartUI();
         sync();
       });
@@ -820,6 +900,44 @@
       });
       orderables.set(name, sync);                   // global resync point
       sync();
+    }
+    // live stock badge + "Reserve one" (app menu only — landing cards skip it).
+    // Reserve holds one at the counter server-side, then adds it to the cart.
+    if (hasStepper) {
+      const badge = card.querySelector(".stock-badge");
+      const rsv = card.querySelector(".stock-reserve");
+      stockEls.set(name, { badge, btn: rsv });
+      if (rsv) rsv.addEventListener("click", async e => {
+        e.stopPropagation();                        // don't open the modal
+        const API = window.NaekiAPI;
+        if (!S.get().profile) {
+          openSignin ? openSignin({ currentTarget: { dataset: { goto: "menu" } } }) : goToView("menu");
+          return;
+        }
+        if (!API || !API.stockReserve) { flash("Stock needs the backend running."); return; }
+        const b = stockBranch();
+        if (!b) return;
+        rsv.disabled = true;
+        const r = await API.stockReserve(name, b.name);
+        rsv.disabled = false;
+        const row = D.STOCK.find(s => s.dish === name && s.branch === b.name);
+        if (r.ok) {
+          if (row) row.qty = r.qty;                 // patch local copy until the next hydrate
+          S.addToCart(name, item.price);
+          window.NaekiSound?.tick(); window.NaekiSound?.vibrate(8);
+          flash(`Reserved — ${r.qty} left at ${D.shortName(b)}. Show it at the counter.`);
+          syncCartUI(); sync();
+        } else if (r.status === 409) {
+          if (row) row.qty = 0;
+          flash(r.error || "Sold out.");
+        } else if (r.status === 401) {
+          flash("Sign in to reserve.");
+        } else {
+          flash(r.error || "Could not reserve.");
+        }
+        markStock(name);
+      });
+      markStock(name);                              // badge may already have data
     }
     // landing CTA: route the diner into the app's orderable menu
     const ctaBtn = card.querySelector(".dish-cta");
@@ -889,6 +1007,8 @@
   searchInput.addEventListener("input", renderMenu);
   renderChips();
   renderMenu();
+  // each 30s hydration patches the counters in place (no menu rebuild)
+  D.subscribe("refresh", () => { for (const name of stockEls.keys()) markStock(name); });
 
   /* ---------------- Pickup window (choose when it's ready) ----------------
      A slot picker on the ordering menu. Claiming one stores it server-side
@@ -980,6 +1100,7 @@
       const m = info.minutesToNext % 60;
       dropCard.className = "drop-card claimed";
       dropCard.innerHTML = `
+        <div class="drop-art" aria-hidden="true">${Art.ONIGIRI}</div>
         <div class="drop-head">
           <span class="drop-kicker">Today's drop · claimed</span>
           <span class="drop-streak">${info.streak} day${info.streak === 1 ? "" : "s"} in a row</span>
@@ -994,6 +1115,7 @@
     }
     dropCard.className = "drop-card";
     dropCard.innerHTML = `
+      <div class="drop-art hungry" aria-hidden="true">${Art.ONIGIRI}</div>
       <div class="drop-head">
         <span class="drop-kicker">Today's drop ${info.mult > 1 ? "· 2× Thursday" : ""}</span>
         <span class="drop-streak">${info.streak ? info.streak + " day streak" : "start a streak"}</span>
@@ -1199,6 +1321,7 @@
       const empty = document.createElement("div");
       empty.className = "cart-empty";
       empty.innerHTML = `
+        <div class="cart-empty-art" aria-hidden="true">${Art.BASKET}</div>
         <p>Nothing in the cart yet.</p>
         <p class="cart-empty-sub">Add dishes from the menu — your lines wait here.</p>
         <button class="btn accent" id="cart-browse">Browse the menu</button>`;
@@ -1344,6 +1467,7 @@
       const category = Object.entries(catTally).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
       const receipt = S.checkoutCart(category);
       if (receipt) {
+        window.NaekiSound?.checkout(); window.NaekiSound?.vibrate([20, 40, 40]);
         syncCartUI();          // badge + steppers to empty state first…
         renderReceipt(receipt); // …then paint the receipt (renderCart would wipe it)
       }
@@ -1358,7 +1482,7 @@
     cartRoot.innerHTML = "";
     const card = document.createElement("div");
     card.className = "cart-receipt";
-    const when = new Date(receipt.ts).toLocaleString(undefined, {
+    const when = new Date(receipt.ts).toLocaleString("th-TH", {
       day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
     });
     // loyalty line — points earned this order (checkout writes it)
@@ -1382,7 +1506,11 @@
     const pickLine = pick ? `<p class="cart-note pickup-receipt">Pickup window
       <strong>${escapeHtml(pick.slot)}</strong>${pick.branch ? " · " + escapeHtml(D.shortName(D.BRANCHES.find(b => b.name === pick.branch) || { name: pick.branch })) : ""}
       — your countdown is on the Order tab.</p>` : "";
+    // the roll-out beat: ball spins over the card while the "PAID" stamp
+    // draws itself in (CSS-only, reduced-motion renders both statically)
     card.innerHTML = `
+      <div class="receipt-roll" aria-hidden="true">${Art.BALL}</div>
+      <div class="receipt-stamp" aria-hidden="true">${Art.STAMP_PAID}</div>
       <div class="oc-kicker">Demo order placed</div>
       <h3>${receipt.id}</h3>
       <p class="receipt-when">${when} · ${receipt.count} items · ${fmtBaht(receipt.total)}</p>
@@ -1404,7 +1532,8 @@
       <div class="cart-actions">
         <button class="btn accent" id="receipt-done">Back to the menu</button>
         ${earned ? `<button class="btn ghost" id="receipt-rewards">See rewards</button>` : ""}
-      </div>`;
+      </div>
+      <div class="receipt-mascot" aria-hidden="true">${Art.ONIGIRI}</div>`;
     cartRoot.appendChild(card);
     $("#receipt-done").addEventListener("click", () => {
       renderCart();
@@ -1529,6 +1658,8 @@
     });
     offerPop.hidden = false;
     shownOfferKey = o.key;
+    // arrival sound — one bell strike, paired with the popup's slide-in
+    window.NaekiSound?.bell();
     // re-trigger the arrival animation (class swap — CSP-safe)
     offerPop.classList.remove("on");
     void offerPop.offsetWidth;                    // style flush
@@ -1630,8 +1761,11 @@
     rwOffers.innerHTML = "";
 
     if (!total) {
-      rwOffers.innerHTML = `<p class="rw-offers-empty">Nothing here yet. Pick a branch in the
-        Branches tab to start hearing from it — offers land here as they come in.</p>`;
+      rwOffers.innerHTML = `<div class="rw-offers-empty">
+        <div class="rw-offers-empty-art" aria-hidden="true">${Art.BELL_SLEEP}</div>
+        <p>Nothing here yet. Pick a branch in the
+        Branches tab to start hearing from it — offers land here as they come in.</p>
+        </div>`;
       return;
     }
 
@@ -1643,7 +1777,7 @@
         const acked = !!acks[o.key];
         const state = acked ? "acked" : (o.live ? "live" : "");
         const recency = o.branchOffer && o.sentAt
-          ? `<span class="rw-offer-when">${fmtAgo(o.sentAt)} ago</span>` : "";
+          ? `<span class="rw-offer-when">${fmtAgo(o.sentAt)}</span>` : "";
         const sourceNote = o.branchOffer && o.branchId
           ? `<span class="rw-offer-branch">${D.branchKicker(o.branchId)}</span>` : "";
         // approved partner requests render as the typed notif-card so a diner
@@ -1745,7 +1879,13 @@
           <div class="rw-redeem-row">
             <button class="btn accent" id="rw-redeem-50">Redeem 50 pts → ฿50 balance</button>
           </div>` : `<p class="rw-redeem-hint">Redeem from 50 points (1 pt = ฿1).</p>`}
-      </div>`;
+      </div>
+      <svg class="rw-tier-ring" viewBox="0 0 44 44" fill="none" stroke-width="4"
+           stroke-linecap="round" aria-hidden="true">
+        <circle class="rw-ring-track" cx="22" cy="22" r="18"/>
+        <circle class="rw-ring-fill" cx="22" cy="22" r="18" pathLength="1"
+                stroke-dasharray="1" stroke-dashoffset="1"/>
+      </svg>`;
 
     // tier ladder
     rwTiers.innerHTML = D.TIERS.map(t => {
@@ -1764,6 +1904,9 @@
     // progress width via CSSOM (CSP blocks inline style attributes)
     const fill = /** @type {HTMLElement | null} */ (rwHero.querySelector(".rw-progress-fill"));
     if (fill) fill.style.setProperty("--rw-pct", pct + "%");
+    // the SVG tier ring rides the same number: dashoffset 1 → 1-pct (draws clockwise)
+    const ring = /** @type {SVGCircleElement | null} */ (rwHero.querySelector(".rw-ring-fill"));
+    if (ring) ring.style.strokeDashoffset = String(1 - pct / 100);
 
     const redeemBtn = $("#rw-redeem-50");
     if (redeemBtn) redeemBtn.addEventListener("click", () => {
@@ -2028,7 +2171,11 @@
       if (!btn || btn.disabled) return;
       btn.addEventListener("click", () => {
         const res = S.claimMilestone(m.id);
-        if (res) flash(`Milestone complete! +${res.pts} points`);
+        if (res) {
+          window.NaekiSound?.milestone();           // the pentatonic claim run
+          window.NaekiSound?.vibrate([15, 40, 15]);
+          flash(`Milestone complete! +${res.pts} points`);
+        }
         renderMilestones();
       });
     });
@@ -2170,6 +2317,31 @@
     $("#sl-balance").textContent = fmtBaht(w.balance);
   }
 
+  /* sidebar "Sounds" toggle — the device preference behind NaekiSound.
+     Lives in stable chrome (not the cart foot, which only renders when the
+     wallet has balance) so the switch is always findable. */
+  function renderSoundPref() {
+    const box = $("#side-session");
+    if (!box) return;
+    let toggle = box.querySelector("#sound-toggle");
+    if (!toggle) {
+      const label = document.createElement("label");
+      label.className = "sound-opt";
+      toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.id = "sound-toggle";
+      const txt = document.createElement("span");
+      txt.textContent = "Sounds";
+      label.append(toggle, txt);
+      box.querySelector(".side-signout").before(label);
+      toggle.addEventListener("change", () => {
+        const on = S.setSound(toggle.checked);
+        flash(on ? "Sounds on" : "Sounds off");
+      });
+    }
+    toggle.checked = S.get().sound !== false;
+  }
+
   /* small toast — used for top-ups, gifts, redemptions */
   function flash(msg) {
     let t = /** @type {(HTMLElement & { _timer?: ReturnType<typeof setTimeout> }) | null} */ ($("#flash"));
@@ -2247,6 +2419,7 @@
 
   $("#stamp-add").addEventListener("click", () => {
     S.addStamp();
+    window.NaekiSound?.punch(); window.NaekiSound?.vibrate(30);   // pairs with stamp-pop
     const n = S.card().stamps.length;
     if (n === S.card().size) $("#stamp-redeem").focus();
     renderStamps();
@@ -2256,6 +2429,7 @@
     // redeeming mints a real voucher into the wallet — the 10th stamp pays out
     const voucher = S.redeemStampCard("Free treat");
     if (voucher) {
+      window.NaekiSound?.redeem();                  // coin arpeggio — value in the wallet
       flash(`Treat banked — ${voucher.code} (${fmtBaht(voucher.amount)}) is in your wallet`);
       renderStamps();
       renderWallet();
@@ -2306,6 +2480,7 @@
   if (modalAddBtn) modalAddBtn.addEventListener("click", () => {
     if (!modalItem) return;
     S.addToCart(modalItem.name, modalItem.price);
+    window.NaekiSound?.tick(); window.NaekiSound?.vibrate(8);
     syncCartUI();          // also re-syncs the modal label
   });
   function closeModal() { modal.hidden = true; modalItem = null; }

@@ -47,7 +47,7 @@ function createWindow() {
     },
   });
 
-  win.loadFile(path.join(__dirname, 'src', 'index.html'), { query: { v: '2.12.0-neon' } });
+  win.loadFile(path.join(__dirname, 'src', 'index.html'), { query: { v: '2.15.0-motion' } });
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http')) shell.openExternal(url);

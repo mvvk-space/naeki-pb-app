@@ -42,6 +42,9 @@
     },
     // demo gift cards the user has "bought" (for themselves / to give away)
     gifts: [],                    // [{ code, amount, ts, spent }]
+    // device preference: UI sounds + haptics on add-to-cart / stamps /
+    // checkout (NaekiSound). Default ON; flipped via the sidebar toggle.
+    sound: true,
     // milestone engine state: which achievement bonuses have been claimed
     // (atomically with the award — persists the exact claim), and how many
     // referral codes the user has redeemed (the "give + get" loop)
@@ -175,7 +178,9 @@
         },
         // tier ladder the user has already been celebrated for (unknown → base)
         tierSeen: typeof saved.tierSeen === "string" ? saved.tierSeen : "kome",
-        statsSeen: Number(saved.statsSeen) || 0
+        statsSeen: Number(saved.statsSeen) || 0,
+        // sound pref: only an explicit false turns it off
+        sound: saved.sound !== false
       };
     } catch {
       // private browsing, disabled storage, corrupt JSON → fresh state
@@ -535,6 +540,14 @@
       state.wallet.useWallet = on !== false;
       persist();
       return state.wallet.useWallet;
+    },
+
+    /** opt-in/out of UI sounds + haptics (device preference, like wallet
+        opt-in). No emit — the checkbox owns its own state. */
+    setSound(on) {
+      state.sound = on !== false;
+      persist();
+      return state.sound;
     },
 
     /** provision an express-pay wallet once ("apple" | "google"); repeat
@@ -909,7 +922,7 @@
       const top = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0];
       if (!top) return null;
       const when = new Date(Number(top[0].split("-")[0]), Number(top[0].split("-")[1]) - 1, Number(top[0].split("-")[2]));
-      return { key: top[0], total: top[1], label: when.toLocaleDateString(undefined, { day: "numeric", month: "long" }) };
+      return { key: top[0], total: top[1], label: when.toLocaleDateString("th-TH", { day: "numeric", month: "long", timeZone: "Asia/Bangkok" }) };
     },
 
     /* ---- 6. stamp card: bank a treat you can actually spend -------------

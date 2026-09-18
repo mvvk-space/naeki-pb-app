@@ -529,7 +529,7 @@
       el.innerHTML =
         fact(D.INFO.founded, D.INFO.foundedNote) +
         fact(s.branchCount, "branches across the city") +
-        fact(s.openCount + " open", "right now, live from branch hours") +
+        fact("&lt; 1 min", "from kiosk gate to gate") +
         fact(D.INFO.flagshipRating, D.INFO.flagshipReviews) +
         fact(s.dishCount, "dishes highlighted · " + s.alsoCount + " more daily");
     }

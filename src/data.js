@@ -39,10 +39,10 @@ window.NaekiData = (() => {
   const BRANDS = [
     { id: "sushi", name: "Naeki Sushi", short: "Sushi",
       tag: "the original counter", jp: "寿司",
-      desc: "Premium counter sushi since 2013 — onigiri, nigiri, rolls, sashimi, donburi and party sets for offices & meetings." },
+      desc: "The 2013 original counter — nigiri, rolls, sashimi, donburi and party sets, pressed fresh while you wait." },
     { id: "go", name: "Naeki GO!", short: "GO!",
       tag: "onigiri on the go", jp: "おにぎり",
-      desc: "Hand-held rice balls built for the commute — grab, store, enjoy anytime. Avg 45+ baht, kiosks + delivery apps." }
+      desc: "Hand-held rice balls for the commute — grab one at the gate, eat one-handed, keep moving. Kiosks + delivery apps." }
   ];
 
   // live brand selection — frames + menu re-source from it
@@ -59,7 +59,7 @@ window.NaekiData = (() => {
       brand: "go",
       name: "Onigiri",
       jp: "おにぎり",
-      desc: "The signature. Hand-shaped to order, one-handed convenience, the rice seasoned to sit just right against the filling.",
+      desc: "The signature. One-handed food — shaped for your palm, the rice seasoned to sit just right against the filling.",
       items: [
         { name: "Roasted Salmon", price: 45, sub: "Aburi, torched to order", img: "assets/onigiri_roasted_salmon.jpg",
           story: "The blowtorch is Naeki's party trick — reviewers single out the torched salmon onigiri for the smell alone." },
@@ -78,7 +78,7 @@ window.NaekiData = (() => {
       brand: "sushi",
       name: "Nigiri Sushi",
       jp: "にぎり",
-      desc: "Pressed fresh at the counter — reviewers say the fish \"melts in your mouth\". Two cuts of salmon lead the list.",
+      desc: "Pressed fresh at the counter in the time it takes to pay — reviewers say the fish \"melts in your mouth\".",
       items: [
         { name: "Salmon Nigiri", price: 45, sub: "Fresh, the benchmark", img: "assets/salmon_nigiri.jpg",
           story: "Their best-reviewed piece: thick-cut fresh salmon over properly seasoned Japanese rice." },
@@ -231,14 +231,15 @@ window.NaekiData = (() => {
     { text: "Quality just like Japanese people made it.", src: "Google review · BTS Siam" },
     { text: "They torched the top with a blowtorch — the rice sticks together exactly like sushi should.",
       src: "Google review · BTS Siam" },
-    { text: "Loved the tuna and salmon sushi. Melts in your mouth.", src: "Google review · BTS Siam" }
+    { text: "In and out in a minute. The kiosk is right at the gates — perfect between trains.",
+      src: "Google review · BTS Siam" }
   ];
 
   /* ---------------- BRAND FACTS ---------------- */
 
   const INFO = {
     brand: "Naeki — Sushi & Go!",
-    tagline: "Premium Sushi Take Away and Delivery Since 2013",
+    tagline: "The Art & Craft of Onigiri — No.1",
     founded: 2013,
     foundedNote: "founded, All Seasons Place",
     flagshipRating: "4.7★",
@@ -269,7 +270,7 @@ window.NaekiData = (() => {
       {
         kicker: "Line Official Account",
         title: INFO.line,
-        text: "Order ahead for pickup at your nearest kiosk and catch the seasonal drops.",
+        text: "Order ahead, skip the queue — pick up at your nearest kiosk and go.",
         links: [{ label: "Open LINE OA", url: INFO.lineUrl, accent: true }]
       },
       {
@@ -285,7 +286,7 @@ window.NaekiData = (() => {
       {
         kicker: "Catering & party sets",
         title: "Party trays & bulk orders",
-        text: "Sushi platters, bento sets and party trays for offices and events — arranged through the Naeki team.",
+        text: "Sushi platters, bento sets and party trays for offices and events — ordered ahead, ready when your meeting is.",
         links: [{ label: INFO.officePhone, url: "tel:" + INFO.officePhone.replace(/\s+/g, ""), accent: false }]
       },
       {

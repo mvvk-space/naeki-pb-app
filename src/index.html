@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://www.google.com https://www.gstatic.com; style-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:8090; frame-src https://www.google.com; object-src 'none'" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#101012" />
-  <title>Naeki Sushi — Bangkok Showcase</title>
+  <title>Naeki Sushi &amp; Go! — Bangkok Showcase</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" href="assets/icon.png" />
@@ -50,7 +50,7 @@
         </g>
 
         <!-- orange line art: same geometry, revealed only inside the inked wedge -->
-        <g clip-path="url(#fill-wipe)" stroke="#ff8a3c" stroke-width="3.5">
+        <g clip-path="url(#fill-wipe)" stroke="#cc9a3d" stroke-width="3.5">
           <circle cx="130" cy="132" r="116"/>
           <g transform="translate(36,32) scale(0.8)" stroke-width="4.4">
             <path d="M18 180 H222"/>
@@ -94,7 +94,7 @@
         <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
           <path d="M32 6 L58 52 Q59 55 55 55 L9 55 Q5 55 6 52 Z" fill="#f3efe7"/>
           <rect x="24" y="38" width="16" height="14" rx="4" fill="#1c2e22"/>
-          <circle cx="20" cy="26" r="6" fill="#ff8a3c"/>
+          <circle cx="20" cy="26" r="6" fill="#cc9a3d"/>
         </svg>
         <div class="brand-name">NAEKI<span>SUSHI</span></div>
       </button>
@@ -113,12 +113,13 @@
 
       <header class="hero home-hero">
         <div class="hero-copy">
-          <div class="hero-kicker">Premium grab &amp; go · Bangkok <span lang="ja">· 東京式</span></div>
-          <h1>The art &amp; science<br />of <em>onigiri</em>.</h1>
+          <div class="hero-kicker">The art &amp; craft of onigiri — No.1 <span lang="ja">· なえき</span></div>
+          <h1>Show up. Grab sushi.<br /><em>Keep moving.</em></h1>
           <p class="hero-sub">
-            Hand-shaped to order, fresh every day, no preservatives.
-            Naeki puts chef-grade sushi and onigiri where Bangkok actually lives —
-            along the BTS &amp; MRT lines, one perfect bite at a time.
+            In and out of a Naeki kiosk in under a minute: onigiri and nigiri
+            shaped fresh this morning, priced for the everyday, made to be eaten
+            with one hand on your commute. Right size, right bite, just in time —
+            that's the whole idea.
           </p>
           <div class="home-hero-actions">
             <div class="brand-switch" id="landing-brand" role="tablist" aria-label="Choose brand">
@@ -150,7 +151,7 @@
         <button class="link-more" id="home-full-menu">Full menu →</button>
       </div>
       <p class="home-featured-sub">
-        A taste of the line-up — the menu rotates daily, every piece shaped at the counter.
+        Shaped this morning, on the shelf right now — the line-up rotates daily, so grab it when you see it.
       </p>
       <div class="dish-grid home-featured" data-frame="featured"><!-- live: data.js featured rotation --></div>
 
@@ -162,7 +163,7 @@
         <button class="link-more" id="hours-open-app" data-goto="branches">All branches in the app →</button>
       </div>
       <p class="home-featured-sub">
-        Flagship counters, hours straight from the live branch data — tap a card for directions.
+        Kiosks and counters where Bangkok already walks — stations, lobbies, malls. Open now or closing soon, live from branch hours.
       </p>
       <div class="home-hours" data-frame="hours"><!-- live: data.js BRANCHES (flagships) --></div>
 
@@ -193,9 +194,9 @@
       <!-- CTA band -->
       <div class="fr-cta home-cta">
         <div class="fr-cta-copy">
-          <h3>Grab, collect, enjoy</h3>
-          <p>Open the app for branch-by-branch hours and a stamp card that
-             fills toward a treat. No account needed — everything stays on this device.</p>
+          <h3>Your next meal is already shaped</h3>
+          <p>Grab it at the kiosk, collect a stamp on the way out, keep moving.
+             No account needed — everything stays on this device.</p>
         </div>
         <div class="fr-cta-actions">
           <button class="btn accent" id="cta-open-app">Open the app</button>
@@ -244,9 +245,8 @@
       <header class="view-head">
         <h2>The full menu <span class="jp-inline" lang="ja">メニュー</span></h2>
         <p>
-          Everything the counters shape daily, straight from the live menu
-          data. Prices are indicative — they vary by branch and the line-up
-          rotates; ordering lives in the app.
+          Everything the counters shape daily. Prices are indicative — they
+          vary by branch and the line-up rotates; ordering lives in the app.
         </p>
         <div class="lmenu-cta">
           <button class="btn accent" id="lmenu-open-app" data-goto="menu">Order in the app</button>
@@ -262,8 +262,8 @@
         <div class="fr-cta-copy">
           <h3>Order now</h3>
           <p>
-            Everything above, shaped to order. Sign in to build your tray —
-            the cart waits on this device, checkout is a demo, nothing leaves it.
+            Everything above, shaped fresh this morning. Sign in to build your
+            tray — the cart waits on this device, checkout is a demo, nothing leaves it.
           </p>
         </div>
         <div class="fr-cta-actions">
@@ -302,9 +302,9 @@
                alt="Naeki kiosks in a shopping mall" />
           <div class="fr-banner-copy">
             <div class="hero-kicker">Franchise <span lang="ja">· フランチャイズ</span></div>
-            <h2>Join our franchise.</h2>
-            <p>Start your own HQSR Japanese restaurant business with ease —
-               get expert consultation and unlock an exclusive franchise offer today.</p>
+            <h2>Put a Naeki on your corner.</h2>
+            <p>A proven Healthy Quick Service Restaurant model heading for 50 branches —
+               expert consultation and an exclusive franchise offer to get you started.</p>
           </div>
         </header>
 
@@ -422,9 +422,10 @@
                alt="Naeki — 苗木 brush kanji on black" />
           <div class="ab-banner-copy">
             <div class="hero-kicker">About Naeki <span lang="ja">· 苗木</span></div>
-            <h2>A familiar brand, loved by Thais<br />for over a decade.</h2>
-            <p>We bet you've spotted us somewhere before — the black kiosk with the
-               warm glow, right by the gates.</p>
+            <h2>The art &amp; craft of onigiri — No.1.</h2>
+            <p>You've seen the black kiosk with the warm glow by the gates.
+               Ten years of one simple promise: a quick comfort stop for
+               people with places to be.</p>
           </div>
         </header>
 
@@ -435,17 +436,15 @@
             <p>
               <strong>Founded in 2013, Naeki began as a small sushi shop at CRC Tower,
               All Seasons Place — right in the heart of Bangkok.</strong>
-              Our vision was simple: a “quick comfort stop” for busy city dwellers.
-              We started with fresh-made onigiri at affordable prices, served fast to
-              fit the pace of office workers and commuters.
+              The vision was a “quick comfort stop”: fresh-made onigiri at fair prices,
+              served fast, for people racing through their day.
             </p>
             <p>
-              With a mission to be a go-to onigiri brand rooted in Thai society, we've
-              always prioritized <strong>fresh, high-quality ingredients</strong>,
-              <strong>quick service</strong>, and <strong>preservative-free recipes</strong>.
-              Today we've expanded to locations that follow the rhythm of modern life —
-              especially along Bangkok's BTS lines — making it easy to grab a satisfying,
-              value-packed bite on the go.
+              The mission hasn't moved: be Thailand's go-to onigiri brand, built on
+              <strong>fresh, high-quality ingredients</strong>, <strong>quick service</strong>,
+              and <strong>preservative-free recipes</strong>. Today the kiosks follow the
+              rhythm of modern life — especially along Bangkok's BTS lines — so a
+              satisfying, value-packed bite is never more than a gate away.
             </p>
           </div>
           <figure class="ab-story-photo">
@@ -544,12 +543,11 @@
         <div class="ab-values-head">
           <h3>Right size, right bite, just in time for you</h3>
           <p>
-            We don't just make triangular rice balls — we craft <strong>perfection in every
-            dimension</strong>. Many of our customers are hardworking people with packed
-            schedules, racing against deadlines. That's why we're dedicated to making our
-            onigiri the perfect meal: easy to hold, convenient to eat, just the right amount
-            to satisfy — and most importantly, <strong>consistently excellent</strong>,
-            because we put our heart into shaping every single piece to perfection.
+            A rice ball sounds simple. Naeki treats it as <strong>craft</strong> —
+            perfection in every dimension, for customers with packed schedules who
+            race deadlines and rarely pause. The result: a meal that's easy to hold,
+            convenient to eat, just right to satisfy — and <strong>consistently
+            excellent</strong>, because every single piece is shaped with intention.
           </p>
         </div>
         <div class="ab-values">
@@ -688,11 +686,7 @@
     <!-- ============ SIDEBAR ============ -->
     <aside id="sidebar">
       <div class="brand" id="brand-home">
-        <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
-          <path d="M32 6 L58 52 Q59 55 55 55 L9 55 Q5 55 6 52 Z" fill="#f3efe7"/>
-          <rect x="24" y="38" width="16" height="14" rx="4" fill="#1c2e22"/>
-          <circle cx="20" cy="26" r="6" fill="#ff8a3c"/>
-        </svg>
+        <img class="brand-logo" src="assets/brand/logo_320.png" alt="Naeki — gold wordmark" />
         <div class="brand-name">NAEKI<span>SUSHI</span></div>
         <div class="brand-kanji" lang="ja">佐ゑ巻</div>
       </div>
@@ -792,8 +786,8 @@
         <header class="view-head">
           <h2>Order <span class="jp-inline" lang="ja">注文</span></h2>
           <p>
-            Pick up where the line's shortest — build the order here, show the
-            reference at any kiosk. Items rotate daily and prices vary by branch.
+            Build it here, show the reference at any kiosk, walk out in under a
+            minute. Items rotate daily and prices vary by branch.
           </p>
         </header>
 
@@ -880,10 +874,10 @@
         <header class="view-head">
           <h2>Rewards <span class="jp-inline" lang="ja">ポイント</span></h2>
           <p>
-            The loyalty loop in one place — earn points on every demo order,
-            spend them from the wallet, climb the milestones for one-time
-            bonuses. 1 pt per 10฿, doubled on Thursdays, multiplied by your
-            tier. Everything is computed on this device and nothing leaves it.
+            The more you grab, the more comes back — points on every order,
+            stamps toward a treat, a wallet that pays with one tap. 1 pt per
+            10฿, doubled on Thursdays, multiplied by your tier. Everything is
+            computed on this device and nothing leaves it.
           </p>
         </header>
 
@@ -1115,7 +1109,7 @@
           <h2>Chat <span class="jp-inline" lang="ja">相談</span></h2>
           <p>
             Party trays, big orders, catering for the office, or just a question —
-            tap a topic to jump straight to the Naeki team on LINE. We reply on
+            tap a topic to jump straight to the Naeki team on LINE. They reply on
             LINE, where the orders and the offers already live.
           </p>
         </header>

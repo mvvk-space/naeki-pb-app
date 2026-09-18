@@ -1,29 +1,71 @@
-/* NAEKI SHOWCASE — vocabulary lifted from the real kiosks:
-   matte black, warm off-white type, salmon-orange accent,
-   hazard-stripe base, vertical Japanese signage. */
+/* NAEKI SHOWCASE — vocabulary lifted from naeki.co and the real kiosks:
+   matte black, gold-metal type (the logo's own palette), the site's
+   orange→coral wash for hero moments, hazard-stripe base, vertical
+   Japanese signage. Set in Prompt — the brand's site face. */
 
 :root {
+  /* ---- brand palette — pulled from naeki.co (theme CSS, Oct 2026) ----
+     gold #CC9A3D is the logo's own metal (the wordmark is gold on black);
+     the site's signature surface is the orange→coral wash #F79421→#E2654C;
+     cream #FFEDD9 is its paper tone. Accent usage: gold for type-level
+     marks (kickers, prices, links), gradient reserved for hero moments
+     (primary buttons, CTA bands) so the wash stays special. */
   --ink-0: #101012;      /* page black */
   --ink-1: #16161a;      /* panel black */
   --ink-2: #1e1e23;      /* card black */
   --line: #2a2a31;       /* hairlines */
   --paper: #f3efe7;      /* warm off-white */
   --paper-dim: #b9b4a8;  /* muted */
-  --salmon: #ff8a3c;     /* accent */
-  --salmon-deep: #e06a1b;
+  --gold: #cc9a3d;       /* brand metal — logo gold */
+  --gold-soft: #dbb877;  /* lighter metal for hovers */
+  --gold-bright: #e8c88a;/* brightest metal, small type on black */
+  --brand-orange: #f79421; /* gradient start — the site's wash */
+  --brand-coral: #e2654c;  /* gradient end */
+  --brand-cream: #ffedd9;  /* site paper tone — dark-ink text on gradient */
+  --salmon: var(--gold);     /* legacy alias — the accent, now brand gold */
+  --salmon-deep: #a87c2e;
   --nori: #1c2e22;
   --wasabi: #9fb83f;
   --go: #7ea8c9;         /* Naeki GO! kiosk marker */
   --off: #55555e;        /* closed / "off" status */
   --paper-faint: #6d6a62;/* tertiary text: placeholders, legal, captions */
   --line-hover: #3d3d46; /* hover / affordance border */
+  --grad-brand: linear-gradient(135deg, var(--brand-orange) 0%, var(--brand-coral) 100%);
   --radius: 14px;        /* cards */
   --radius-sm: 12px;     /* rows, slots, thumbs */
   --radius-lg: 18px;     /* overlays (modal) */
   --sidebar-w: 232px;
-  --font-display: "Noto Serif CJK JP", "Noto Serif Thai", "DejaVu Serif", serif;
-  --font-body: "Noto Sans CJK JP", "Noto Sans Thai", "DejaVu Sans", sans-serif;
+  /* Prompt is the naeki.co brand face (site-wide). CJK/Thai glyphs fall
+     through to the Noto stack — Prompt's latin subset is vendored local. */
+  --font-display: "Prompt", "Noto Serif CJK JP", "Noto Serif Thai", "DejaVu Serif", sans-serif;
+  --font-body: "Prompt", "Noto Sans CJK JP", "Noto Sans Thai", "DejaVu Sans", sans-serif;
   --font-mono: "DejaVu Sans Mono", monospace;
+}
+
+/* the brand face, vendored for offline use (naeki.co serves Prompt) */
+@font-face {
+  font-family: "Prompt";
+  src: url("assets/fonts/prompt-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Prompt";
+  src: url("assets/fonts/prompt-500.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Prompt";
+  src: url("assets/fonts/prompt-600.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Prompt";
+  src: url("assets/fonts/prompt-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -110,7 +152,9 @@ a:hover { text-decoration: underline; }
 }
 
 .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; cursor: pointer; }
-.brand-mark { width: 44px; height: 44px; margin-bottom: 10px; }
+/* the official gold wordmark (from naeki.co) — transparent PNG, reads as
+   engraved metal on the black rail */
+.brand-logo { width: 128px; height: auto; margin-bottom: 10px; }
 .brand-name {
   font-family: var(--font-display);
   font-size: 27px;
@@ -210,11 +254,12 @@ body:not([data-staff="true"]) .staff-only { display: none; }
 }
 
 .hero-kicker {
-  font-family: var(--font-mono);
+  font-family: var(--font-body);
   font-size: 11px;
+  font-weight: 600;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--salmon);
+  color: var(--gold-soft);
   margin-bottom: 16px;
 }
 
@@ -296,8 +341,8 @@ body:not([data-staff="true"]) .staff-only { display: none; }
 }
 .chip:hover { border-color: var(--paper-dim); color: var(--paper); }
 .chip.active {
-  background: var(--salmon);
-  border-color: var(--salmon);
+  background: var(--gold);
+  border-color: var(--gold);
   color: #16110b;
   font-weight: 600;
 }
@@ -497,7 +542,7 @@ body:not([data-staff="true"]) .staff-only { display: none; }
   align-items: flex-start;
   gap: 10px;
 }
-.oc-kicker { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--salmon); }
+.oc-kicker { font-family: var(--font-body); font-size: 9.5px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-soft); }
 .order-card h3 { font-family: var(--font-display); font-size: 21px; }
 .order-card p { color: var(--paper-dim); font-size: 13.5px; }
 
@@ -512,10 +557,15 @@ body:not([data-staff="true"]) .staff-only { display: none; }
 }
 .btn[hidden] { display: none; } /* keep the UA hidden rule through .btn's display */
 .btn:hover { text-decoration: none; transform: translateY(-1px); }
-.btn.accent { background: var(--salmon); color: #16110b; }
-.btn.accent:hover { opacity: 0.92; }
+/* the primary action wears the site's signature orange→coral wash */
+.btn.accent {
+  background: var(--grad-brand);
+  color: var(--brand-cream);
+  font-weight: 600;
+}
+.btn.accent:hover { filter: brightness(1.06); }
 .btn.ghost { border: 1px solid var(--line); color: var(--paper); }
-.btn.ghost:hover { border-color: var(--paper-dim); }
+.btn.ghost:hover { border-color: var(--gold); }
 
 .oc-socials { display: flex; gap: 16px; margin-top: 6px; }
 .oc-socials a { font-size: 13px; }
@@ -597,7 +647,7 @@ body:not([data-staff="true"]) .staff-only { display: none; }
     border-bottom: 1px solid var(--line);
   }
   .brand { flex-direction: row; align-items: center; gap: 10px; }
-  .brand-mark { width: 30px; height: 30px; margin: 0; }
+  .brand-logo { width: 44px; margin: 0; }
   .brand-name { font-size: 18px; }
   .brand-name span { display: inline; margin: 0 0 0 6px; font-size: 10px; }
   .brand-kanji { display: none; }
@@ -627,7 +677,7 @@ body:not([data-staff="true"]) .staff-only { display: none; }
    ============================================================ */
 
 :root {
-  --splash-bg: var(--salmon);          /* orange primary */
+  --splash-bg: var(--grad-brand);      /* the brand wash — orange→coral */
   --splash-ink: #16110b;               /* black accent (warm) */
   --splash-draw: 0.8s;                 /* ring + stand line-art draw time */
   --splash-fill: 0.8s;                 /* pie-chart ink-fill sweep */
@@ -2549,7 +2599,7 @@ body:not([data-staff="true"]) .staff-only { display: none; }
      section pills, smaller gate button — fits a 390px viewport */
   .lp-header { padding: 10px 14px; gap: 8px; }
   .lp-brand .brand-name { display: none; }
-  .lp-brand .brand-mark { width: 26px; height: 26px; flex: 0 0 26px; }
+  .lp-brand img { width: 26px; height: 26px; flex: 0 0 26px; }
   .lp-nav { gap: 0; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
   .lp-nav::-webkit-scrollbar { display: none; }
   .lp-link { padding: 10px 9px; font-size: 12px; white-space: nowrap; }
@@ -2612,7 +2662,7 @@ body:not([data-staff="true"]) .staff-only { display: none; }
     flex: none;
   }
   .brand { width: auto; flex-direction: row; align-items: center; gap: 9px; }
-  .brand-mark { width: 26px; height: 26px; margin: 0; }
+  .brand-logo { width: 64px; margin: 0; }
   .brand-name { font-size: 16px; letter-spacing: 0.1em; }
   .brand-name span { margin-left: 5px; font-size: 9px; }
   .side-nav { display: none; }         /* thumb-zone tabbar owns navigation */

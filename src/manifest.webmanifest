@@ -1,7 +1,7 @@
 {
   "name": "Naeki Sushi — Bangkok Showcase",
   "short_name": "Naeki",
-  "description": "Unofficial fan showcase for Naeki Sushi & GO! — menu, branches and brand story.",
+  "description": "Unofficial fan showcase for Naeki Sushi & GO! — grab sushi fast, keep moving. Menu, branches, rewards and brand story.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

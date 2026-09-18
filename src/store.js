@@ -74,7 +74,18 @@
     // there's no server-side fan-out here. A published offer reaches this
     // device's Rewards bell only if THIS device subscribes to that branch.
     franchiseDrafts: [],           // [{ id, branchId, title, text, tag, status, submittedAt }]
-    publishedOffers: []           // [{ uid, branchId, kicker, title, text, tag, sentAt, sendCount }]
+    publishedOffers: [],          // [{ uid, branchId, kicker, title, text, tag, sentAt, sendCount }]
+
+    /* ---------------- pickup, check-ins, drops, tier memory ----------------
+       The four habit surfaces. Each is user-visible the moment it fires:
+       a chosen pickup window with a live countdown, an "I'm here" bonus that
+       pays out at the counter, a once-a-day drop with a next-one countdown,
+       and the tier id we last celebrated so the level-up moment shows once. */
+    pickup: null,                 // { slot:"18:30", branch, placedAt, readyAt } — last chosen window
+    checkins: [],                 // [{ ts, branch, pts }] — "I'm here" taps, one bonus per branch/day
+    dailyDrop: { lastClaim: 0, streak: 0, total: 0 },  // once-a-day bonus (2× on Thursdays)
+    tierSeen: "kome",             // tier id already celebrated — level-up fires once per tier
+    statsSeen: 0                  // last visit ts the "month in sushi" card was opened
   };
 
   /* loyalty store events — app.js subscribes to repaint tier/offers UI */
@@ -145,7 +156,26 @@
           ? saved.publishedOffers.filter(o =>
               o && typeof o.branchId === "string" &&
               window.NaekiData?.BRANCHES?.some(b => b.name === o.branchId))
-          : []
+          : [],
+        // pickup window: only a well-shaped record with a real branch survives
+        pickup: (saved.pickup && typeof saved.pickup === "object" &&
+                 typeof saved.pickup.slot === "string" &&
+                 window.NaekiData?.BRANCHES?.some(b => b.name === saved.pickup.branch))
+          ? saved.pickup
+          : null,
+        // check-ins: only numeric stamps at branches that still exist
+        checkins: Array.isArray(saved.checkins)
+          ? saved.checkins.filter(c => c && Number(c.ts) > 0 &&
+              window.NaekiData?.BRANCHES?.some(b => b.name === c.branch))
+          : [],
+        dailyDrop: {
+          lastClaim: Number(saved.dailyDrop?.lastClaim) || 0,
+          streak: Number(saved.dailyDrop?.streak) || 0,
+          total: Number(saved.dailyDrop?.total) || 0
+        },
+        // tier ladder the user has already been celebrated for (unknown → base)
+        tierSeen: typeof saved.tierSeen === "string" ? saved.tierSeen : "kome",
+        statsSeen: Number(saved.statsSeen) || 0
       };
     } catch {
       // private browsing, disabled storage, corrupt JSON → fresh state
@@ -318,9 +348,15 @@
       // coupon re-validated against the live cart at the moment of checkout —
       // a coupon applied earlier may no longer fit (cart changed, code expired)
       const coupon = state.coupon;
-      const discount = this.couponDiscount(state.cart);
+      const couponDiscount = this.couponDiscount(state.cart);
+      // the stamp-card treat pays here, automatically: the first unspent
+      // NK-TREAT-… voucher is spent against this order, so the 10th stamp is
+      // worth real baht instead of a line in a history list.
+      const treat = state.gifts.find(g => !g.spent && g.treat);
+      const treatDiscount = treat ? Math.min(treat.amount, subtotal - couponDiscount) : 0;
+      const discount = couponDiscount + treatDiscount;
       const total = subtotal - discount;
-      const couponDropped = coupon && !discount ? coupon.code : null;
+      const couponDropped = coupon && !couponDiscount ? coupon.code : null;
       const count = cartCount();
       const walletSpent = (state.wallet.useWallet !== false)   // opt-in (default true)
         ? Math.min(state.wallet.balance, total) : 0;
@@ -336,8 +372,10 @@
         id: "NK-" + Date.now().toString(36).toUpperCase(),
         total, subtotal, discount, count, ts: Date.now(), lines: state.cart.slice(),
         category: category || null,
-        couponCode: discount > 0 ? coupon.code : null,
+        couponCode: couponDiscount > 0 ? coupon.code : null,
         couponDropped,
+        treatCode: treatDiscount > 0 ? treat.code : null,
+        treatDiscount,
         paidByWallet, walletSpent,
         pointsEarned: earned, tier: tier.name,
         newLifetime: state.loyalty.lifetime + earned
@@ -346,10 +384,11 @@
       state.loyalty.lifetime += earned;
       state.loyalty.history.unshift({
         ts: receipt.ts, total, count, category: category || null,
-        couponCode: receipt.couponCode,
+        couponCode: receipt.couponCode, discount,
         lines: receipt.lines.map(l => ({ name: l.name, qty: l.qty, price: l.price }))
       });
-      if (discount > 0) state.coupon = null;   // single-use per order, like real codes
+      if (couponDiscount > 0) state.coupon = null;   // single-use per order, like real codes
+      if (treatDiscount > 0) treat.spent = true;     // the treat is consumed too
       if (state.loyalty.history.length > 50) state.loyalty.history.length = 50;
       state.cart = [];
       persist();
@@ -718,7 +757,181 @@
       state.franchiseDrafts = state.franchiseDrafts.filter(x => x.id !== id);
       persist();
       return state.franchiseDrafts.slice();
-    }
+    },
+
+    /* ================= habit surfaces =================
+       Six user-facing loops that each pay out visibly, plus the tier
+       celebration. All are computed against Bangkok time and this device's
+       own history; each persists and emits so the UI repaints immediately. */
+
+    /* ---- 1. pickup windows: choose when the order is ready ----------------
+       The menu shows a slot picker; the chosen window survives sign-out and
+       drives a live countdown ("ready in 12 min") plus the receipt copy. */
+    pickupState: () => state.pickup,
+
+    /** claim a pickup slot (minutes from now, rounded to a 15-min grid) */
+    setPickup(slot, branch) {
+      if (!slot) return null;
+      state.pickup = { slot: String(slot), branch: branch || "", placedAt: Date.now() };
+      persist(); emit();
+      return state.pickup;
+    },
+    clearPickup() { state.pickup = null; persist(); emit(); return true; },
+
+    /* ---- 2. "I'm here" check-in: earns at the counter -------------------
+       One bonus per branch per Bangkok day — taps at a second branch the same
+       day still count, which is what makes the branch list worth opening. */
+    checkinState: () => state.checkins,
+
+    /** is this branch already checked into today? */
+    checkedInToday(branch, now = Date.now()) {
+      const day = window.NaekiData.bangkokDayKey(now);
+      return state.checkins.some(c => c.branch === branch &&
+        window.NaekiData.bangkokDayKey(c.ts) === day);
+    },
+
+    /** tap in at a branch: +25 pts (2× Thursdays), once per branch per day */
+    checkIn(branch) {
+      if (!branch) return null;
+      if (this.checkedInToday(branch)) return null;
+      const D = window.NaekiData;
+      const mult = D.bangkokWeekday(Date.now()) === D.POINTS_DAY ? 2 : 1;
+      const pts = 25 * mult;
+      state.checkins.unshift({ ts: Date.now(), branch, pts });
+      state.loyalty.points += pts;
+      state.loyalty.lifetime += pts;
+      persist(); emit();
+      if (window.NaekiStore.persistLoyalty) window.NaekiStore.persistLoyalty();
+      return { pts, branch };
+    },
+
+    /* ---- 3. daily drop: opens once a day, counts down to the next --------
+       A reason to open the app on a day you're not ordering. Streak grows on
+       consecutive days and the payout scales with it; Thursdays double. */
+    dailyDropState: () => state.dailyDrop,
+
+    /** the drop's window for today (Bangkok day) + streak-aware payout */
+    dailyDropInfo(now = Date.now()) {
+      const D = window.NaekiData;
+      const today = D.bangkokDayKey(now);
+      const claimedToday = state.dailyDrop.lastClaim &&
+        D.bangkokDayKey(state.dailyDrop.lastClaim) === today;
+      const yesterdayKey = D.bangkokDayKey(now - 24 * 60 * 60 * 1000);
+      const lastKey = state.dailyDrop.lastClaim ? D.bangkokDayKey(state.dailyDrop.lastClaim) : "";
+      // streak survives only if the last claim was today or yesterday
+      const streak = claimedToday || lastKey === yesterdayKey ? state.dailyDrop.streak : 0;
+      const base = 30;
+      const streakPts = base + Math.min(streak, 6) * 10;
+      const mult = D.bangkokWeekday(now) === D.POINTS_DAY ? 2 : 1;
+      // next drop opens at 00:05 Bangkok (a fresh day, not the stroke of midnight)
+      const parts = D.bangkokParts(now);
+      const minutesLeftToday = (24 * 60) - (parts.h * 60 + parts.m) + 5;
+      return {
+        claimedToday, streak, pts: streakPts * mult, mult,
+        minutesToNext: minutesLeftToday,
+        total: state.dailyDrop.total
+      };
+    },
+
+    /** claim today's drop; returns { pts, streak } or null if already taken */
+    claimDailyDrop() {
+      const info = this.dailyDropInfo();
+      if (info.claimedToday) return null;
+      state.dailyDrop.lastClaim = Date.now();
+      state.dailyDrop.streak = info.streak + 1;
+      state.dailyDrop.total += info.pts;
+      state.loyalty.points += info.pts;
+      state.loyalty.lifetime += info.pts;
+      persist(); emit();
+      if (window.NaekiStore.persistLoyalty) window.NaekiStore.persistLoyalty();
+      return { pts: info.pts, streak: state.dailyDrop.streak };
+    },
+
+    /* ---- 4. tier celebration: fire once per level crossed ---------------- */
+    tierSeenState: () => state.tierSeen,
+
+    /** the tier the user is on now, and whether it's a new one worth a moment */
+    tierMoment() {
+      const D = window.NaekiData;
+      const tier = D.tierFor(state.loyalty.lifetime);
+      const isNew = state.tierSeen !== tier.id &&
+        D.TIERS.findIndex(t => t.id === tier.id) > D.TIERS.findIndex(t => t.id === state.tierSeen);
+      return { tier, isNew, seen: state.tierSeen };
+    },
+    /** mark the current tier as celebrated (so the moment shows exactly once) */
+    ackTier() {
+      const tier = window.NaekiData.tierFor(state.loyalty.lifetime);
+      state.tierSeen = tier.id;
+      persist(); emit();
+      return tier.id;
+    },
+
+    /* ---- 5. "your sushi month": a shareable recap of real behaviour ------ */
+    /** recap computed from THIS device's history — the honest Wrapped */
+    recap(now = Date.now()) {
+      const D = window.NaekiData;
+      const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+      const orders = (state.loyalty.history || []).filter(o => o.ts >= monthAgo);
+      const spend = orders.reduce((t, o) => t + (Number(o.total) || 0), 0);
+      const dishes = orders.reduce((n, o) => n + (Number(o.count) || 0), 0);
+      const cats = {};
+      for (const o of orders) if (o.category) cats[o.category] = (cats[o.category] || 0) + (o.count || 1);
+      const topCatId = Object.entries(cats).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+      const group = D.MENU.find(g => g.id === topCatId);
+      const days = new Set(orders.map(o => D.bangkokDayKey(o.ts)));
+      // favourite single dish across the month's recorded lines
+      const dishes2 = {};
+      for (const o of orders) for (const l of (o.lines || []))
+        dishes2[l.name] = (dishes2[l.name] || 0) + (l.qty || 1);
+      const favourite = Object.entries(dishes2).sort((a, b) => b[1] - a[1])[0] || null;
+      const tier = D.tierFor(state.loyalty.lifetime);
+      return {
+        orders: orders.length, spend, dishes, days: days.size,
+        topCat: group ? group.name : null, topCatJp: group ? group.jp : null,
+        favourite: favourite ? favourite[0] : null,
+        favouriteQty: favourite ? favourite[1] : 0,
+        saved: orders.reduce((t, o) => t + (Number(o.discount) || 0), 0),
+        points: state.loyalty.points, lifetime: state.loyalty.lifetime, tier,
+        stamps: state.card.stamps.length, stampSize: state.card.size,
+        checkins: (state.checkins || []).length,
+        best: this.bestDay(orders)
+      };
+    },
+
+    /** the single biggest-spend Bangkok day in a set of orders */
+    bestDay(orders) {
+      const D = window.NaekiData;
+      const byDay = {};
+      for (const o of orders || state.loyalty.history || []) {
+        const k = D.bangkokDayKey(o.ts);
+        byDay[k] = (byDay[k] || 0) + (Number(o.total) || 0);
+      }
+      const top = Object.entries(byDay).sort((a, b) => b[1] - a[1])[0];
+      if (!top) return null;
+      const when = new Date(Number(top[0].split("-")[0]), Number(top[0].split("-")[1]) - 1, Number(top[0].split("-")[2]));
+      return { key: top[0], total: top[1], label: when.toLocaleDateString(undefined, { day: "numeric", month: "long" }) };
+    },
+
+    /* ---- 6. stamp card: bank a treat you can actually spend -------------
+       Redeeming no longer just empties the card — it mints a real voucher in
+       the wallet that the next checkout uses, so the 10th stamp pays out. */
+    /** redeem a full card into a spendable voucher (stored in gifts) */
+    redeemStampCard(reward = "Free treat") {
+      const card = state.card;
+      if (card.stamps.length < card.size) return null;
+      const voucher = {
+        code: "NK-TREAT-" + Math.random().toString(36).slice(2, 7).toUpperCase(),
+        amount: 60, ts: Date.now(), spent: false, treat: reward
+      };
+      state.gifts.unshift(voucher);
+      card.redemptions.unshift({ ts: Date.now(), reward, stampCount: card.stamps.length, voucher: voucher.code });
+      card.stamps = [];
+      persist(); emit();
+      return voucher;
+    },
+
+    /** note that the recap card was opened (so the badge can retire) */
+    ackRecap() { state.statsSeen = Date.now(); persist(); return state.statsSeen; }
   };
 
   function cartCount() {

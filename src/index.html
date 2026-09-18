@@ -809,6 +809,12 @@
 
         <div class="quote-strip" aria-label="What diners say" data-frame="reviews"><!-- live: data.js REVIEWS --></div>
 
+        <!-- pickup window: the slot the order will be ready in, with a live countdown -->
+        <div class="pickup-bar" id="pickup-bar" hidden><!-- rendered by app.js --></div>
+
+        <!-- the daily drop: one claim a day, streak-aware payout -->
+        <div class="drop-card" id="drop-card" hidden><!-- rendered by app.js --></div>
+
         <div class="toolbar">
           <div class="chips" id="chips" role="tablist" aria-label="Menu categories"></div>
           <div class="search-wrap">
@@ -838,6 +844,8 @@
           <span class="count" id="branch-count"></span>
         </div>
         <div class="branch-your" id="branch-your" hidden></div>
+        <!-- check-in strip: how many branches paid out today + the bonus on offer -->
+        <div class="checkin-strip" id="checkin-strip" hidden><!-- rendered by app.js --></div>
         <div class="legend">
           <span class="legend-item"><i class="dot open"></i> Open now</span>
           <span class="legend-item"><i class="dot closed"></i> Closed for today</span>
@@ -896,6 +904,9 @@
 
         <!-- tier ladder -->
         <div class="rw-tiers" id="rw-tiers"><!-- rendered by app.js --></div>
+
+        <!-- your month in sushi: a shareable recap of real behaviour -->
+        <div class="recap-card" id="recap-card" hidden><!-- rendered by app.js -->
 
         <div class="disclaimer">
           <p>

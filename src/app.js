@@ -890,6 +890,137 @@
   renderChips();
   renderMenu();
 
+  /* ---------------- Pickup window (choose when it's ready) ----------------
+     A slot picker on the ordering menu. Claiming one stores it server-side
+     (the user-state blob) and swaps the picker for a live countdown, so the
+     diner knows exactly when to walk up to the counter. */
+  const pickupBar = $("#pickup-bar");
+
+  /** the next four 15-min slots from now, in Bangkok time */
+  function pickupSlots() {
+    const now = new Date();
+    const bkk = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Bangkok" }));
+    const step = 15;
+    const start = Math.ceil((bkk.getMinutes() + 1) / step) * step;
+    const base = new Date(bkk); base.setMinutes(start, 0, 0);
+    const out = [];
+    for (let i = 0; i < 4; i++) {
+      const t = new Date(base.getTime() + i * step * 60000);
+      const hh = String(t.getHours()).padStart(2, "0");
+      const mm = String(t.getMinutes()).padStart(2, "0");
+      out.push(`${hh}:${mm}`);
+    }
+    return out;
+  }
+
+  /** minutes until a "HH:MM" Bangkok slot, relative to now (negative = past) */
+  function minutesUntil(slot) {
+    const nowParts = D.bangkokParts();
+    const [h, m] = String(slot).split(":").map(Number);
+    return (h * 60 + m) - nowParts.mins;
+  }
+
+  function renderPickup() {
+    if (!pickupBar) return;
+    const p = S.pickupState();
+    if (!p) {
+      const slots = pickupSlots();
+      pickupBar.hidden = false;
+      pickupBar.innerHTML = `
+        <div class="pickup-head">
+          <span class="pickup-kicker">Pickup window</span>
+          <span class="pickup-why">Choose when you'll collect — you'll get a countdown.</span>
+        </div>
+        <div class="pickup-slots">
+          ${slots.map(s => `<button class="pickup-slot" data-slot="${s}">${s}</button>`).join("")}
+        </div>`;
+      pickupBar.querySelectorAll(".pickup-slot").forEach(b =>
+        b.addEventListener("click", () => {
+          const branch = S.subscribedBranchesState()[0] || D.BRANCHES[0]?.name || "";
+          const rec = S.setPickup(b.dataset.slot, branch);
+          if (rec) flash(`Pickup set for ${rec.slot} — we'll count it down`);
+          renderPickup();
+        }));
+      return;
+    }
+    const left = minutesUntil(p.slot);
+    const branch = D.BRANCHES.find(b => b.name === p.branch);
+    const ready = left <= 0;
+    pickupBar.hidden = false;
+    pickupBar.innerHTML = `
+      <div class="pickup-head">
+        <span class="pickup-kicker">${ready ? "Ready for pickup" : "Pickup window"}</span>
+        <span class="pickup-why">${branch ? escapeHtml(D.shortName(branch)) : "Any counter"} · ${escapeHtml(p.slot)}</span>
+      </div>
+      <div class="pickup-live" role="status" aria-live="polite">
+        <strong id="pickup-count">${ready ? "Now" : left + " min"}</strong>
+        <span>${ready
+          ? "Walk up and show your order id at the counter."
+          : "Your order's being built — leave in time to skip the line."}</span>
+      </div>
+      <div class="pickup-actions">
+        <button class="btn ghost sm" id="pickup-change">Change window</button>
+        <button class="btn ghost sm" id="pickup-clear">Clear</button>
+      </div>`;
+    $("#pickup-change").addEventListener("click", () => { S.clearPickup(); renderPickup(); });
+    $("#pickup-clear").addEventListener("click", () => { S.clearPickup(); renderPickup(); });
+  }
+
+  /* ---------------- Daily drop (opens once a day) ----------------
+     The reason to open the app on a day you're not ordering: a claim with a
+     streak-aware payout and a countdown to the next one. */
+  const dropCard = $("#drop-card");
+
+  function renderDrop() {
+    if (!dropCard) return;
+    const info = S.dailyDropInfo();
+    dropCard.hidden = false;
+    if (info.claimedToday) {
+      const h = Math.floor(info.minutesToNext / 60);
+      const m = info.minutesToNext % 60;
+      dropCard.className = "drop-card claimed";
+      dropCard.innerHTML = `
+        <div class="drop-head">
+          <span class="drop-kicker">Today's drop · claimed</span>
+          <span class="drop-streak">${info.streak} day${info.streak === 1 ? "" : "s"} in a row</span>
+        </div>
+        <p class="drop-body">
+          Nice — <strong>฿0.00 spent, points banked.</strong>
+          The next drop opens in
+          <strong>${h}h ${m}m</strong>. Come back tomorrow to keep the streak
+          (each day adds +10 pts to the next one).
+        </p>`;
+      return;
+    }
+    dropCard.className = "drop-card";
+    dropCard.innerHTML = `
+      <div class="drop-head">
+        <span class="drop-kicker">Today's drop ${info.mult > 1 ? "· 2× Thursday" : ""}</span>
+        <span class="drop-streak">${info.streak ? info.streak + " day streak" : "start a streak"}</span>
+      </div>
+      <p class="drop-body">
+        Open today's drop for <strong>+${info.pts} pts</strong> — no order needed.
+        ${info.streak ? `Your streak pays an extra +${Math.min(info.streak, 6) * 10}.` :
+          "Come back tomorrow and each consecutive day pays more."}
+      </p>
+      <div class="drop-actions">
+        <button class="btn accent" id="drop-claim">Open today's drop</button>
+      </div>`;
+    $("#drop-claim").addEventListener("click", () => {
+      const res = S.claimDailyDrop();
+      if (res) flash(`+${res.pts} points · ${res.streak} day streak`);
+      renderDrop();
+    });
+  }
+
+  renderPickup();
+  renderDrop();
+  // the countdown + the drop's "next in" both advance on the minute tick
+  D.subscribe("tick", () => {
+    if (S.pickupState()) renderPickup();
+    if (dropCard && !dropCard.hidden && S.dailyDropInfo().claimedToday) renderDrop();
+  });
+
   /* ---------------- Branches ----------------
      Consumes the same data layer + status helpers the landing frames use;
      re-renders on the minute tick so statuses flip live at closing time. */
@@ -955,7 +1086,25 @@
               <span class="b-sub-label">${on ? "Notifying me" : "Notify me"}</span>
             </button>
             <span class="b-sub-hint">${on ? "Receives offers & notifications here" : "Tap to get offers & notifications from this branch"}</span>
-          </div>`;
+          </div>
+          ${(() => {
+            // check-in: pays out at the counter, once per branch per day. Only
+            // offered while the branch is actually open — you can't walk in
+            // to a closed shutter.
+            const done = S.checkedInToday(b.name);
+            if (done) return `<div class="b-checkin done">
+              <span class="b-checkin-pts">✓ Checked in today</span>
+              <span class="b-checkin-hint">Your +${checkinPts()} pts are already in Rewards</span>
+            </div>`;
+            if (!open) return `<div class="b-checkin shut">
+              <span class="b-checkin-hint">Check in opens when the counter does</span>
+            </div>`;
+            return `<div class="b-checkin">
+              <button class="b-checkin-btn" data-checkin="${b.name}">
+                <span aria-hidden="true">📍</span> I'm here — collect +${checkinPts()} pts
+              </button>
+            </div>`;
+          })()}`;
         // the toggle stops propagation so tapping it doesn't open Maps
         const toggle = el.querySelector(".b-sub-toggle");
         toggle.addEventListener("click", e => {
@@ -964,15 +1113,25 @@
           renderBranches();
           syncBellAndPop();
         });
+        // check-in button: awards once, then the card flips to the "done" state
+        const cbtn = el.querySelector(".b-checkin-btn");
+        if (cbtn) cbtn.addEventListener("click", e => {
+          e.stopPropagation();
+          const res = S.checkIn(b.name);
+          if (res) flash(`Checked in at ${D.shortName(b)} — +${res.pts} points`);
+          renderBranches();
+        });
         const go = () =>
           window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.name + " Bangkok")}`, "_blank");
         el.addEventListener("click", e => {
-          if ((/** @type {HTMLElement} */ (e.target)).closest(".b-sub-toggle")) return;
+          const t = /** @type {HTMLElement} */ (e.target);
+          if (t.closest(".b-sub-toggle") || t.closest(".b-checkin")) return;
           go();
         });
         el.addEventListener("keydown", e => {
           if (e.key === "Enter") {
-            if ((/** @type {HTMLElement} */ (e.target)).closest(".b-sub-toggle")) return;
+            const t = /** @type {HTMLElement} */ (e.target);
+            if (t.closest(".b-sub-toggle") || t.closest(".b-checkin")) return;
             go();
           }
         });
@@ -980,6 +1139,24 @@
         shown++;
       });
     branchCount.textContent = `${shown} / ${D.BRANCHES.length} branches`;
+
+    // check-in strip: today's tally across all branches (2× on Thursdays)
+    const strip = $("#checkin-strip");
+    if (strip) {
+      const today = S.checkinState().filter(c => D.bangkokDayKey(c.ts) === D.bangkokDayKey(Date.now()));
+      const pts = today.reduce((t, c) => t + (Number(c.pts) || 0), 0);
+      strip.hidden = false;
+      strip.innerHTML = today.length
+        ? `📍 <strong>${today.length}</strong> check-in${today.length === 1 ? "" : "s"} today ·
+           <strong>+${pts} pts</strong> collected — each branch pays once a day.`
+        : `📍 Tap <strong>I'm here</strong> at a counter you actually visit — each branch
+           pays <strong>+${checkinPts()} pts</strong> once a day.`;
+    }
+  }
+
+  /** the check-in bonus on offer right now (2× on the points day) */
+  function checkinPts() {
+    return 25 * (D.bangkokWeekday(Date.now()) === D.POINTS_DAY ? 2 : 1);
   }
   branchSearch.addEventListener("input", renderBranches);
   renderBranches();
@@ -1080,15 +1257,25 @@
           <button class="btn ghost sm" type="submit" id="cpn-apply">Apply</button>
         </form>
         <p class="cpn-note" id="cpn-note" aria-live="polite"></p>`;
+    // the cart preview shows ANY discount that will apply at checkout —
+    // including a stamp-card treat, so the 10th stamp is visible before the tap
+    const pendingTreat = S.giftsState().find(g => !g.spent && g.treat);
+    const treatPreview = pendingTreat ? Math.min(pendingTreat.amount, subtotal - discount) : 0;
     const totals = discount > 0
       ? `<div class="cart-total cpn-total"><span>Subtotal</span><s>${fmtBaht(subtotal)}</s></div>
-         <div class="cart-total cpn-total"><span>Coupon ${applied ? applied.code : ""}</span><span class="cpn-minus">−${fmtBaht(discount)}</span></div>
-         <div class="cart-total"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${fmtBaht(total)}</strong></div>`
-      : `<div class="cart-total"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${fmtBaht(total)}</strong></div>`;
+         <div class="cart-total cpn-total"><span>Coupon ${applied ? escapeHtml(applied.code) : ""}</span><span class="cpn-minus">−${fmtBaht(discount)}</span></div>
+         ${treatPreview > 0 ? `<div class="cart-total cpn-total treat-total"><span>Stamp-card treat ${escapeHtml(pendingTreat.code)}</span><span class="cpn-minus">−${fmtBaht(treatPreview)}</span></div>` : ""}
+         <div class="cart-total"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${fmtBaht(total - treatPreview)}</strong></div>`
+      : treatPreview > 0
+        ? `<div class="cart-total cpn-total"><span>Subtotal</span><s>${fmtBaht(subtotal)}</s></div>
+           <div class="cart-total cpn-total treat-total"><span>Stamp-card treat ${escapeHtml(pendingTreat.code)}</span><span class="cpn-minus">−${fmtBaht(treatPreview)}</span></div>
+           <div class="cart-total"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${fmtBaht(subtotal - treatPreview)}</strong></div>`
+        : `<div class="cart-total"><span>${count} item${count === 1 ? "" : "s"}</span><strong>${fmtBaht(total)}</strong></div>`;
 
     foot.innerHTML = `
       ${cpnRow}
       ${totals}
+      ${treatPreview > 0 ? `<p class="cart-note treat-receipt-ok">Your stamp-card treat pays automatically at checkout.</p>` : ""}
       ${S.walletState().balance > 0 ? `
         <label class="wallet-opt">
           <input type="checkbox" id="use-wallet" ${S.walletState().useWallet !== false ? "checked" : ""} />
@@ -1178,15 +1365,29 @@
     const earned = receipt.pointsEarned || 0;
     const walletLine = receipt.paidByWallet
       ? `Paid ${fmtBaht(receipt.walletSpent)} from wallet balance.` : "";
-    const couponLines = receipt.discount > 0
-      ? `<p class="cart-note cpn-receipt-ok">Coupon ${receipt.couponCode} applied — ${fmtBaht(receipt.discount)} off (subtotal ${fmtBaht(receipt.subtotal)}).</p>`
+    // coupon line keys off the COUPON's own discount, not the combined total —
+    // the stamp-card treat is its own line (and never has a coupon code)
+    const couponDiscount = Math.max(0, (Number(receipt.discount) || 0) - (Number(receipt.treatDiscount) || 0));
+    const couponLines = receipt.couponCode
+      ? `<p class="cart-note cpn-receipt-ok">Coupon ${escapeHtml(receipt.couponCode)} applied — ${fmtBaht(couponDiscount)} off (subtotal ${fmtBaht(receipt.subtotal)}).</p>`
       : receipt.couponDropped
         ? `<p class="cart-note">Coupon ${receipt.couponDropped} didn't fit this order, so it wasn't used — it's still applied to your cart.</p>`
         : "";
+    // stamp-card treat: shown as its own line, because it paid real baht
+    const treatLine = receipt.treatCode
+      ? `<p class="cart-note treat-receipt-ok">Stamp-card treat ${escapeHtml(receipt.treatCode)} used —
+         ${fmtBaht(receipt.treatDiscount)} off. Ten more stamps and there's another.</p>` : "";
+    // pickup window: the slot this order was placed against, with the ETA
+    const pick = S.pickupState();
+    const pickLine = pick ? `<p class="cart-note pickup-receipt">Pickup window
+      <strong>${escapeHtml(pick.slot)}</strong>${pick.branch ? " · " + escapeHtml(D.shortName(D.BRANCHES.find(b => b.name === pick.branch) || { name: pick.branch })) : ""}
+      — your countdown is on the Order tab.</p>` : "";
     card.innerHTML = `
       <div class="oc-kicker">Demo order placed</div>
       <h3>${receipt.id}</h3>
       <p class="receipt-when">${when} · ${receipt.count} items · ${fmtBaht(receipt.total)}</p>
+      ${treatLine}
+      ${pickLine}
       ${couponLines}
       <ul class="receipt-lines">
         ${receipt.lines.map(l => `<li><span>${l.qty}×</span> ${l.name}</li>`).join("")}
@@ -1342,6 +1543,8 @@
   // one pass: recompute the queue, sync the bell, present the head offer
   function syncBellAndPop() {
     if (!offerPop) return;                        // host not mounted
+    // a tier crossing outranks any offer — celebrate it first, once only
+    if (maybeTierMoment()) return;
     const pending = pendingOffers();
     syncOfferBell(pending);
     if (!pending.length) {
@@ -1350,6 +1553,56 @@
     }
     if (shownOfferKey === pending[0].key) return; // already showing it
     showOfferPop(pending[0]);
+  }
+
+  /* ---------------- Tier level-up moment ----------------
+     The reward for the grind, shown exactly once per tier crossed: it takes
+     over the offer popup host with the new tier's name, its perk and what
+     comes next. Acknowledged in the store, so it never fires twice. */
+  const TIER_KEY = "__tier__";
+
+  function maybeTierMoment() {
+    if (!offerPop) return false;
+    const { tier, isNew } = S.tierMoment();
+    if (!isNew) return false;
+    if (shownOfferKey === TIER_KEY) return true;   // already up
+    const next = D.nextTier(S.loyalty().lifetime);
+    offerPop.innerHTML = `
+      <div class="offer-pop-card tier-up ${escapeHtml(tier.id)}">
+        <button class="offer-pop-x" data-ack="tier" aria-label="Dismiss">×</button>
+        <div class="offer-pop-kicker">Level up <span lang="ja">${escapeHtml(tier.jp)}</span></div>
+        <div class="offer-pop-title">You're ${escapeHtml(tier.name)} now</div>
+        <p>${escapeHtml(tier.blurb)}</p>
+        <div class="tier-up-perk"><span>Unlocked</span> ${escapeHtml(tier.perk)}</div>
+        ${next ? `<p class="tier-up-next">Next stop: <strong>${escapeHtml(next.name)}</strong> at
+          ${next.threshold} lifetime points.</p>` : `<p class="tier-up-next">Top of the ladder — nothing above this.</p>`}
+        <div class="offer-pop-actions">
+          <button class="btn ghost" data-ack="tier">Nice</button>
+          <button class="btn accent" data-cta="rewards">See perks</button>
+        </div>
+      </div>`;
+    const ack = () => {
+      S.ackTier();
+      hideOfferPop();
+      renderRewards();
+      syncBellAndPop();
+    };
+    offerPop.querySelector("[data-ack]").addEventListener("click", ack);
+    offerPop.querySelector("[data-cta]").addEventListener("click", () => {
+      S.ackTier();
+      hideOfferPop();
+      goToView("rewards/points");
+      syncBellAndPop();
+    });
+    offerPop.hidden = false;
+    shownOfferKey = TIER_KEY;
+    offerPop.classList.remove("on");
+    void offerPop.offsetWidth;
+    offerPop.classList.add("on");
+    const popT = /** @type {HTMLElement & { _t?: ReturnType<typeof setTimeout> }} */ (offerPop);
+    clearTimeout(popT._t);
+    popT._t = setTimeout(() => hideOfferPop(), 20000);   // stays until acknowledged or 20s
+    return true;
   }
 
   // offer inbox: a grouped feed instead of one flat stack. Offers are
@@ -1518,6 +1771,48 @@
     });
   }
 
+  /* ---------------- Your month in sushi (the recap) ----------------
+     A shareable card computed from THIS device's own order history — the
+     honest version of "Wrapped". Hidden until there's something to show;
+     every number is derived from real checkouts, never invented. */
+  const recapCard = $("#recap-card");
+
+  function renderRecap() {
+    if (!recapCard) return;
+    const r = S.recap();
+    if (!r.orders) { recapCard.hidden = true; return; }
+    recapCard.hidden = false;
+    const stats = [
+      { n: r.orders, label: r.orders === 1 ? "order" : "orders" },
+      { n: fmtBaht(r.spend), label: "on sushi" },
+      { n: r.dishes, label: r.dishes === 1 ? "dish" : "dishes" },
+      { n: r.days, label: r.days === 1 ? "day out" : "days out" },
+      { n: r.points, label: "points banked" }
+    ];
+    recapCard.innerHTML = `
+      <div class="recap-head">
+        <span class="recap-kicker">Your month in sushi</span>
+        <span class="recap-tier">${escapeHtml(r.tier.name)} <span lang="ja">${escapeHtml(r.tier.jp)}</span></span>
+      </div>
+      <div class="recap-grid">
+        ${stats.map(s => `
+          <div class="recap-stat">
+            <strong>${s.n}</strong><span>${s.label}</span>
+          </div>`).join("")}
+      </div>
+      <div class="recap-lines">
+        ${r.favourite ? `<p class="recap-line">Most ordered — <strong>${escapeHtml(r.favourite)}</strong> ×${r.favouriteQty}</p>` : ""}
+        ${r.topCat ? `<p class="recap-line">Your category — <strong>${escapeHtml(r.topCat)}</strong> <span lang="ja">${escapeHtml(r.topCatJp)}</span></p>` : ""}
+        ${r.best ? `<p class="recap-line">Biggest day — <strong>${escapeHtml(r.best.label)}</strong>, ${fmtBaht(r.best.total)}</p>` : ""}
+        ${r.saved > 0 ? `<p class="recap-line">Coupons saved you <strong>${fmtBaht(r.saved)}</strong></p>` : ""}
+        ${r.checkins ? `<p class="recap-line">Counter check-ins — <strong>${r.checkins}</strong></p>` : ""}
+      </div>
+      <p class="recap-share">Screenshot-worthy. Nothing here left your device to build it.</p>`;
+    S.ackRecap();
+  }
+
+  renderRecap();
+
   /* ---------------- Wallet (stored value) ---------------- */
   const wlAmount = $("#wl-amount");
   const wlSub = $("#wl-sub");
@@ -1551,7 +1846,8 @@
           <div class="wl-gift-row ${g.spent ? "spent" : ""}">
             <code>${g.code}</code>
             <span>${fmtBaht(g.amount)}</span>
-            <span class="wl-gift-state">${g.spent ? "redeemed" : "ready to send"}</span>
+            <span class="wl-gift-state">${g.spent ? "used"
+              : g.treat ? "treat · pays next order" : "ready to send"}</span>
           </div>`).join("")
       : `<p class="wl-note">No gift cards yet — buy one above.</p>`;
 
@@ -1632,7 +1928,7 @@
   // inbox also flips when the data layer refreshes (weekday deals). A
   // checkout can mint a brand-new personal offer — the bell rings on it
   // immediately, not on the next 30s tick.
-  S.onLoyalty(() => { renderRewards(); renderWallet(); renderMilestones(); syncSessionLoyalty(); syncBellAndPop(); });
+  S.onLoyalty(() => { renderRewards(); renderWallet(); renderMilestones(); renderRecap(); renderDrop(); syncSessionLoyalty(); syncBellAndPop(); });
   D.subscribe("refresh", () => { renderRewards(); renderMilestones(); syncBellAndPop(); });
   renderRewards();
   renderWallet();
@@ -1957,7 +2253,13 @@
   });
 
   stampRedeem.addEventListener("click", () => {
-    if (S.redeem("Free drink (demo)")) renderStamps();
+    // redeeming mints a real voucher into the wallet — the 10th stamp pays out
+    const voucher = S.redeemStampCard("Free treat");
+    if (voucher) {
+      flash(`Treat banked — ${voucher.code} (${fmtBaht(voucher.amount)}) is in your wallet`);
+      renderStamps();
+      renderWallet();
+    }
   });
 
   $("#stamp-reset").addEventListener("click", () => {

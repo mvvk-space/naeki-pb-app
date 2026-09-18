@@ -2419,6 +2419,127 @@ body:not([data-staff="true"]) .staff-only { display: none; }
 .ch-composer .btn { margin-top: 0; white-space: nowrap; }
 .wl-note { color: var(--paper-faint); font-size: 11.5px; margin-top: 8px; max-width: 720px; }
 
+/* ---------------- Habit surfaces (pickup · drop · check-in · recap) ------- */
+
+/* pickup window bar — slot picker on the ordering menu */
+.pickup-bar {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--salmon) 10%, var(--ink-1)), var(--ink-1));
+  border: 1px solid color-mix(in srgb, var(--salmon) 26%, var(--line));
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 16px 0 4px;
+}
+.pickup-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pickup-kicker {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--salmon);
+}
+.pickup-why { font-size: 12px; color: var(--paper-dim); }
+.pickup-slots { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.pickup-slot {
+  background: var(--ink-2); border: 1px solid var(--line); color: var(--paper);
+  border-radius: 999px; padding: 8px 16px; cursor: pointer;
+  font-family: var(--font-mono); font-size: 13px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.pickup-slot:hover { border-color: var(--salmon); background: color-mix(in srgb, var(--salmon) 12%, var(--ink-2)); }
+.pickup-live { display: flex; align-items: baseline; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+.pickup-live strong {
+  font-family: var(--font-display); font-size: 30px; line-height: 1;
+  color: var(--salmon); min-width: 92px;
+}
+.pickup-live span { font-size: 12.5px; color: var(--paper-dim); }
+.pickup-actions { display: flex; gap: 8px; margin-top: 12px; }
+.pickup-receipt { color: var(--salmon) !important; }
+.treat-receipt-ok { color: var(--wasabi); }
+
+/* daily drop card */
+.drop-card {
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--ink-1);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 12px 0;
+}
+.drop-card.claimed { border-left-color: var(--wasabi); }
+.drop-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.drop-kicker {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--gold);
+}
+.drop-card.claimed .drop-kicker { color: var(--wasabi); }
+.drop-streak { font-size: 11.5px; color: var(--paper-faint); }
+.drop-body { font-size: 13px; color: var(--paper-dim); margin: 0; max-width: 720px; }
+.drop-body strong { color: var(--paper); font-family: var(--font-display); font-size: 15px; }
+.drop-actions { display: flex; gap: 8px; }
+
+/* check-in strip + the per-branch check-in row */
+.checkin-strip {
+  margin-top: 14px; padding: 11px 14px;
+  background: var(--ink-1); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); font-size: 12.5px; color: var(--paper-dim);
+}
+.checkin-strip strong { color: var(--paper); font-family: var(--font-display); font-size: 15px; }
+.b-checkin { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.b-checkin-btn {
+  width: 100%;
+  background: color-mix(in srgb, var(--salmon) 14%, var(--ink-2));
+  border: 1px solid color-mix(in srgb, var(--salmon) 40%, transparent);
+  color: var(--paper); border-radius: var(--radius-sm);
+  padding: 10px 14px; cursor: pointer; font-size: 12.5px; font-weight: 600;
+  transition: background 0.15s ease;
+}
+.b-checkin-btn:hover { background: color-mix(in srgb, var(--salmon) 24%, var(--ink-2)); }
+.b-checkin.done { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.b-checkin-pts { color: var(--wasabi); font-size: 12.5px; font-weight: 600; }
+.b-checkin-hint { color: var(--paper-faint); font-size: 11.5px; }
+
+/* your month in sushi — the recap card */
+.recap-card {
+  background: linear-gradient(150deg, var(--ink-2), var(--ink-1));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin: 6px 0 34px;
+  max-width: 860px;
+}
+.recap-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.recap-kicker {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--paper-faint);
+}
+.recap-tier { font-family: var(--font-display); font-size: 15px; color: var(--gold); }
+.recap-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 12px; margin: 16px 0 14px;
+}
+.recap-stat { display: flex; flex-direction: column; gap: 2px; }
+.recap-stat strong { font-family: var(--font-display); font-size: 24px; line-height: 1; color: var(--paper); }
+.recap-stat span { font-size: 10.5px; color: var(--paper-faint); letter-spacing: 0.04em; }
+.recap-lines { display: flex; flex-direction: column; gap: 5px; }
+.recap-line { font-size: 12.5px; color: var(--paper-dim); margin: 0; }
+.recap-line strong { color: var(--paper); }
+.recap-share { font-size: 11.5px; color: var(--paper-faint); margin: 14px 0 0; font-style: italic; }
+
+/* tier level-up popup — takes over the offer popup host */
+.offer-pop-card.tier-up { border-color: var(--gold); }
+.offer-pop-card.tier-up .offer-pop-kicker { color: var(--gold); }
+.offer-pop-card.tier-up .offer-pop-title { color: var(--gold); }
+.tier-up-perk {
+  background: color-mix(in srgb, var(--gold) 12%, var(--ink-1));
+  border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px; margin-top: 10px; font-size: 12.5px; color: var(--paper);
+}
+.tier-up-perk span {
+  font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--gold); margin-right: 8px;
+}
+.tier-up-next { font-size: 12px; color: var(--paper-dim); margin: 8px 0 0; }
+.tier-up-next strong { color: var(--paper); }
+
 /* ---------------- PHONE (~400px) ---------------- */
 
 @media (max-width: 640px) {
@@ -2442,6 +2563,16 @@ body:not([data-staff="true"]) .staff-only { display: none; }
   .wl-grid { grid-template-columns: 1fr; }
   .wl-redeem-form { flex-direction: column; }
   .session-loyalty { display: none; }   /* sidebar is a top bar here */
+
+  /* habit surfaces: recap stats go 2-up, pickup slots fill the row */
+  .recap-grid { grid-template-columns: repeat(2, 1fr); }
+  .recap-card { padding: 16px 15px; }
+  .pickup-slots { gap: 6px; }
+  .pickup-slot { flex: 1 1 auto; padding: 9px 12px; }
+  .pickup-live strong { font-size: 25px; min-width: 74px; }
+  .pickup-actions { flex-direction: column; }
+  .pickup-actions .btn { width: 100%; text-align: center; }
+  .drop-actions .btn { width: 100%; text-align: center; }
 
   /* milestones pane: referral cards stack, mission card pads tighter */
   .mm-grid { grid-template-columns: 1fr; }

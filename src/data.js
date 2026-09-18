@@ -842,6 +842,7 @@ window.NaekiData = (() => {
     // milestone engine + trust pane
     MILESTONES, TRUST,
     streakOf, categoriesSeen, ordersThisWeek, achievements, weeklyMission,
+    bangkokDayKey,
     refresh
   });
   return Data;

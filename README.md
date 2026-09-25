@@ -1,116 +1,29 @@
 # Naeki Sushi — Bangkok Showcase (Electron + PWA)
 
-An unofficial fan-showcase app for **Naeki Sushi & Go!** — Bangkok's premium
-grab-and-go onigiri and sushi brand (est. 2013, All Seasons Place).
+An unofficial fan-showcase app for **Naeki Sushi & Go!** — Bangkok's premium grab-and-go onigiri and sushi brand (est. 2013, All Seasons Place).
 
 One codebase, two shells:
 
 - **Desktop** — Electron (`npm start`)
-- **Mobile / web** — installable PWA. Serve `src/` over http(s) (e.g.
-  `python3 -m http.server`), open it in Safari on an iPhone, then
-  **Share → Add to Home Screen**. Runs full-screen, offline, with a service
-  worker for the app shell.
+- **Mobile / web** — installable PWA. Serve `src/` over http(s), open it in Safari on an iPhone.
 
-All UI lives in **`src/`** — the Electron main process only wraps it.
+**Repository:** [mvvk-space/naeki-pb-app](https://github.com/mvvk-space/naeki-pb-app)
 
-## Run it
+## What's here
 
-```bash
-npm install     # already done in this folder
-npm run api     # starts the Neon-backed API on :8090 (kept running for dev)
-npm start       # launches the Electron window (spawns the API if not up)
+- Electron + electron-vite app shell, with electron-builder packaging config
+- `src/` — the shared app code (the PWA)
+- `server/`, `db/` — server and database pieces (Drizzle ORM)
+- `roadmap-board.html` — the production kanban roadmap ("Naeki · Production Kanban")
+- `glitch_pulse.py` — a glitch-pulse visual effect script
+- `blog/` — blog content
+- Playwright + Vitest test setups
 
-# or, as a website / PWA:
-cd src && python3 -m http.server 8000
+## Running it
+
+```sh
+npm install
+npm start    # Electron app
 ```
 
-The API server (`server/api.mjs`) talks to the Neon Postgres database
-(`naeki-sushi` project, `neondb`) that holds users, menu, branches, coupons,
-promotions and per-user state. The connection string lives at
-`~/.config/neon/naeki-sushi.dsn` (chmod 600, never committed); override with
-`$NAEKI_DSN`. Schema lives in `db/app-schema.sql`, seed data in `db/app-data.sql`.
-Demo logins: `kate@naeki.dev` / `Kate$12345` (customer), `somchai@naeki.dev` /
-`Somchai$12345` (franchise owner), `marketing@naeki.dev` / `Marketing$12345`
-(approvals). Sessions are in-memory — restart the API and you sign in again.
-
-## Quality gates
-
-- `npm run check` — zero-dep file-level validation (JS syntax, JSON, data-layer
-  integrity, assets, featured rotation). Runs in `.githooks/pre-commit`.
-- `npm run check:mobile` — **rendered** mobile-layout audit: real Electron at
-  390px, both shells, every view. Catches what file checks can't see — horizontal
-  overflow, off-viewport elements, grids that didn't collapse, undersized touch
-  targets, modals that don't fit. Also runs in `.githooks/pre-commit`.
-- `npm test` — vitest unit suites (coupon engine, loyalty math, milestones,
-  wallet) over the browser-IIFE sandbox.
-- `npm run test:e2e` — Playwright end-to-end: the full app in Electron against
-  the live API (sign-in → cart → coupon → checkout), plus the plain-HTML
-  browser project. Requires `npm run api` up (globalSetup checks).
-- `NAEKI_AUDIT_BREAK=1 npm run check:mobile` — audit self-test: plants a 520px
-  defect in the active view; the audit must catch it (exit 0 = detector works).
-- Skip in a pinch: `NAEKI_SKIP_MOBILE=1 git commit` (mobile only) or
-  `NAEKI_SKIP=1 git commit` (everything).
-
-GitHub Actions runs the file-level check only (`.github/workflows/ci.yml`) — the
-rendered audit needs a display + Electron and stays local to the pre-commit hook.
-
-## What's inside
-
-The app has two modes over one codebase — a **landing experience** (signed out)
-and an **app experience** (signed in with a local, on-device display name; no
-accounts, nothing leaves the device). Every component is shared by both modes;
-mode only changes which nav links are visible and the default view.
-
-| View | Modes | Contents |
-|---|---|---|
-| **Home** | landing | Landing page — hero, live status band (branches open now, next closing), featured menu overview rotating from the live data layer, flagship hours preview with open/closed status, About & Franchise teasers, **order & info cards** (shared live frame with the app's Chat tab), sign-in CTA |
-| Full Menu | landing | Display-only menu board — all 38 dishes with indicative prices from the live data layer, plus the ~54-item rotating strip, an **Order now** CTA (signs in and lands in the orderable menu), and the four order &amp; info contact cards |
-| Home extras | landing | Order &amp; info contact cards also close the home page; nav reads Home · Menu · About Us · Franchise · Customer Service |
-| Phone app shell | app (≤640px) | **Three bottom tabs — Order · Rewards · Chat** — in the thumb zone, above the home-indicator safe area; the sidebar folds into a brand bar. Everything extra lives inside a tab: Menu · Cart · Branches are segments of **Order**; Points · Stamps · Wallet · Milestones are tabs of **Rewards**; Order &amp; Info lives inside **Chat**. Ephemeral pieces (the offers) stay behind a notification bell on the Rewards tab |
-| Desktop app shell | app (>640px) | Sidebar navigation reads 01 Menu · 02 Cart · 03 Rewards · 04 Chat — cart and branches are the Order tab's segment chips inside Menu |
-| **Menu** | app | 38 dishes with **ordering built in** — indicative ฿ prices, +/− quantity steppers per card, add-to-cart in the dish modal, live search, category chips |
-| **Cart** | app | Shopping-cart view — per-line steppers, running totals, demo checkout (local receipt + order id), cart persists on-device across sessions; badges on the Order tab (phone) and sidebar (desktop) |
-| **Branches** | app | All 20 Bangkok branches with live **open/closed status** computed against Bangkok time, flagship vs GO! kiosk badges, Google Maps deep links, search, plus naeki.co's own **coverage map embed** |
-| **Stamp Card** | app | Local demo loyalty card — collect 10 stamps, redeem a treat, history log. Self-issued; stored only on-device (`localStorage` via `src/store.js`), never sent anywhere |
-| **Rewards** | app | **The loyalty loop in one section — four tabs** · **Points**: 1 pt / 10฿ (2× Thursdays, ×tier multipliers), Kome→Sake→Maguro→Ikura tiers with perks, weekly brand deals + affinity offers computed from on-device order history ("because you order it"), points redeem 1:1 into wallet · **Stamps**: the collecting card (ten stamps, one treat) · **Wallet**: stored value, Starbucks-style — TrueMoney top-up (+฿ chips), gift cards (buy from balance, send code, redeem), top-up ledger, pays automatically at checkout, one-time Add to Apple Pay / Google Wallet (the button is gone for good once added) · **Milestones**: seven achievements + weekly mission + referral give-and-get + the trust pane |
-| **Order & Info** | app (inside Chat) + landing bottom section | LINE OA, flagship counter phone, catering line, HQ address, socials — one live frame (`D.order()`) mounted in the app's Chat tab and on the landing page |
-| **About / Franchise** | landing | Brand story, kiosk gallery, FAQ / franchise pitch from naeki.co |
-
-Also: a live Bangkok clock in the sidebar, real Google-review quotes,
-and the actual BTS Siam kiosk photo as the hero.
-
-## Data provenance (researched 10 Sep 2026)
-
-- Menu items, brand story, HQ, branch list & hours: **naeki.co** (official site)
-- Photos: **naeki.co official menu photography** (38 files in `src/assets/`) + the
-  BTS Siam kiosk photo from the branch's Google Maps listing
-- Ratings, phone numbers, review quotes: Google Maps listings for the branches
-
-Caveats: menu rotates daily and prices vary by branch (naeki.co doesn't publish
-prices); hours can change — the app's open/closed status is computed from the
-hours listed on naeki.co. This app is **not affiliated** with Naeki Sushi Co., Ltd.
-
-## Stack
-
-- Electron 44 (desktop shell only), zero runtime dependencies
-- Plain HTML/CSS/JS, CSP-restricted (`default-src 'self'`), no node integration in the renderer
-- **Live data layer** — `src/data.js` is the single source of truth (menu, branches,
-  hours, reviews, brand facts) with a pub/sub refresh cycle. Landing regions are
-  turbo-frames-style mounts (`data-frame="…"`, engine in `src/frames.js`) that
-  re-render whenever the data layer publishes — edit a closing time or a review
-  there and every surface (landing *and* app) repaints on the next cycle. In
-  production the interval stands in for a real backend feed (fetch/SSE poll →
-  `publish("refresh")`); no UI code changes.
-- PWA: `manifest.webmanifest` + service worker (cache version tracks the app
-  version; `data.js` is served **network-first** so business-data edits reach
-  installed PWAs without an app-version bump)
-- All assets local (works offline); user data (stamps, history) stays on-device
-
-## Future path (deliberately not built)
-
-A real loyalty program — verified stamps, cross-device sync, push notifications —
-needs Naeki the brand's involvement (it trades on their name and touches
-stored-value/promotions rules, and real push needs a backend + APNs). The code is
-shaped for it: `src/store.js` isolates persistence so it can move to
-SQLite (Capacitor shell) or a synced backend without UI changes, and a Capacitor
-wrapper can reuse `src/` as-is for App Store distribution.
+See the full README for PWA serving, tests, and roadmap details.

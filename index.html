@@ -1,7 +1,58 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Coming soon</title></head>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Naeki Sushi — Bangkok Showcase (Electron + PWA)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    max-width: 46rem;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    line-height: 1.65;
+  }
+  a { color: #0969da; }
+  @media (prefers-color-scheme: dark) { a { color: #4493f8; } }
+  pre {
+    background: #f6f8fa; border-radius: 6px; padding: 1rem;
+    overflow-x: auto; font-size: 0.875rem;
+  }
+  @media (prefers-color-scheme: dark) { pre { background: #151b23; } }
+  code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+  table { border-collapse: collapse; }
+  th, td { border: 1px solid #d0d7de; padding: 0.375rem 0.75rem; }
+  th { background: #f6f8fa; }
+  @media (prefers-color-scheme: dark) { th, td { border-color: #3d444d; } th { background: #151b23; } }
+  h1, h2 { border-bottom: 1px solid #d0d7de; padding-bottom: 0.3em; }
+  @media (prefers-color-scheme: dark) { h1, h2 { border-color: #3d444d; } }
+</style>
+</head>
 <body>
-<h1>This page does not have an index.html set up yet!</h1>
+<h1>Naeki Sushi — Bangkok Showcase (Electron + PWA)</h1>
+<p>An unofficial fan-showcase app for <strong>Naeki Sushi &amp; Go!</strong> — Bangkok&#39;s premium grab-and-go onigiri and sushi brand (est. 2013, All Seasons Place).</p>
+<p>One codebase, two shells:</p>
+<ul>
+<li><strong>Desktop</strong> — Electron (<code>npm start</code>)</li>
+<li><strong>Mobile / web</strong> — installable PWA. Serve <code>src/</code> over http(s), open it in Safari on an iPhone.</li>
+</ul>
+<p><strong>Repository:</strong> <a href="https://github.com/mvvk-space/naeki-pb-app">mvvk-space/naeki-pb-app</a></p>
+<h2>What&#39;s here</h2>
+<ul>
+<li>Electron + electron-vite app shell, with electron-builder packaging config</li>
+<li><code>src/</code> — the shared app code (the PWA)</li>
+<li><code>server/</code>, <code>db/</code> — server and database pieces (Drizzle ORM)</li>
+<li><code>roadmap-board.html</code> — the production kanban roadmap (&quot;Naeki · Production Kanban&quot;)</li>
+<li><code>glitch_pulse.py</code> — a glitch-pulse visual effect script</li>
+<li><code>blog/</code> — blog content</li>
+<li>Playwright + Vitest test setups</li>
+</ul>
+<h2>Running it</h2>
+<pre><code class="language-sh">npm install
+npm start    # Electron app
+</code></pre>
+<p>See the full README for PWA serving, tests, and roadmap details.</p>
+
 </body>
 </html>
